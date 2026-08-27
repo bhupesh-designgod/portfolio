@@ -1,0 +1,27 @@
+---
+/* Lenis smooth scroll. Lenis drives the real window scroll position, so
+   window.scrollY and native scroll events still work — the hero's panel
+   handler keeps running unchanged. */
+import 'lenis/dist/lenis.css';
+---
+
+<script>
+  import Lenis from 'lenis';
+
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const lenis = new Lenis({
+      /* Fraction of the remaining distance covered per frame. At 0.09 the first
+         few frames barely moved, which read as the page resisting the wheel
+         before it gave. 0.15 still glides but answers the first tick. */
+      lerp: 0.15,
+      wheelMultiplier: 1.1,
+      anchors: true,     // hash links (e.g. /#work) ease instead of jumping
+    });
+
+    const raf = (time: number) => {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    };
+    requestAnimationFrame(raf);
+  }
+</script>

@@ -1,0 +1,169 @@
+---
+/* Résumé link, docked to the right of the nav.
+ *
+ * It opens the PDF in a new tab. No dialog, no script — the material is the nav
+ * pill's, and the motion is a sheen sweeping the glass on hover, which is one
+ * transform on one pseudo-element.
+ */
+interface Props {
+  /* Lives in /public. Swap the file, keep the name, and nothing else changes. */
+  pdf?: string;
+}
+
+const { pdf = '/Bhupesh-Parmar-Resume.pdf' } = Astro.props;
+---
+
+<a class="rbtn" href={pdf} target="_blank" rel="noopener">
+  <span class="rbtn__sheen" aria-hidden="true"></span>
+  <span class="rbtn__sweep" aria-hidden="true"></span>
+  <svg class="rbtn__icon" viewBox="0 0 16 16" aria-hidden="true">
+    <path
+      d="M4 1.75h5L12.25 5v9.25H4z"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.3"
+      stroke-linejoin="round"
+    />
+    <path d="M8.75 1.9V5.1h3.2" fill="none" stroke="currentColor" stroke-width="1.3" />
+  </svg>
+  <span class="rbtn__label">Résumé</span>
+</a>
+
+<style>
+  .rbtn {
+    position: fixed;
+    /* Centred on the nav pill's centre line, not its top edge: the pill is 74px
+       tall and this is 43px, so it sits 15px lower than the pill's 22px. */
+    top: 37px;
+    right: max(20px, 3vw);
+    z-index: 51;
+
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 14px 20px;
+    border-radius: 999px;
+    overflow: hidden;
+
+    font-family: "Inter", "Nunito", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1;
+    text-decoration: none;
+    /* Same ink as the nav labels, so it flips over the hero too. */
+    color: var(--nav-ink);
+
+    /* .nav__pill's material, to the value. */
+    background: rgba(0, 0, 0, 0.09);
+    -webkit-backdrop-filter: blur(6px) saturate(180%);
+    backdrop-filter: blur(6px) saturate(180%);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.22),
+      inset 0 -1px 1px rgba(255, 255, 255, 0.1),
+      inset 0 0 20px rgba(255, 255, 255, 0.06),
+      0 10px 30px rgba(0, 10, 40, 0.2);
+    transition:
+      transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+      color 0.35s ease;
+  }
+  @supports (backdrop-filter: url(#liquidGlass)) {
+    .rbtn { backdrop-filter: blur(6px) url(#liquidGlass) saturate(180%); }
+  }
+
+  /* Same haptic swell as the nav pill's */
+  .rbtn:hover {
+    transform: scale(1.03);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.3),
+      inset 0 -1px 1px rgba(255, 255, 255, 0.14),
+      inset 0 0 24px rgba(255, 255, 255, 0.09),
+      0 16px 40px rgba(0, 10, 40, 0.26);
+  }
+  .rbtn:active { transform: scale(0.97); }
+  .rbtn:focus-visible { outline: 2px solid var(--nav-ink); outline-offset: 3px; }
+
+  .rbtn__icon {
+    position: relative;
+    z-index: 2;
+    width: 15px;
+    height: 15px;
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  /* The sheet lifts a hair, like it's being picked up */
+  .rbtn:hover .rbtn__icon { transform: translateY(-1.5px); }
+
+  .rbtn__label { position: relative; z-index: 2; }
+
+  /* Light travelling across the glass. Parked off the left edge, sent across on
+     hover — the pill's overflow clip is what turns it into a sweep. */
+  .rbtn__sweep {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -60%;
+    width: 55%;
+    z-index: 1;
+    pointer-events: none;
+    transform: skewX(-18deg) translateX(0);
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.38) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    transition: transform 0.62s cubic-bezier(0.32, 0.72, 0.3, 1);
+  }
+  .rbtn:hover .rbtn__sweep { transform: skewX(-18deg) translateX(320%); }
+
+  /* Specular rim, lifted from .nav__sheen */
+  .rbtn__sheen {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    pointer-events: none;
+    padding: 1.25px;
+    background: conic-gradient(
+      from 205deg at 50% 50%,
+      rgba(255, 255, 255, 0) 0deg,
+      rgba(255, 255, 255, 0.7) 55deg,
+      rgba(255, 255, 255, 0.12) 120deg,
+      rgba(255, 255, 255, 0) 185deg,
+      rgba(255, 255, 255, 0.5) 290deg,
+      rgba(255, 255, 255, 0.05) 340deg,
+      rgba(255, 255, 255, 0) 360deg
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+
+  @media (max-width: 820px) {
+    /* Pill is 58px here, button 36px — same centring, smaller numbers. */
+    .rbtn { top: 25px; padding: 11px 15px; font-size: 14px; }
+  }
+
+  /* The centred nav cluster runs out of room here, so the button drops to a
+     corner of its own rather than fighting it for the top edge. Bottom-LEFT,
+     because the AI blob owns bottom-right at every size. */
+  @media (max-width: 620px) {
+    .rbtn {
+      top: auto;
+      bottom: 20px;
+      right: auto;
+      left: 16px;
+      padding: 12px 16px;
+    }
+    .rbtn__label { display: none; }
+    .rbtn__icon { width: 17px; height: 17px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rbtn { transition: color 0.35s ease; }
+    .rbtn:hover, .rbtn:active { transform: none; }
+    .rbtn__sweep, .rbtn__icon { transition: none; }
+    .rbtn:hover .rbtn__sweep { transform: skewX(-18deg); }
+    .rbtn:hover .rbtn__icon { transform: none; }
+  }
+</style>

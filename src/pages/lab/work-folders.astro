@@ -1,0 +1,991 @@
+---
+/* EXPERIMENT — an alternative to the work listing on the home page.
+   Nothing here is wired into the site: no nav link, no shared stylesheet, no
+   change to `/#work` or to any case study. Every style below is scoped to this
+   page by Astro, so deleting this one file removes the idea completely.
+
+   The conceit: each project is a folder you can open, and the thing inside is
+   a postage stamp — the screen, franked. Hover opens the folder.            */
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+
+const projects = (await getCollection('work', ({ data }) => !data.draft)).sort(
+  (a, b) => a.data.order - b.data.order
+);
+
+/* The bits the folder needs that the card never did: a short display name (two
+   entries are both "TBS"), and the artwork to frank. Keyed by slug so adding a
+   project without an entry here still renders — it just gets an empty stamp. */
+const LOOK: Record<
+  string,
+  { name: string; art?: string; artAlt?: string; clip?: string }
+> = {
+  tbs: {
+    name: 'TBS',
+    art: '/assets/projects/tbs/checkin.png',
+    artAlt: 'The TBS client app check-in screen',
+  },
+  'tbs-dashboard': {
+    name: 'TBS Dashboard',
+    art: '/assets/projects/tbs-dash/queue.png',
+    artAlt: 'The TBS trainer dashboard, needs-you-today queue',
+  },
+  'ikarus-configurator': {
+    name: 'Ikarus Delta',
+    art: '/assets/projects/ikarus/final-editor.png',
+    artAlt: 'The Ikarus Delta 3D scene editor',
+  },
+  'ikarus-nest': {
+    name: 'Ikarus Nest',
+    art: '/assets/projects/nest/card/shot-1.jpg',
+    artAlt: 'The Ikarus Nest explore marketplace grid',
+    /* STAND-IN, not Ikarus Nest footage. `Scene.mp4` was not on disk, so this
+       is `Cinematic Portrait Sequence.mp4` from Downloads, copied in purely so
+       the hover interaction can be judged. Replace the file and delete this
+       comment; nothing else needs to change. */
+    clip: '/assets/projects/nest/_standin-clip.mp4',
+  },
+};
+
+/* Seed only. Where a clip exists the real runtime replaces this as soon as the
+   browser has the metadata, so the number on screen is never invented. */
+const DUR = '0:00';
+
+/* "14 stamps" is decorative in the reference. Here it counts the screens the
+   case study actually shows, so the number stays true on its own. */
+const cards = projects.map((entry, i) => {
+  const look = LOOK[entry.id] ?? { name: entry.data.client };
+  return {
+    slug: entry.id,
+    n: String(i + 1).padStart(2, '0'),
+    name: look.name,
+    art: look.art,
+    clip: look.clip,
+    artAlt: look.artAlt ?? '',
+    desc: entry.data.title,
+    frank: entry.data.heroTitle ?? entry.data.title,
+    tags: entry.data.tags,
+    stamps: String((entry.body?.match(/<img/g) ?? []).length).padStart(2, '0'),
+    dur: DUR,
+  };
+});
+---
+
+<Base
+  title="Lab — work as folders"
+  description="An experiment: the work listing as a set of folders you open."
+>
+  <main class="fx-page">
+    <header class="fx-head">
+      <div>
+        <h1 class="fx-h1">Things I&rsquo;ve designed</h1>
+
+        {/* Two arrangements of identical markup. The switch changes one data
+            attribute; everything else is CSS, so neither version can drift
+            away from the other while you decide between them. */}
+        <div class="fx-switch" role="group" aria-label="Layout">
+          <button type="button" data-layout-btn="stack" aria-pressed="true">
+            Stacked
+          </button>
+          <button type="button" data-layout-btn="grid" aria-pressed="false">
+            Grid 2&times;2
+          </button>
+          <button type="button" data-layout-btn="portal" aria-pressed="false">
+            Portal 4-up
+          </button>
+        </div>
+      </div>
+
+      <p class="fx-note">
+        hover on any folder<br />to <u>open</u> and <u>play</u>
+        <svg class="fx-note__arrow" viewBox="0 0 90 60" aria-hidden="true">
+          <path
+            d="M84 6C74 30 58 46 34 50"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+          <path
+            d="M42 40 32 51l13 5"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </p>
+    </header>
+
+    <div class="fx-grid" data-layout="stack">
+      {
+        cards.map((c) => (
+          <article class="fx">
+            <div class="fx__txt">
+              <p class="fx__n">{c.n}</p>
+              <h2 class="fx__title">{c.name}</h2>
+              <p class="fx__desc">{c.desc}</p>
+              <ul class="fx__tags">
+                {c.tags.map((t) => (
+                  <li>{t}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div class="fx__folder">
+              <span class="fx__bee" aria-hidden="true">
+                🐝
+              </span>
+
+              {/* What's in the folder. Sits behind the front panel and rises
+                  out of it on hover. */}
+              <div class="fx__stack" aria-hidden="true">
+                <div class="fx__phone">
+                  <i />
+                </div>
+
+                <div class="fx__stamp">
+                  <p class="fx__frank">{c.frank}</p>
+
+                  {/* One frame, 16:9, identical for the still and the clip.
+                      Hovering changes what is playing inside it and never
+                      changes the size of the thing it is playing in. */}
+                  <div class="fx__media">
+                    {c.art && <img src={c.art} alt={c.artAlt} loading="lazy" />}
+                    {c.clip && (
+                      <video
+                        class="fx__vid"
+                        src={c.clip}
+                        muted
+                        loop
+                        playsinline
+                        preload="none"
+                      />
+                    )}
+                    {c.clip && (
+                      <span class="fx__play">
+                        <svg viewBox="0 0 56 56">
+                          <circle cx="28" cy="28" r="26" fill="none" stroke="currentColor" stroke-width="2" />
+                          <path d="M23 19l16 9-16 9z" fill="currentColor" />
+                        </svg>
+                      </span>
+                    )}
+                    {c.clip && <span class="fx__dur">{c.dur}</span>}
+                  </div>
+
+                  <svg class="fx__cancel" viewBox="0 0 40 40">
+                    <circle
+                      cx="20"
+                      cy="20"
+                      r="13"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.4"
+                    />
+                    <path
+                      d="M11 27 29 13"
+                      stroke="currentColor"
+                      stroke-width="1.4"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              {/* The front panel. Frosted, so the contents show through it as
+                  a bloom of colour rather than disappearing behind it. */}
+              <div class="fx__front">
+                <p class="fx__label">
+                  <b class="fx__fname">{c.name}</b>
+                  <span class="fx__fdesc">{c.desc}</span>
+                  <span class="fx__fcount">{c.stamps} stamps</span>
+                </p>
+
+                <svg class="fx__seal" viewBox="0 0 120 120" aria-hidden="true">
+                  <defs>
+                    <path
+                      id={`seal-${c.slug}`}
+                      d="M60 60m-40 0a40 40 0 1 1 80 0a40 40 0 1 1-80 0"
+                    />
+                  </defs>
+                  <circle
+                    cx="60"
+                    cy="60"
+                    r="49"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                  />
+                  <circle
+                    cx="60"
+                    cy="60"
+                    r="31"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.2"
+                  />
+                  <text class="fx__sealRing">
+                    <textPath href={`#seal-${c.slug}`} startOffset="50%">
+                      · DRAWN · ARGUED FOR · SHIPPED ·
+                    </textPath>
+                  </text>
+                  <text class="fx__sealWord" x="60" y="66" text-anchor="middle">
+                    Original
+                  </text>
+                </svg>
+              </div>
+
+              <p class="fx__hint">
+                hover to open
+                <svg viewBox="0 0 60 34" aria-hidden="true">
+                  <path
+                    d="M2 30C18 30 36 24 52 6"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M40 5h13v13"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </p>
+            </div>
+          </article>
+        ))
+      }
+    </div>
+
+    <p class="fx-foot">
+      <span aria-hidden="true">💡</span> Each folder opens to reveal the story behind
+      the project.
+    </p>
+  </main>
+</Base>
+
+{/* The page is light from the first pixel, so the nav ink must be too. */}
+<script is:inline>document.documentElement.dataset.navTone = 'light';</script>
+
+<script>
+  /* One attribute drives both arrangements. The choice is remembered so you
+     can reload, look again with fresh eyes, and land where you left off. */
+  const grid = document.querySelector<HTMLElement>('.fx-grid');
+  const btns = Array.from(
+    document.querySelectorAll<HTMLButtonElement>('[data-layout-btn]')
+  );
+
+  function apply(value: string) {
+    if (!grid) return;
+    grid.dataset.layout = value;
+    btns.forEach((b) =>
+      b.setAttribute('aria-pressed', String(b.dataset.layoutBtn === value))
+    );
+  }
+
+  btns.forEach((b) =>
+    b.addEventListener('click', () => {
+      const value = b.dataset.layoutBtn!;
+      apply(value);
+      /* Private browsing and blocked site data both throw here. */
+      try {
+        localStorage.setItem('fx-layout', value);
+      } catch {}
+    })
+  );
+
+  try {
+    const saved = localStorage.getItem('fx-layout');
+    if (saved === 'grid' || saved === 'stack' || saved === 'portal') apply(saved);
+  } catch {}
+
+  /* ---- clips ----
+     `preload="none"` keeps every clip off the wire until someone actually
+     points at a folder, so the page costs nothing to load. The runtime label
+     is filled in from the file's own metadata rather than typed by hand. */
+  const mmss = (s: number) =>
+    `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+  document.querySelectorAll<HTMLElement>('.fx__folder').forEach((folder) => {
+    const vid = folder.querySelector<HTMLVideoElement>('.fx__vid');
+    if (!vid) return;
+    const dur = folder.querySelector<HTMLElement>('.fx__dur');
+
+    vid.addEventListener('loadedmetadata', () => {
+      if (dur && Number.isFinite(vid.duration)) dur.textContent = mmss(vid.duration);
+    });
+
+    folder.addEventListener('mouseenter', () => {
+      /* Autoplay is only allowed muted, and a rejected promise here is normal
+         (a reduced-motion or data-saver browser may simply decline). */
+      vid.play().catch(() => {});
+    });
+
+    folder.addEventListener('mouseleave', () => {
+      vid.pause();
+      vid.currentTime = 0;
+    });
+  });
+</script>
+
+<style>
+  /* ---------------------------------------------------------------
+     All of this is scoped to this page. It shares the site's four
+     families — Bebas Neue, Nunito, Inter, Caveat — and nothing else.
+     One deviation, flagged: `.fx__desc` is set in the system monospace
+     stack. It is the texture the reference leans on hardest, and it
+     costs no font request. Swap it to Inter and the page still works.
+     --------------------------------------------------------------- */
+  .fx-page {
+    --ink: #0b0d12;
+    --mute: #767d8b;
+    --ln: #e2e3e6;
+    --acc: #6b6ae4;
+    --acc-soft: #eeeefc;
+    --paper: #f4f4f2;
+
+    min-height: 100vh;
+    padding: 132px 5vw 40px;
+    background-color: var(--paper);
+    /* The dot grid. Low enough contrast to read as paper tooth rather
+       than as a grid you are meant to measure against. */
+    background-image: radial-gradient(rgba(11, 13, 18, 0.07) 1px, transparent 1px);
+    background-size: 22px 22px;
+    color: var(--ink);
+  }
+
+  /* ---- masthead ---- */
+  .fx-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 32px;
+    max-width: 1500px;
+    margin: 0 auto 30px;
+  }
+  .fx-h1 {
+    margin: 0;
+    font-family: 'Bebas Neue', 'Nunito', sans-serif;
+    font-weight: 400;
+    font-size: clamp(40px, 6.4vw, 86px);
+    line-height: 0.92;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  /* The switch. Lab furniture, not part of the idea being tested — so it is
+     deliberately plain and sits below the title rather than beside it. */
+  .fx-switch {
+    display: inline-flex;
+    gap: 4px;
+    margin-top: 20px;
+    padding: 4px;
+    border-radius: 999px;
+    border: 1px solid var(--ln);
+    background: rgba(255, 255, 255, 0.75);
+  }
+  .fx-switch button {
+    appearance: none;
+    padding: 7px 15px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--mute);
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+  .fx-switch button:hover { color: var(--ink); }
+  .fx-switch button[aria-pressed='true'] {
+    background: var(--acc);
+    color: #fff;
+    font-weight: 600;
+  }
+
+  .fx-note {
+    position: relative;
+    margin: 6px 62px 0 0;
+    font-family: 'Caveat', cursive;
+    font-size: 22px;
+    line-height: 1.35;
+    text-align: right;
+    color: var(--acc);
+  }
+  .fx-note u { text-underline-offset: 3px; }
+  .fx-note__arrow {
+    position: absolute;
+    right: -66px;
+    top: 4px;
+    width: 62px;
+    color: var(--acc);
+    opacity: 0.75;
+  }
+
+  /* ---- the quadrant grid ---- */
+  .fx-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: 1500px;
+    margin: 0 auto;
+  }
+  .fx {
+    display: grid;
+    align-items: center;
+    gap: clamp(20px, 3vw, 48px);
+  }
+
+  /* -- arrangement A: the quadrant grid -- */
+  .fx-grid[data-layout='grid'] .fx {
+    grid-template-columns: minmax(190px, 0.72fr) minmax(0, 1fr);
+    padding: clamp(34px, 4vw, 60px) clamp(20px, 2.4vw, 40px);
+  }
+  /* Rules between the quadrants, and only between them — a border on the
+     outside edges would box the grid in and turn four cells into a table. */
+  .fx-grid[data-layout='grid'] .fx:nth-child(odd) {
+    border-right: 1px solid var(--ln);
+  }
+  .fx-grid[data-layout='grid'] .fx:not(:nth-last-child(-n + 2)) {
+    border-bottom: 1px solid var(--ln);
+  }
+
+  /* -- arrangement B: one project per row --
+     A full-width row buys width the quadrant never had, so the title grows
+     and the description gets a longer measure. The folder does NOT grow to
+     fill the row: past about 560px it stops reading as an object on a desk
+     and starts reading as a banner. */
+  .fx-grid[data-layout='stack'] { grid-template-columns: minmax(0, 1fr); }
+  /* The folder column is capped rather than fractional. Left as a fraction it
+     keeps its 560px cap but stays left-aligned inside a much wider track, so
+     every row ends in a few hundred pixels of dead gutter. */
+  .fx-grid[data-layout='stack'] .fx {
+    grid-template-columns: minmax(280px, 1fr) minmax(0, 560px);
+    gap: clamp(30px, 5vw, 88px);
+    padding: clamp(40px, 4.6vw, 74px) clamp(10px, 2vw, 34px);
+  }
+  .fx-grid[data-layout='stack'] .fx:not(:last-child) {
+    border-bottom: 1px solid var(--ln);
+  }
+  .fx-grid[data-layout='stack'] .fx__title {
+    font-size: clamp(30px, 3.3vw, 46px);
+    margin-bottom: 18px;
+  }
+  .fx-grid[data-layout='stack'] .fx__desc {
+    max-width: 36ch;
+    font-size: 13.5px;
+  }
+  .fx-grid[data-layout='stack'] .fx__folder {
+    width: 100%;
+    max-width: 560px;
+    justify-self: end;
+    aspect-ratio: 1.3 / 1;
+  }
+  /* One thing in the folder, not two. A portrait phone beside a 16:9 frame
+     reads as clutter rather than as depth. */
+  .fx-grid[data-layout='stack'] .fx__phone { display: none; }
+  .fx-grid[data-layout='stack'] .fx__stack { inset: 0 0 20%; }
+  .fx-grid[data-layout='stack'] .fx__stamp {
+    left: 6%;
+    right: 6%;
+    top: 2%;
+    width: auto;
+    height: auto;
+    padding: 15px 15px 13px;
+    transition:
+      transform 0.55s cubic-bezier(0.2, 0.9, 0.25, 1),
+      filter 0.55s cubic-bezier(0.2, 0.9, 0.25, 1);
+  }
+  /* Almost out of the folder, not out of it. Clearing the lip completely
+     breaks the fiction that the folder is holding anything. */
+  .fx-grid[data-layout='stack'] .fx__folder:hover .fx__stamp {
+    transform: translateY(-28%) rotate(-1.1deg) scale(1.02);
+    filter: drop-shadow(0 34px 46px rgba(12, 20, 45, 0.42));
+  }
+  .fx-grid[data-layout='stack'] .fx__folder:hover .fx__play,
+  .fx-grid[data-layout='stack'] .fx__folder:hover .fx__dur { opacity: 1; }
+  /* Top-right, not bottom-right. The folder still covers the bottom of the
+     frame even with the stamp floated, and a runtime you cannot read is just
+     a rectangle. */
+  .fx-grid[data-layout='stack'] .fx__dur {
+    top: 10px;
+    right: 10px;
+    bottom: auto;
+  }
+  /* Out of the way of the stamp once it lifts. */
+  .fx-grid[data-layout='stack'] .fx__folder:hover .fx__bee {
+    transform: translate(16px, -30px) rotate(-8deg);
+  }
+
+  /* -- arrangement C: the portal --
+     No text column at all. The name and the line about the project move onto
+     the folder, so each card is one self-contained object rather than a
+     caption sitting next to a picture. Four across, portrait. */
+  .fx-grid[data-layout='portal'] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: clamp(16px, 1.8vw, 30px);
+  }
+  .fx-grid[data-layout='portal'] .fx {
+    grid-template-columns: 30px minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+    padding: 18px 0 46px;
+  }
+  /* Everything but the number is on the folder in this arrangement. */
+  .fx-grid[data-layout='portal'] .fx__title,
+  .fx-grid[data-layout='portal'] .fx__desc,
+  .fx-grid[data-layout='portal'] .fx__tags { display: none; }
+  .fx-grid[data-layout='portal'] .fx__n { margin: 4px 0 0; }
+
+  .fx-grid[data-layout='portal'] .fx__folder {
+    aspect-ratio: 3 / 4;
+    min-height: 0;
+  }
+  /* One object in the folder, not two: the phone was depth for a wide card
+     and is just clutter in a portrait one. */
+  .fx-grid[data-layout='portal'] .fx__phone { display: none; }
+  .fx-grid[data-layout='portal'] .fx__stack { inset: 0 0 12%; }
+  .fx-grid[data-layout='portal'] .fx__stamp {
+    right: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    padding: 14px 14px 12px;
+    transition:
+      padding 0.5s cubic-bezier(0.2, 0.9, 0.25, 1),
+      transform 0.5s cubic-bezier(0.2, 0.9, 0.25, 1);
+  }
+  /* Fading these is not enough — an invisible line still holds its box, which
+     is what stops the video reaching the top edge and stops the folder bar
+     getting down to a bar. They have to collapse as well as fade. */
+  .fx-grid[data-layout='portal'] .fx__frank,
+  .fx-grid[data-layout='portal'] .fx__fdesc,
+  .fx-grid[data-layout='portal'] .fx__fcount {
+    max-height: 6em;
+    overflow: hidden;
+    transition:
+      opacity 0.26s ease,
+      max-height 0.5s cubic-bezier(0.2, 0.9, 0.25, 1),
+      margin 0.5s cubic-bezier(0.2, 0.9, 0.25, 1);
+  }
+  .fx-grid[data-layout='portal'] .fx__front {
+    bottom: 0;
+    height: 44%;
+    padding: 0 9%;
+    border-radius: 16px 44px 20px 20px;
+    /* Height, not transform. Sliding the panel down moves it out of the card
+       silhouette entirely and it reads as a slab parked underneath; shrinking
+       it keeps the bottom edge pinned and the bar inside the card. */
+    transition: height 0.5s cubic-bezier(0.2, 0.9, 0.25, 1);
+  }
+  .fx-grid[data-layout='portal'] .fx__label {
+    margin-bottom: clamp(14px, 2vw, 24px);
+    /* Clear the seal. Without this the description runs under it and the
+       card's one piece of real copy becomes the least readable thing on it. */
+    padding-right: 62px;
+  }
+  .fx-grid[data-layout='portal'] .fx__fdesc { display: block; }
+  .fx-grid[data-layout='portal'] .fx__seal {
+    right: 8%;
+    bottom: 16%;
+    width: 60px;
+    transition: width 0.5s cubic-bezier(0.2, 0.9, 0.25, 1), bottom 0.5s cubic-bezier(0.2, 0.9, 0.25, 1);
+  }
+  .fx-grid[data-layout='portal'] .fx__folder:hover .fx__seal {
+    width: 38px;
+    bottom: 9px;
+  }
+  .fx-grid[data-layout='portal'] .fx__hint { left: 4%; bottom: 14px; }
+
+  /* State 2 — open, and playing.
+     The folder does not get out of the way entirely. It drops until only a
+     bar of it shows, which is what keeps the video reading as something
+     inside a folder rather than a video that replaced one. */
+  /* Shrinks until roughly a tenth of the card is still folder. */
+  .fx-grid[data-layout='portal'] .fx__folder:hover .fx__front {
+    height: 13%;
+    transform: none;
+  }
+  .fx-grid[data-layout='portal'] .fx__folder:hover .fx__label {
+    margin-bottom: 11px;
+  }
+  .fx-grid[data-layout='portal'] .fx__folder:hover .fx__stamp {
+    padding: 0;
+    transform: none;
+  }
+  .fx-grid[data-layout='portal'] .fx__folder:hover .fx__frank {
+    opacity: 0;
+    max-height: 0;
+    margin-bottom: 0;
+  }
+  .fx-grid[data-layout='portal'] .fx__folder:hover .fx__cancel { opacity: 0; }
+  .fx-grid[data-layout='portal'] .fx__folder:hover .fx__play,
+  .fx-grid[data-layout='portal'] .fx__folder:hover .fx__dur { opacity: 1; }
+  /* The label shrinks to just the name once it is a bar. */
+  .fx-grid[data-layout='portal'] .fx__folder:hover .fx__fdesc,
+  .fx-grid[data-layout='portal'] .fx__folder:hover .fx__fcount {
+    opacity: 0;
+    max-height: 0;
+    margin-top: 0;
+  }
+
+  /* Play chrome — inert everywhere except a hovered portal card. */
+  .fx__play,
+  .fx__dur {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .fx__play {
+    left: 50%;
+    top: 50%;
+    width: 54px;
+    transform: translate(-50%, -50%);
+    color: rgba(255, 255, 255, 0.94);
+    filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.45));
+  }
+  .fx__dur {
+    right: 12px;
+    bottom: 12px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(8, 9, 12, 0.62);
+    font-family: 'Inter', sans-serif;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---- the text half ---- */
+  .fx__n {
+    margin: 0 0 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1.4px;
+    color: var(--acc);
+  }
+  .fx__title {
+    margin: 0 0 16px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: clamp(24px, 2.2vw, 32px);
+    line-height: 1.1;
+    letter-spacing: -0.5px;
+  }
+  .fx__desc {
+    margin: 0 0 22px;
+    max-width: 26ch;
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+    font-size: 12.5px;
+    line-height: 2;
+    letter-spacing: 0.2px;
+    text-transform: uppercase;
+    color: var(--acc);
+    text-decoration: underline;
+    text-decoration-color: rgba(107, 106, 228, 0.32);
+    text-underline-offset: 4px;
+  }
+  .fx__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .fx__tags li {
+    padding: 6px 11px;
+    border-radius: 7px;
+    background: var(--acc-soft);
+    font-family: 'Inter', sans-serif;
+    font-size: 12.5px;
+    line-height: 1.2;
+    color: #4a49b8;
+  }
+
+  /* ---- the folder ---- */
+  .fx__folder {
+    position: relative;
+    aspect-ratio: 1.12 / 1;
+    min-height: 300px;
+  }
+
+  .fx__bee {
+    position: absolute;
+    top: -5%;
+    right: 1%;
+    z-index: 5;
+    font-size: 30px;
+    transform: rotate(14deg);
+    transition: transform 0.5s cubic-bezier(0.2, 0.9, 0.25, 1);
+  }
+
+  /* The contents. They run from the top of the folder down to well below
+     its lip: the part above is what you can read, the part behind is what
+     blooms through the frosted panel. Cut the overlap and the front goes
+     back to looking like an opaque dark rectangle. */
+  .fx__stack {
+    position: absolute;
+    inset: 0 6% 26%;
+    z-index: 1;
+  }
+  .fx__phone {
+    position: absolute;
+    left: 2%;
+    top: 4%;
+    width: 50%;
+    height: 96%;
+    border-radius: 20px;
+    background: linear-gradient(160deg, #2b2f3a, #111318 46%, #23262f);
+    box-shadow: 0 18px 34px -16px rgba(12, 20, 45, 0.55);
+    transform-origin: 50% 100%;
+    transition: transform 0.55s cubic-bezier(0.2, 0.9, 0.25, 1);
+  }
+  .fx__phone i {
+    position: absolute;
+    left: 50%;
+    top: 12px;
+    width: 34%;
+    height: 4px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.22);
+    transform: translateX(-50%);
+  }
+
+  /* The stamp. Perforations are four masks intersected: each layer is
+     opaque everywhere except the holes along its own edge, so the
+     intersection is the sheet minus every hole. */
+  .fx__stamp {
+    --r: 6px;
+    --step: 19px;
+
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 66%;
+    height: 100%;
+    padding: 16px 16px 12px;
+    background: #fff;
+    filter: drop-shadow(0 16px 28px rgba(12, 20, 45, 0.28));
+    transform-origin: 50% 100%;
+    transition: transform 0.55s cubic-bezier(0.2, 0.9, 0.25, 1);
+
+    -webkit-mask:
+      radial-gradient(circle var(--r) at 50% 0, #0000 98%, #000) 0 0 / var(--step) 100% repeat-x,
+      radial-gradient(circle var(--r) at 50% 100%, #0000 98%, #000) 0 0 / var(--step) 100% repeat-x,
+      radial-gradient(circle var(--r) at 0 50%, #0000 98%, #000) 0 0 / 100% var(--step) repeat-y,
+      radial-gradient(circle var(--r) at 100% 50%, #0000 98%, #000) 0 0 / 100% var(--step) repeat-y;
+    -webkit-mask-composite: source-in;
+    mask:
+      radial-gradient(circle var(--r) at 50% 0, #0000 98%, #000) 0 0 / var(--step) 100% repeat-x,
+      radial-gradient(circle var(--r) at 50% 100%, #0000 98%, #000) 0 0 / var(--step) 100% repeat-x,
+      radial-gradient(circle var(--r) at 0 50%, #0000 98%, #000) 0 0 / 100% var(--step) repeat-y,
+      radial-gradient(circle var(--r) at 100% 50%, #0000 98%, #000) 0 0 / 100% var(--step) repeat-y;
+    mask-composite: intersect;
+  }
+  .fx__frank {
+    margin: 0 0 10px;
+    max-width: 15ch;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: clamp(12px, 1.05vw, 15px);
+    line-height: 1.22;
+    letter-spacing: -0.2px;
+    color: var(--ink);
+  }
+  /* The frame. Fixed at 16:9 so the still and the clip occupy exactly the
+     same box — hover swaps what is playing, never the size of what it plays
+     in. Stills crop from the top, because the top of a screen is the part
+     that identifies it. */
+  .fx__media {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: 3px;
+    background: #e8eaf0;
+  }
+  .fx__media img,
+  .fx__vid {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    object-fit: cover;
+    object-position: top center;
+  }
+  .fx__vid {
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+  .fx__folder:hover .fx__vid { opacity: 1; }
+  .fx__cancel {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 30px;
+    color: #e0607a;
+    opacity: 0.85;
+  }
+
+  /* The front of the folder. `backdrop-filter` is the whole trick: the
+     stamp behind it survives as a bloom of its own colour, which is what
+     makes a flat panel read as translucent plastic. */
+  .fx__front {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 4%;
+    height: 52%;
+    z-index: 3;
+    padding: 0 7%;
+    display: flex;
+    align-items: flex-end;
+    /* The swept top-right corner is the folder lip. */
+    border-radius: 20px 66px 24px 24px;
+    /* Near-transparent at the lip so the artwork behind reads as a bloom of
+       its own colour, opaque by the base so the label stays legible. */
+    background: linear-gradient(
+      170deg,
+      rgba(128, 132, 148, 0.4) 0%,
+      rgba(52, 55, 68, 0.7) 34%,
+      rgba(20, 22, 28, 0.9) 72%,
+      rgba(13, 14, 19, 0.95) 100%
+    );
+    -webkit-backdrop-filter: blur(18px) saturate(165%);
+    backdrop-filter: blur(18px) saturate(165%);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.22) inset,
+      0 30px 52px -24px rgba(12, 20, 45, 0.62);
+    transition: transform 0.55s cubic-bezier(0.2, 0.9, 0.25, 1);
+  }
+  .fx__label {
+    margin: 0 0 clamp(16px, 2.4vw, 34px);
+    font-family: 'Inter', sans-serif;
+    color: #fff;
+  }
+  .fx__fname {
+    display: block;
+    font-size: clamp(13px, 1.05vw, 15px);
+    font-weight: 600;
+  }
+  /* Only the Portal arrangement puts the description on the folder; the other
+     two already carry it in the text column beside it. */
+  .fx__fdesc {
+    display: none;
+    margin-top: 6px;
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.72);
+    transition: opacity 0.3s ease;
+  }
+  .fx__fcount {
+    display: block;
+    margin-top: 8px;
+    font-size: 12.5px;
+    color: rgba(255, 255, 255, 0.6);
+    transition: opacity 0.3s ease;
+  }
+  .fx__seal {
+    position: absolute;
+    right: 6%;
+    bottom: 14%;
+    width: clamp(78px, 8.4vw, 112px);
+    color: rgba(255, 255, 255, 0.42);
+  }
+  .fx__sealRing {
+    font-family: 'Inter', sans-serif;
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 1.1px;
+    fill: currentColor;
+    text-anchor: middle;
+  }
+  .fx__sealWord {
+    font-family: 'Caveat', cursive;
+    font-size: 26px;
+    fill: currentColor;
+  }
+
+  .fx__hint {
+    position: absolute;
+    left: 12%;
+    bottom: -34px;
+    margin: 0;
+    font-family: 'Caveat', cursive;
+    font-size: 19px;
+    color: var(--acc);
+    opacity: 0.85;
+    transition: opacity 0.35s ease;
+  }
+  .fx__hint svg {
+    width: 42px;
+    margin-left: 6px;
+    vertical-align: -6px;
+  }
+
+  /* ---- open ---- */
+  .fx__folder:hover .fx__front { transform: translateY(4%); }
+  .fx__folder:hover .fx__stamp { transform: translateY(-13%) rotate(4.5deg) scale(1.04); }
+  .fx__folder:hover .fx__phone { transform: translateY(-8%) rotate(-6.5deg); }
+  .fx__folder:hover .fx__bee { transform: translate(10px, -14px) rotate(-6deg); }
+  .fx__folder:hover .fx__hint { opacity: 0; }
+
+  /* ---- footnote ---- */
+  .fx-foot {
+    width: max-content;
+    max-width: 100%;
+    margin: 64px auto 0;
+    padding: 11px 20px;
+    border-radius: 999px;
+    border: 1px solid var(--ln);
+    background: rgba(255, 255, 255, 0.72);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: #4b5261;
+  }
+
+  /* ---- narrow ---- */
+  /* Below this width both arrangements are the same thing, so the switch
+     stops meaning anything and the page settles into one column. */
+  @media (max-width: 1180px) {
+    .fx-grid[data-layout='portal'] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 960px) {
+    .fx-page { padding-top: 112px; }
+    .fx-grid[data-layout]:not([data-layout='portal']) { grid-template-columns: minmax(0, 1fr); }
+    .fx-grid[data-layout]:not([data-layout='portal']) .fx {
+      grid-template-columns: minmax(190px, 0.72fr) minmax(0, 1fr);
+      border-right: 0;
+    }
+    .fx-grid[data-layout]:not([data-layout='portal']) .fx:not(:last-child) {
+      border-bottom: 1px solid var(--ln);
+    }
+    .fx-grid[data-layout] .fx:last-child { border-bottom: 0; }
+    .fx-note { display: none; }
+  }
+  @media (max-width: 620px) {
+    .fx-grid[data-layout]:not([data-layout='portal']) .fx {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 30px;
+    }
+    .fx-grid[data-layout='portal'] { grid-template-columns: minmax(0, 1fr); }
+    .fx__folder { min-height: 0; }
+    .fx__hint { position: static; margin-top: 16px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fx__front,
+    .fx__stamp,
+    .fx__phone,
+    .fx__bee { transition: none; }
+  }
+</style>

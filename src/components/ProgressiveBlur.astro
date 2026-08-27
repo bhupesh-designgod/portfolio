@@ -1,0 +1,56 @@
+---
+/* Progressive blur along the bottom edge of the viewport.
+ *
+ * CSS can't ramp a blur radius across an element, so this stacks layers that
+ * each double the previous blur and are masked to an overlapping band. Where
+ * the bands cross-fade, the eye reads one continuous gradient from sharp at
+ * the top of the strip to heavily blurred at the very bottom — content looks
+ * like it surfaces out of a blurred world as it scrolls up.
+ *
+ * It lifts as you reach the end of the page. There's nothing below the footer
+ * for content to surface out of, so all the strip would do down there is blur
+ * the footer's own links.
+ */
+---
+
+<div class="pblur" aria-hidden="true">
+  <span></span>
+  <span></span>
+  <span></span>
+  <span></span>
+</div>
+
+<script>
+  const pblur = document.querySelector<HTMLElement>('.pblur');
+
+  if (pblur) {
+    let ticking = false;
+    let last = '';
+
+    function update() {
+      ticking = false;
+      const doc = document.documentElement;
+      const remaining = doc.scrollHeight - (window.scrollY + window.innerHeight);
+      /* Fades across a band a little taller than the strip itself, so the
+         footer is fully sharp by the time it's the thing you're looking at. */
+      const band = window.innerHeight * 0.16;
+      const next = Math.min(1, Math.max(0, remaining / band)).toFixed(2);
+      // Only touch the DOM when the value actually changed — most frames it hasn't.
+      if (next !== last) {
+        last = next;
+        pblur!.style.opacity = next;
+      }
+    }
+
+    function onScroll() {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(update);
+      }
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+  }
+</script>

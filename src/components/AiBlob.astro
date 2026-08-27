@@ -1,0 +1,1367 @@
+---
+import { ASSISTANT } from '../lib/portfolio-context';
+
+/* The assistant, as a blob with eyes.
+ *
+ * Two halves that stay deliberately separate:
+ *
+ *   Scrolling is free. Fold awareness is one IntersectionObserver and a table
+ *   of hardcoded lines — no network, no model, nothing per-frame. The eyes and
+ *   the nudges cost nothing but a class change.
+ *
+ *   Only typing costs money. /api/chat is touched when someone actually asks
+ *   something, and not before.
+ *
+ * The nudge gate is the part worth reading: a character that comments every
+ * time you scroll past something is the thing people close immediately, so it
+ * speaks at most twice a session and shuts up entirely the moment you engage
+ * with it.
+ */
+---
+
+<div class="ai" data-ai data-assistant={ASSISTANT} data-mood="idle" data-state="idle">
+  {/* Nudge bubble — the proactive half */}
+  <div class="ai__bubble" data-bubble hidden>
+    <p data-bubble-copy></p>
+    <button type="button" class="ai__bubbleNo" data-bubble-close aria-label="Dismiss">
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M4.6 4.6 11.4 11.4M11.4 4.6 4.6 11.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+      </svg>
+    </button>
+  </div>
+
+  {/* Chat panel — the on-demand half */}
+  <div class="ai__panel" data-panel hidden role="dialog" aria-modal="false" aria-label="Ask about this portfolio">
+    <header class="ai__head">
+      <p class="ai__title">Ask {ASSISTANT}</p>
+      <button type="button" class="ai__close" data-panel-close aria-label="Close">
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M4.6 4.6 11.4 11.4M11.4 4.6 4.6 11.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+        </svg>
+      </button>
+    </header>
+
+    <div class="ai__log" data-log aria-live="polite">
+      {/* Empty state. Bhupesh introduces the assistant, so his face leads and
+          the blob sits on it as a badge — one image saying "me, and this thing
+          of mine". The answers then come back in the assistant's own voice. */}
+      <div class="ai__empty" data-empty>
+        <span class="ai__emptyAva">
+          <img src="/assets/avatar.png" alt="" width="56" height="56" decoding="async" />
+          <span class="ai__emptyBadge" aria-hidden="true"></span>
+        </span>
+
+        <p class="ai__emptyTitle">Meet {ASSISTANT}, my unpaid assistant</p>
+        <p class="ai__emptyBody">
+          I&rsquo;m away, but {ASSISTANT} has read everything &mdash; my projects, my background,
+          and how to reach me.
+        </p>
+
+        <div class="ai__chips" data-chips>
+          {/* Three different intents rather than three angles on the same one:
+              who he is, what he can do, and what to do next. */}
+          <button type="button" data-chip>Ask about Bhupesh&rsquo;s background</button>
+          <button type="button" data-chip>What Bhupesh is capable of</button>
+          <button type="button" data-chip>How to reach Bhupesh</button>
+        </div>
+      </div>
+    </div>
+
+    <form class="ai__form" data-form>
+      <input
+        type="text"
+        data-input
+        maxlength="500"
+        autocomplete="off"
+        placeholder="Ask a question…"
+        aria-label="Your question"
+      />
+      <button type="submit" data-send aria-label="Send">
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M2 8h11M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+    </form>
+  </div>
+
+  {/* The character */}
+  <button type="button" class="ai__blob" data-ai-blob aria-label="Ask about this portfolio" aria-expanded="false">
+    <span class="ai__body" aria-hidden="true">
+      {/* Decorations sit outside the gaze group so they stay pinned to the
+          sphere while the face turns. */}
+      <svg class="ai__fx" viewBox="0 0 64 64">
+        <path class="fx-spark" d="M52 12 l1.6 4.2 4.2 1.6 -4.2 1.6 -1.6 4.2 -1.6 -4.2 -4.2 -1.6 4.2 -1.6z" />
+        <path class="fx-line fx-line--l" d="M-3 26 q-3.5 6 0 12" />
+        <path class="fx-line fx-line--r" d="M67 26 q3.5 6 0 12" />
+      </svg>
+
+      {/* Costume layer. Everything here is hidden until a project claims it —
+          see the costume block in the script. One sheet per costume, same as
+          the expressions: cheaper to read than a component per outfit. */}
+      <svg class="ai__gear" viewBox="0 0 64 64">
+        <defs>
+          <clipPath id="aiSphere">
+            {/* A hair inside the silhouette, so a clipped edge never shows a
+                seam against the sphere's own antialiased rim. */}
+            <circle cx="32" cy="32" r="31.4" />
+          </clipPath>
+          <linearGradient id="aiBandFace" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#fff" />
+            {/* The lower edge picks up bounce off the blue below it. */}
+            <stop offset="1" stop-color="#d5dcff" />
+          </linearGradient>
+        </defs>
+
+        {/* ---- fitness: a sweatband, worn at a slight angle ----
+            Clipped to the sphere, so the ends meet the silhouette exactly
+            however the curve is tuned — and so it can drop in from above
+            without ever hanging off the head. */}
+        <g class="gear-band" clip-path="url(#aiSphere)">
+          <g class="gear-band__in">
+            <path class="gear-band__cloth" d="M-8 6 Q32 17 72 6 L72 15.5 Q32 26.5 -8 15.5 Z" />
+            <path class="gear-band__stripe" d="M-8 8.6 Q32 19.6 72 8.6 L72 11.2 Q32 22.2 -8 11.2 Z" />
+          </g>
+        </g>
+
+        {/* Outside the clip, so it reads as held rather than painted on. Sits
+            low and to the side, clear of the face: the inner plate laps over
+            the silhouette just enough to sit in front of the body. */}
+        <g class="gear-bell">
+          <rect class="gear-bell__bar" x="-9" y="50.7" width="17" height="2.6" rx="1.3" />
+          <rect class="gear-bell__plate" x="-11.6" y="46.6" width="4.8" height="11" rx="2.2" />
+          <rect class="gear-bell__plate" x="6.2" y="46.6" width="4.8" height="11" rx="2.2" />
+        </g>
+      </svg>
+
+      <span class="ai__face" data-face>
+        {/* Every expression is a path in one sheet, cross-faded by opacity.
+            Cheaper and far more precise than reshaping boxes with border-radius,
+            and it keeps all twelve variants in one place to read. */}
+        <svg class="ai__f" viewBox="0 0 64 64">
+          {/* eyes — default capsules */}
+          <rect class="e-cap" x="19.7" y="23" width="4.6" height="13" rx="2.3" />
+          <rect class="e-cap" x="39.7" y="23" width="4.6" height="13" rx="2.3" />
+
+          {/* curious: one capsule holds, the other drops to a dot */}
+          <circle class="e-dot" cx="42" cy="32" r="2.8" />
+
+          {/* happy / cheerful: closed arcs, arched up */}
+          <path class="e-up" d="M17.5 32 q4.5 -6.5 9 0" />
+          <path class="e-up" d="M37.5 32 q4.5 -6.5 9 0" />
+
+          {/* relaxed: closed arcs, settled down */}
+          <path class="e-down" d="M17.5 29 q4.5 6.5 9 0" />
+          <path class="e-down" d="M37.5 29 q4.5 6.5 9 0" />
+
+          {/* wink: a chevron on the left only */}
+          <path class="e-wink" d="M18 26.5 l6 5 -6 5" />
+
+          {/* eager: sparkle eyes */}
+          <path class="e-spark" d="M22 24 l1.9 5.1 5.1 1.9 -5.1 1.9 -1.9 5.1 -1.9 -5.1 -5.1 -1.9 5.1 -1.9z" />
+          <path class="e-spark" d="M42 24 l1.9 5.1 5.1 1.9 -5.1 1.9 -1.9 5.1 -1.9 -5.1 -5.1 -1.9 5.1 -1.9z" />
+
+          {/* mouths */}
+          <path class="m-neutral" d="M26.5 42 q5.5 4 11 0" />
+          <path class="m-smile" d="M25 40.5 q7 8.5 14 0" />
+          <path class="m-squiggle" d="M25.5 43 q2.8 -3.6 5.5 0 t5.5 0" />
+          <path class="m-open" d="M25.5 41 h13 a6.5 6.5 0 0 1 -13 0z" />
+        </svg>
+      </span>
+    </span>
+  </button>
+</div>
+
+<script>
+  const root = document.querySelector<HTMLElement>('[data-ai]');
+
+  if (root) {
+    const blob = root.querySelector<HTMLButtonElement>('[data-ai-blob]')!;
+    const bubble = root.querySelector<HTMLElement>('[data-bubble]')!;
+    const bubbleCopy = root.querySelector<HTMLElement>('[data-bubble-copy]')!;
+    const panel = root.querySelector<HTMLElement>('[data-panel]')!;
+    const log = root.querySelector<HTMLElement>('[data-log]')!;
+    const empty = root.querySelector<HTMLElement>('[data-empty]')!;
+    const form = root.querySelector<HTMLFormElement>('[data-form]')!;
+    const input = root.querySelector<HTMLInputElement>('[data-input]')!;
+    const face = root.querySelector<HTMLElement>('[data-face]')!;
+
+    let busy = false; // a reply is streaming — read by the expression layer below
+
+    /* Frontmatter runs on the server; this script runs in the browser. The
+       name comes across on a data attribute rather than being duplicated. */
+    const name = root.dataset.assistant ?? 'Assistant';
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /* Lifecycle events for anything that needs to react to the chat — sound,
+       analytics, whatever comes later. Announced explicitly rather than left
+       to be inferred from `data-mood`: setBase() deliberately doesn't write
+       that attribute while a passing expression is playing, so opening the
+       panel mid-smile changed nothing observable. */
+    const emit = (name: string) => root!.dispatchEvent(new CustomEvent(name, { bubbles: true }));
+
+    /* ---------------- the face ---------------- */
+
+    /* Gaze. One rAF-throttled pointermove writing one transform — the whole
+       face shifts, so it reads as the character turning to watch you. */
+    let px = -1;
+    let py = -1;
+    let gazing = false;
+
+    function gaze() {
+      gazing = false;
+      const r = blob.getBoundingClientRect();
+      const dx = px - (r.left + r.width / 2);
+      const dy = py - (r.top + r.height / 2);
+      const dist = Math.hypot(dx, dy) || 1;
+      // Eased and clamped: a pointer across the room still registers as a
+      // glance, and the face never slides off the sphere.
+      const reach = Math.min(dist / 240, 1) * 4;
+      face.style.transform = `translate(${((dx / dist) * reach).toFixed(2)}px, ${((dy / dist) * reach * 0.8).toFixed(2)}px)`;
+    }
+
+    /* With no pointer to follow it looks around on its own, so it never reads
+       as frozen — the difference between idle and switched-off. */
+    function wander() {
+      if (px !== -1) return; // a real pointer outranks the idle drift
+      const a = Math.random() * Math.PI * 2;
+      const r = 1.5 + Math.random() * 2.5;
+      face.style.transform = `translate(${(Math.cos(a) * r).toFixed(2)}px, ${(Math.sin(a) * r * 0.7).toFixed(2)}px)`;
+    }
+
+    if (!reduce) {
+      window.addEventListener(
+        'pointermove',
+        (e) => {
+          px = e.clientX;
+          py = e.clientY;
+          if (!gazing) {
+            gazing = true;
+            requestAnimationFrame(gaze);
+          }
+        },
+        { passive: true },
+      );
+
+      /* Blink on an irregular timer. A fixed interval reads as a metronome;
+         real blinks cluster. */
+      const blink = () => {
+        root.dataset.blink = '1';
+        setTimeout(() => delete root.dataset.blink, 130);
+        setTimeout(blink, 2600 + Math.random() * 4600);
+      };
+      setTimeout(blink, 1600);
+      setInterval(wander, 2800);
+    }
+
+    /* ---------------- expressions ----------------
+     *
+     * Two layers. `base` is the standing condition — idle, or eager while the
+     * panel is open, or thinking while a reply streams. `flash` is a reaction
+     * that plays over the top for a moment and then falls back to base.
+     *
+     * Keeping them separate is what stops a passing reaction from stranding
+     * the face in the wrong expression: every flash knows where to return to.
+     */
+    type Mood = 'idle' | 'curious' | 'thinking' | 'happy' | 'greet' | 'eager' | 'excited' | 'guiding' | 'relaxed';
+
+    let base: Mood = 'idle';
+    let flashTimer = 0;
+
+    function apply(m: Mood) {
+      root.dataset.mood = m;
+    }
+
+    function setBase(m: Mood) {
+      base = m;
+      if (!flashTimer) apply(m);
+    }
+
+    function flash(m: Mood, ms: number) {
+      if (reduce) return;
+      apply(m);
+      clearTimeout(flashTimer);
+      flashTimer = window.setTimeout(() => {
+        flashTimer = 0;
+        apply(base);
+      }, ms);
+    }
+
+    /* Nobody has touched anything for a while — settle, but stay present.
+       Reset by any real signal of a person being there. */
+    let restTimer = 0;
+    function stirred() {
+      if (base === 'relaxed') setBase('idle');
+      clearTimeout(restTimer);
+      if (reduce) return;
+      restTimer = window.setTimeout(() => {
+        if (panel.hidden && !busy) setBase('relaxed');
+      }, 45000);
+    }
+
+    if (!reduce) {
+      for (const evt of ['pointermove', 'scroll', 'keydown'] as const) {
+        window.addEventListener(evt, stirred, { passive: true });
+      }
+      stirred();
+    }
+
+    /* Hover: greet on the first hover of the session, then plain happy. */
+    const GREETED = 'ai-greeted';
+    blob.addEventListener('pointerenter', () => {
+      if (busy || !panel.hidden) return;
+      if (!sessionStorage.getItem(GREETED)) {
+        sessionStorage.setItem(GREETED, '1');
+        flash('greet', 1600);
+      } else {
+        flash('happy', 1200);
+      }
+    });
+    blob.addEventListener('pointerleave', () => {
+      if (!flashTimer) apply(base);
+    });
+
+    /* ---------------- nudges ---------------- */
+
+    const LINES: Record<string, string[]> = {
+      work: [
+        'Want me to summarise any of these in a sentence?',
+        'Looking for something specific? I can point you at the right project.',
+        'Ask me what he actually did on any of these.',
+      ],
+      resume: [
+        'Want the résumé as a PDF instead?',
+        'Ask me anything about his background.',
+      ],
+      contact: [
+        'Found what you needed? I can answer questions before you write.',
+      ],
+      reading: [
+        'Ask me for the short version of this one.',
+        'Want the outcome without reading the whole thing?',
+      ],
+    };
+
+    const CAP = 2;
+    const seen = (k: string) => sessionStorage.getItem(`ai-nudge-${k}`) === '1';
+    const count = () => Number(sessionStorage.getItem('ai-nudge-count') ?? 0);
+    let engaged = false; // set once they interact — after that, silence
+
+    let hideTimer = 0;
+    function say(fold: string) {
+      if (engaged || bubble.hidden === false || !panel.hidden) return;
+      if (seen(fold) || count() >= CAP) return;
+      const lines = LINES[fold];
+      if (!lines) return;
+
+      sessionStorage.setItem(`ai-nudge-${fold}`, '1');
+      sessionStorage.setItem('ai-nudge-count', String(count() + 1));
+
+      bubbleCopy.textContent = lines[Math.floor(Math.random() * lines.length)];
+      bubble.hidden = false;
+      flash('guiding', 4200);
+      clearTimeout(hideTimer);
+      hideTimer = window.setTimeout(hush, 7000);
+    }
+
+    function hush() {
+      clearTimeout(hideTimer);
+      bubble.hidden = true;
+    }
+
+    root.querySelector('[data-bubble-close]')!.addEventListener('click', () => {
+      // Dismissing one is a signal about all of them.
+      engaged = true;
+      hush();
+    });
+
+    /* ---------------- fold awareness ---------------- */
+
+    /* IntersectionObserver rather than a scroll handler: this fires on boundary
+       crossings only, where a scroll handler would run every frame for a value
+       that changes three times a page. */
+    const folds: [Element, string][] = [];
+    const add = (sel: string, name: string) => {
+      const el = document.querySelector(sel);
+      if (el) folds.push([el, name]);
+    };
+    add('#work', 'work');
+    add('#resume', 'resume');
+    add('.footer', 'contact');
+    // Case study pages have their own rhythm; the whole reading surface is one fold.
+    add('.cs-read', 'reading');
+
+    if (folds.length) {
+      let current = '';
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            const name = folds.find(([el]) => el === entry.target)?.[1];
+            if (!name || name === current) continue;
+            current = name;
+            flash('curious', 1500);
+            say(name);
+          }
+        },
+        // A fold is "current" when it crosses the middle band of the viewport.
+        { rootMargin: '-45% 0px -45% 0px' },
+      );
+      for (const [el] of folds) io.observe(el);
+    }
+
+    /* ---------------- costumes ----------------
+     *
+     * A project can dress the assistant: `costume` in its frontmatter reaches
+     * the DOM as a data attribute, and the stylesheet draws the gear. Two
+     * scopes, because "which project am I looking at" means different things
+     * on the two pages:
+     *
+     *   Case study page — the whole page is one project, so the costume is
+     *   worn from load to unload.
+     *
+     *   Home page — the cards are a list, so it's worn only while that card
+     *   is what you're actually looking at, and swaps as you scroll past.
+     *
+     * Adding a costume to another project is a frontmatter line plus a block
+     * in the stylesheet. Nothing here needs to know the names.
+     */
+    const page = document.querySelector<HTMLElement>('.cs[data-costume]');
+
+    if (page) {
+      root.dataset.costume = page.dataset.costume!;
+    } else {
+      const cards = Array.from(
+        document.querySelectorAll<HTMLElement>('[data-costume]'),
+      ).filter((el) => el !== root);
+
+      if (cards.length) {
+        /* The observer reports crossings, not what's currently centred, so the
+           set is kept and re-read — two cards can straddle the middle band at
+           once, and the nearer one should win. */
+        const inBand = new Set<HTMLElement>();
+
+        const wear = () => {
+          const mid = window.innerHeight / 2;
+          let best: HTMLElement | null = null;
+          let bestDist = Infinity;
+
+          for (const el of inBand) {
+            const r = el.getBoundingClientRect();
+            const dist = Math.abs(r.top + r.height / 2 - mid);
+            if (dist < bestDist) {
+              bestDist = dist;
+              best = el;
+            }
+          }
+
+          const next = best?.dataset.costume ?? '';
+          if (next === (root.dataset.costume ?? '')) return;
+          if (next) root.dataset.costume = next;
+          else delete root.dataset.costume;
+        };
+
+        const co = new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries) {
+              const el = entry.target as HTMLElement;
+              if (entry.isIntersecting) inBand.add(el);
+              else inBand.delete(el);
+            }
+            wear();
+          },
+          // Narrower than the nudge band: a costume change is a visible event,
+          // so it should land when the card is genuinely the subject.
+          { rootMargin: '-35% 0px -35% 0px' },
+        );
+
+        for (const el of cards) co.observe(el);
+      }
+    }
+
+    /* ---------------- chat ---------------- */
+
+    const MAX_TURNS = 8;
+    const SESSION_CAP = 15;
+    let history: { role: 'user' | 'assistant'; content: string }[] = [];
+
+    function open() {
+      engaged = true;
+      hush();
+      panel.hidden = false;
+      root.dataset.state = 'open';
+      setBase('eager');
+      stirred();
+      emit('ai:open');
+      blob.setAttribute('aria-expanded', 'true');
+      setTimeout(() => input.focus(), reduce ? 0 : 260);
+    }
+
+    function close() {
+      panel.hidden = true;
+      root.dataset.state = 'idle';
+      setBase('idle');
+      emit('ai:close');
+      blob.setAttribute('aria-expanded', 'false');
+      blob.focus();
+    }
+
+    blob.addEventListener('click', () => (panel.hidden ? open() : close()));
+    root.querySelector('[data-panel-close]')!.addEventListener('click', close);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !panel.hidden) close();
+    });
+    document.addEventListener('pointerdown', (e) => {
+      if (!panel.hidden && !root.contains(e.target as Node)) close();
+    });
+
+    /* Each turn is avatar + label + bubble rather than a bare bubble. Colour
+       and alignment alone tell you *that* the speaker changed; the label and
+       face tell you *who* it is, which is what someone scanning a transcript
+       is actually looking for. Returns the text node so callers can stream
+       into it. */
+    function bubbleFor(role: 'user' | 'assistant' | 'error'): HTMLElement {
+      const row = document.createElement('div');
+      row.className = `turn turn--${role === 'user' ? 'me' : 'ai'}`;
+
+      if (role !== 'user') {
+        const ava = document.createElement('span');
+        ava.className = 'turn__ava';
+        ava.setAttribute('aria-hidden', 'true');
+        row.appendChild(ava);
+      }
+
+      const col = document.createElement('div');
+      col.className = 'turn__col';
+
+      const label = document.createElement('span');
+      label.className = 'turn__label';
+      label.textContent = role === 'user' ? 'You' : name;
+
+      const msg = document.createElement('div');
+      msg.className = 'turn__msg';
+      if (role === 'error') msg.classList.add('is-error');
+
+      col.append(label, msg);
+      row.appendChild(col);
+      log.appendChild(row);
+      log.scrollTop = log.scrollHeight;
+      return msg;
+    }
+
+    async function ask(text: string) {
+      if (busy || !text.trim()) return;
+      if (history.filter((m) => m.role === 'user').length >= SESSION_CAP) {
+        bubbleFor('error').textContent =
+          "That's my limit for one visit — email designs.bhupesh@gmail.com and he'll pick it up from here.";
+        return;
+      }
+
+      busy = true;
+      empty.hidden = true;
+      root.dataset.state = 'thinking';
+      setBase('thinking');
+      emit('ai:send');
+      input.value = '';
+
+      bubbleFor('user').textContent = text;
+      history.push({ role: 'user', content: text });
+      // Trim oldest turns rather than letting the request grow unbounded.
+      if (history.length > MAX_TURNS) history = history.slice(-MAX_TURNS);
+
+      const out = bubbleFor('assistant');
+      out.dataset.pending = '1';
+      out.append(...[0, 1, 2].map(() => document.createElement('i')));
+      let acc = '';
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ messages: history }),
+        });
+
+        if (!res.ok) {
+          const { error } = await res.json().catch(() => ({ error: 'Something went wrong.' }));
+          out.classList.add('is-error');
+          out.textContent = error;
+          return;
+        }
+
+        const reader = res.body!.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const parts = buf.split('\n\n');
+          buf = parts.pop() ?? '';
+
+          for (const part of parts) {
+            const line = part.replace(/^data: /, '').trim();
+            if (!line || line === '[DONE]') continue;
+            const payload = JSON.parse(line);
+            if (payload.error) {
+              out.classList.add('is-error');
+              out.textContent =
+                "I couldn't answer that one. Try rephrasing, or email designs.bhupesh@gmail.com.";
+              return;
+            }
+            acc += payload.text;
+            delete out.dataset.pending;
+            renderReply(out, acc);
+            log.scrollTop = log.scrollHeight;
+          }
+        }
+
+        if (acc) {
+          history.push({ role: 'assistant', content: acc });
+          flash('excited', 2400); // it was just useful — let it show
+          emit('ai:reply');
+        }
+      } catch {
+        out.classList.add('is-error');
+        out.textContent = 'Connection dropped. Try again in a moment.';
+      } finally {
+        delete out.dataset.pending;
+        busy = false;
+        root.dataset.state = panel.hidden ? 'idle' : 'open';
+        setBase(panel.hidden ? 'idle' : 'eager');
+        input.focus();
+      }
+    }
+
+    /* ---- reply rendering ----
+       The model may now use a deliberately tiny subset: `- ` bullets, **bold**,
+       and bare site paths. Everything is built with createElement and
+       textContent — there is still no innerHTML anywhere in this file, so the
+       model cannot emit markup even if it tries. Anything outside the subset
+       lands as literal text, which is the safe failure.
+
+       Links are restricted to same-origin paths beginning with a slash. A full
+       URL from the model is rendered as text, never as an anchor: the reply is
+       partly shaped by whatever the visitor typed, so it is not a trustworthy
+       source of destinations. */
+    const INLINE = /\*\*([^*\n]+)\*\*|(\/[a-z0-9][a-z0-9/-]*)/gi;
+
+    function inlineInto(parent: HTMLElement, text: string) {
+      let last = 0;
+      let m: RegExpExecArray | null;
+      INLINE.lastIndex = 0;
+
+      while ((m = INLINE.exec(text))) {
+        const isPath = m[2] !== undefined;
+        const before = m.index === 0 ? '' : text[m.index - 1];
+
+        /* A path only counts at a word boundary. Without this, `</b>` linked to
+           /b and `https://x.com` linked to /x — both same-origin and harmless,
+           both visibly broken. */
+        if (isPath && before && !/[\s(]/.test(before)) continue;
+
+        if (m.index > last) {
+          parent.appendChild(document.createTextNode(text.slice(last, m.index)));
+        }
+
+        if (isPath) {
+          const a = document.createElement('a');
+          a.href = m[2];                        // same-origin path, never a URL
+          a.className = 'turn__link';
+          a.textContent = m[2];
+          parent.appendChild(a);
+        } else {
+          const b = document.createElement('strong');
+          b.textContent = m[1];
+          parent.appendChild(b);
+        }
+        last = m.index + m[0].length;
+      }
+
+      if (last < text.length) {
+        parent.appendChild(document.createTextNode(text.slice(last)));
+      }
+    }
+
+    function renderReply(host: HTMLElement, raw: string) {
+      host.textContent = '';
+      let list: HTMLUListElement | null = null;
+
+      for (const line of raw.split('\n')) {
+        const t = line.trim();
+        if (!t) { list = null; continue; }
+
+        const bullet = t.match(/^[-*\u2022]\s+(.*)$/);
+        if (bullet) {
+          if (!list) {
+            list = document.createElement('ul');
+            list.className = 'turn__list';
+            host.appendChild(list);
+          }
+          const li = document.createElement('li');
+          inlineInto(li, bullet[1]);
+          list.appendChild(li);
+          continue;
+        }
+
+        list = null;
+        const para = document.createElement('p');
+        para.className = 'turn__para';
+        inlineInto(para, t);
+        host.appendChild(para);
+      }
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      ask(input.value);
+    });
+
+    for (const chip of Array.from(root.querySelectorAll<HTMLButtonElement>('[data-chip]'))) {
+      chip.addEventListener('click', () => ask(chip.textContent!.trim()));
+    }
+  }
+</script>
+
+<style>
+  .ai {
+    position: fixed;
+    right: max(20px, 3vw);
+    bottom: 22px;
+    z-index: 55; /* over the progressive blur (40) and nav (50) */
+    font-family: "Inter", "Nunito", system-ui, sans-serif;
+  }
+
+  .ai [hidden] { display: none; }
+
+  /* ---------------- the blob ----------------
+     A soft sphere, not a liquid shape: the character comes from the face and
+     the motion, so the silhouette stays calm and the gradient does the volume.
+     The button owns press/focus; .ai__body owns the living motion, so the two
+     never fight over `transform`. */
+  .ai__blob {
+    position: relative;
+    display: block;
+    width: 68px;
+    height: 68px;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    /* Contact shadow on the ground, well below the sphere. */
+    filter: drop-shadow(0 14px 16px rgba(30, 50, 170, 0.34));
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .ai__blob:active { transform: scale(0.94); }
+  .ai__blob:focus-visible { outline: 2px solid var(--blue-500); outline-offset: 5px; }
+
+  .ai__body {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    /* Lit from the upper left: a bright highlight, a deep terminator at the
+       lower right, and a faint bounce coming back up off the ground. */
+    background:
+      radial-gradient(42% 38% at 33% 26%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 70%),
+      radial-gradient(58% 55% at 30% 24%, #7d97ff 0%, rgba(125, 151, 255, 0) 68%),
+      radial-gradient(45% 42% at 74% 82%, #6d88ff 0%, rgba(109, 136, 255, 0) 70%),
+      radial-gradient(118% 118% at 32% 26%, #5a76ff 0%, #3b5bf6 46%, #2842e2 80%, #2036c9 100%);
+    box-shadow:
+      inset -5px -7px 16px rgba(16, 30, 130, 0.34),
+      inset 3px 4px 12px rgba(255, 255, 255, 0.2);
+    /* Alive at rest — a slow breath, never a bounce. */
+    animation: ai-breathe 4.6s ease-in-out infinite;
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .ai__blob:hover .ai__body { transform: scale(1.07); }
+
+  @keyframes ai-breathe {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-3px) scale(1.022, 0.985); }
+  }
+
+  /* Thinking: the breath quickens a little. */
+  .ai[data-mood="thinking"] .ai__body { animation-duration: 1.5s; }
+
+  /* Noticing a new fold — a single squash-and-settle. */
+  .ai[data-mood="curious"] .ai__body { animation: ai-notice 0.66s cubic-bezier(0.3, 1.3, 0.5, 1); }
+  @keyframes ai-notice {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.1, 0.9) translateY(3px); }
+    62% { transform: scale(0.96, 1.06) translateY(-5px); }
+    100% { transform: scale(1) translateY(0); }
+  }
+
+  /* ---------------- the face ----------------
+     Two capsules and an arc. The whole face translates as one when it looks
+     around — a character this simple reads as turning its head, where moving
+     pupils inside eyeballs would read as a different, busier creature. */
+  .ai__face {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    /* Written by the gaze handler. */
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .ai__f,
+  .ai__fx,
+  .ai__gear {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .ai__f > *,
+  .ai__fx > * {
+    opacity: 0;
+    transition: opacity 0.17s ease;
+  }
+  /* Strokes for the drawn features, fills for the solid ones. */
+  .ai__f path:not(.m-open):not(.e-spark),
+  .ai__fx .fx-line {
+    fill: none;
+    stroke: #fff;
+    stroke-width: 2.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .ai__f rect,
+  .ai__f circle,
+  .ai__f .m-open,
+  .ai__f .e-spark,
+  .ai__fx .fx-spark { fill: #fff; }
+  .ai__fx .fx-line { stroke-width: 2.2; opacity: 0; }
+
+  /* ---- expressions ----
+     Written inverted on purpose: every feature is hidden by default and each
+     rule lists the moods that reveal it. The obvious shape — hide-everything
+     then re-show a few — puts two rules of equal specificity against each
+     other, and the reset wins as often as not. This way nothing competes. */
+
+  .ai__f > *, .ai__fx > * { opacity: 0; }
+
+  /* eyes */
+  .ai[data-mood="idle"] .e-cap,
+  .ai[data-mood="thinking"] .e-cap,
+  .ai[data-mood="excited"] .e-cap,
+  .ai[data-mood="guiding"] .e-cap,
+  .ai[data-mood="curious"] .e-cap:first-of-type,   /* the other drops to a dot */
+  .ai[data-mood="greet"] .e-cap:last-of-type,      /* the other winks */
+  .ai[data-mood="curious"] .e-dot,
+  .ai[data-mood="happy"] .e-up,
+  .ai[data-mood="relaxed"] .e-down,
+  .ai[data-mood="greet"] .e-wink,
+  .ai[data-mood="eager"] .e-spark { opacity: 1; }
+
+  /* mouths */
+  .ai[data-mood="idle"] .m-neutral,
+  .ai[data-mood="curious"] .m-neutral,
+  .ai[data-mood="relaxed"] .m-neutral,
+  .ai[data-mood="happy"] .m-smile,
+  .ai[data-mood="greet"] .m-smile,
+  .ai[data-mood="guiding"] .m-smile,
+  .ai[data-mood="thinking"] .m-squiggle,
+  .ai[data-mood="eager"] .m-open,
+  .ai[data-mood="excited"] .m-open { opacity: 1; }
+
+  /* decorations */
+  .ai[data-mood="excited"] .fx-spark { opacity: 1; animation: ai-spark 0.7s ease; }
+  .ai[data-mood="guiding"] .fx-line { opacity: 0.75; animation: ai-lines 1.1s ease-in-out infinite; }
+
+  @keyframes ai-spark {
+    0% { opacity: 0; transform: scale(0.3) rotate(-40deg); transform-origin: 53px 18px; }
+    55% { opacity: 1; transform: scale(1.15) rotate(8deg); transform-origin: 53px 18px; }
+    100% { opacity: 1; transform: none; }
+  }
+  @keyframes ai-lines {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 0.8; }
+  }
+
+  /* CURIOUS also tilts the head — the part that sells "noticing". */
+  .ai[data-mood="curious"] .ai__face { rotate: -7deg; }
+
+  /* THINKING narrows the capsules to a focused squint. */
+  .ai[data-mood="thinking"] .e-cap {
+    transform-box: fill-box;
+    transform-origin: center;
+    scale: 1 0.45;
+  }
+
+  /* Blink overlays whatever mood is running, but only where the eyes are
+     actually open — closed-eye moods have nothing left to close. */
+  .ai[data-blink]:not([data-mood="happy"]):not([data-mood="relaxed"]):not([data-mood="greet"]) .e-cap {
+    transform-box: fill-box;
+    transform-origin: center;
+    scale: 1 0.16;
+  }
+  .ai .e-cap { transition: opacity 0.17s ease, scale 0.1s ease; }
+
+  /* ---------------- costumes ----------------
+     Drawn in the same layer as the sphere, so the breath and the squash carry
+     the gear with them — a headband that stays still while the head moves is
+     the thing that gives the trick away.
+
+     Everything is off by default and switched on by one `data-costume` value,
+     so a second costume is a new block, not an edit to this one. */
+
+  .ai__gear > * { opacity: 0; }
+
+  .gear-band__cloth { fill: url(#aiBandFace); }
+  .gear-band__stripe { fill: #2743e0; }
+  .gear-bell__bar { fill: #9aa3bd; }
+  .gear-bell__plate { fill: #252c3c; }
+
+  /* Rotation lives on the inner group: the clip is on the parent, so the band
+     can be tilted and animated without dragging its own mask around with it. */
+  .gear-band__in {
+    transform-box: view-box;
+    transform-origin: 32px 16px;
+    rotate: -6deg;
+  }
+
+  .ai[data-costume="fitness"] .gear-band,
+  .ai[data-costume="fitness"] .gear-bell { opacity: 1; }
+
+  /* Dropped on rather than faded in — the clip means it can start above the
+     crown and arrive, which is what makes it read as put on. */
+  .ai[data-costume="fitness"] .gear-band__in {
+    animation: ai-band-on 0.52s cubic-bezier(0.3, 1.25, 0.5, 1) both;
+  }
+  @keyframes ai-band-on {
+    from { transform: translateY(-14px); }
+    to { transform: none; }
+  }
+
+  /* One slow curl on a long cycle, so it's an occasional flicker of life
+     rather than a thing pumping away in the corner of the page. */
+  .gear-bell {
+    transform-box: view-box;
+    /* Pivots at the inner plate — the end nearest the body, so the far end
+       swings up the way a curl actually travels. */
+    transform-origin: 8.6px 52px;
+    transition: opacity 0.35s ease 0.12s;
+  }
+  .ai[data-costume="fitness"] .gear-bell {
+    animation: ai-curl 5.4s ease-in-out 0.9s infinite;
+  }
+  /* Positive rotation lifts the outer end: the pivot is the inner plate, and
+     y runs down in SVG, so the sign is the opposite of the obvious one. */
+  @keyframes ai-curl {
+    0%, 56%, 100% { transform: none; }
+    67% { transform: translateY(-4px) rotate(16deg); }
+    80% { transform: translateY(1px) rotate(-4deg); }
+    90% { transform: none; }
+  }
+
+  /* ---------------- nudge bubble ---------------- */
+  .ai__bubble {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 14px);
+    width: max-content;
+    max-width: 250px;
+    padding: 13px 34px 13px 16px;
+    border-radius: 16px 16px 4px 16px;
+    background: rgba(20, 24, 42, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
+    backdrop-filter: blur(14px) saturate(150%);
+    box-shadow: 0 16px 40px rgba(12, 20, 45, 0.28);
+    animation: ai-pop 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .ai__bubble p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.45;
+    color: #fff;
+  }
+  .ai__bubbleNo {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: rgba(255, 255, 255, 0.45);
+    cursor: pointer;
+    transition: color 0.2s ease, background 0.2s ease;
+  }
+  .ai__bubbleNo svg { width: 11px; height: 11px; }
+  .ai__bubbleNo:hover { color: #fff; background: rgba(255, 255, 255, 0.12); }
+
+  @keyframes ai-pop {
+    from { opacity: 0; transform: translateY(8px) scale(0.94); }
+    to { opacity: 1; transform: none; }
+  }
+
+  /* ---------------- chat panel ---------------- */
+  .ai__panel {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 14px);
+    display: flex;
+    flex-direction: column;
+    width: min(380px, calc(100vw - 40px));
+    height: min(520px, calc(100vh - 140px));
+    border-radius: 20px;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid #e9ecf3;
+    box-shadow: 0 30px 70px rgba(10, 20, 60, 0.26);
+    transform-origin: bottom right;
+    animation: ai-panel 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @keyframes ai-panel {
+    from { opacity: 0; transform: scale(0.86) translateY(12px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .ai__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 14px 15px 18px;
+    border-bottom: 1px solid #eef0f5;
+  }
+  .ai__title { margin: 0; font-size: 14px; font-weight: 600; color: #0b0d12; }
+  .ai__close {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(17, 19, 24, 0.06);
+    color: #14161c;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .ai__close:hover { background: rgba(17, 19, 24, 0.13); }
+  .ai__close svg { width: 12px; height: 12px; }
+
+  .ai__log {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 18px 16px 20px;
+    display: flex;
+    flex-direction: column;
+    /* No gap: turns own their own spacing, so a speaker change can be given
+       more room than a continuation. */
+    gap: 0;
+  }
+  /* ---- empty state ---- */
+  .ai__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 6px 6px 4px;
+    /* Centres itself while it's the only thing in the log. Removed on the
+       first question, so messages then stack from the top as they should. */
+    margin-block: auto;
+  }
+
+  /* Bhupesh's face leads, because this paragraph is him talking. */
+  .ai__emptyAva {
+    position: relative;
+    display: block;
+    margin-bottom: 14px;
+  }
+  .ai__emptyAva img {
+    display: block;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+    object-position: 50% 6%;
+  }
+
+  /* The assistant, as a badge on his shoulder — one image that says "me, and
+     this thing of mine" without needing two avatars side by side. */
+  .ai__emptyBadge {
+    position: absolute;
+    right: -3px;
+    bottom: -1px;
+    width: 23px;
+    height: 23px;
+    border-radius: 50%;
+    border: 2.5px solid #fff;
+    background:
+      radial-gradient(38% 34% at 32% 26%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 70%),
+      radial-gradient(115% 115% at 32% 26%, #5a76ff 0%, #3b5bf6 46%, #2842e2 80%, #2036c9 100%);
+  }
+
+  .ai__emptyTitle {
+    margin: 0 0 6px;
+    font-family: "Inter", "Nunito", system-ui, sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.1px;
+    color: #0b0d12;
+  }
+
+  .ai__emptyBody {
+    margin: 0 0 18px;
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: #8a919e;
+    /* Held to a readable measure so it breaks into even lines rather than one
+       long one and an orphan. */
+    max-width: 31ch;
+  }
+
+  /* Filled rather than outlined: four thin-bordered pills in a column read as
+     a form, which is what made the old ones feel like inputs instead of
+     suggestions. */
+  .ai__chips {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+  .ai__chips button {
+    padding: 10px 18px;
+    border: 0;
+    border-radius: 999px;
+    background: #f1f4fb;
+    font-family: "Inter", "Nunito", system-ui, sans-serif;
+    font-size: 13px;
+    color: #454b59;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .ai__chips button:hover {
+    background: #e7edff;
+    color: var(--blue-500);
+    transform: translateY(-1px);
+  }
+  .ai__chips button:active { transform: translateY(0); }
+
+  .ai__form {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    border-top: 1px solid #eef0f5;
+  }
+  .ai__form input {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 14px;
+    border: 1px solid #e4e8f1;
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: 14px;
+    color: #0b0d12;
+    background: #fff;
+  }
+  .ai__form input:focus { outline: none; border-color: var(--blue-300); }
+  .ai__form button {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--blue-500);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .ai__form button:hover { background: var(--blue-700); }
+  .ai__form button svg { width: 16px; height: 16px; }
+
+  /* ---------------- responsive ---------------- */
+  @media (max-width: 620px) {
+    .ai { right: 16px; bottom: 18px; }
+    .ai__blob { width: 56px; height: 56px; }
+    .ai__eye { width: 13px; height: 15px; }
+    .ai__panel {
+      width: calc(100vw - 32px);
+      height: min(70vh, 480px);
+      /* Anchored to the viewport edge rather than the blob, so it can't be
+         pushed off-screen on a narrow phone. */
+      right: -4px;
+    }
+    .ai__bubble { max-width: min(240px, calc(100vw - 48px)); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ai__blob { animation: none; border-radius: 50%; transition: none; }
+    .ai__blob:hover, .ai__blob:active { transform: none; }
+    .ai__grad { animation: none; }
+    .ai__bubble, .ai__panel { animation: none; }
+    .ai__eye, .ai__eye i { transition: none; }
+    .turn__msg[data-pending] i { animation: none; }
+    /* The costume still gets worn — it just arrives, and the dumbbell rests. */
+    .ai[data-costume="fitness"] .gear-band__in,
+    .ai[data-costume="fitness"] .gear-bell { animation: none; }
+  }
+</style>
+
+<!-- Message styles live in a global block on purpose: Astro's scoped CSS is
+     applied via a data attribute stamped onto elements in the template, and
+     every element below is created by script at runtime — so scoped rules
+     would never match them. -->
+<style is:global>
+  /* ---- turns ----
+     Generous space between speakers, tight space within one turn: the gap is
+     what tells you where one person stopped and the next started, so it has
+     to be clearly bigger than any gap inside a message. */
+  .turn {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    max-width: 100%;
+  }
+  .turn + .turn { margin-top: 4px; }
+  /* A change of speaker gets noticeably more room than a continuation. */
+  .turn--me + .turn--ai,
+  .turn--ai + .turn--me { margin-top: 18px; }
+
+  .turn--me { flex-direction: row-reverse; }
+
+  /* The assistant's face, in miniature — the same character sitting in the
+     corner, so there's no question who is talking. */
+  .turn__ava {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    margin-top: 19px; /* aligns with the bubble, not the label */
+    border-radius: 50%;
+    background:
+      radial-gradient(38% 34% at 32% 26%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 70%),
+      radial-gradient(115% 115% at 32% 26%, #5a76ff 0%, #3b5bf6 46%, #2842e2 80%, #2036c9 100%);
+    box-shadow: inset -2px -2px 5px rgba(10, 20, 110, 0.3);
+  }
+
+  .turn__col {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    max-width: 84%;
+  }
+  .turn--me .turn__col { align-items: flex-end; }
+
+  .turn__label {
+    margin-bottom: 4px;
+    font-family: "Inter", "Nunito", system-ui, sans-serif;
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: #a3a9b8;
+  }
+
+  .turn__msg {
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 14px;
+    line-height: 1.58;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere; /* a pasted URL shouldn't widen the panel */
+  }
+
+  /* Sender: solid brand blue, right-aligned, tail on the right. */
+  .turn--me .turn__msg {
+    background: var(--blue-500);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+
+  /* Receiver: light surface with a hairline, so it reads as a different
+     material rather than just a paler version of the same bubble. */
+  .turn--ai .turn__msg {
+    background: #f4f6fb;
+    border: 1px solid #e7ebf4;
+    color: #2c313c;
+    border-bottom-left-radius: 4px;
+  }
+
+  .turn__msg.is-error {
+    background: #fdf0ee;
+    border-color: #f6ded9;
+    color: #a13c28;
+  }
+
+  /* Waiting on the first token. Three real elements rather than ::before and
+     ::after, which can only ever produce two dots. */
+  /* Bullets and paragraphs inside a reply. Tight, because this is a bubble
+     beside the page and not a document. */
+  .turn__para { margin: 0; }
+  .turn__para + .turn__para,
+  .turn__para + .turn__list,
+  .turn__list + .turn__para { margin-top: 8px; }
+  .turn__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 5px;
+  }
+  .turn__list li {
+    position: relative;
+    padding-left: 14px;
+  }
+  /* A drawn dot rather than a list marker, so it keeps its size and colour
+     regardless of the font the bubble inherits. */
+  .turn__list li::before {
+    content: "";
+    position: absolute;
+    left: 2px;
+    top: 0.55em;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--blue-500);
+  }
+  .turn__msg strong {
+    font-weight: 700;
+    color: #0b0d12;
+  }
+  .turn__link {
+    color: var(--blue-500);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(0, 89, 255, 0.32);
+  }
+  .turn__link:hover { border-bottom-color: var(--blue-500); }
+
+  .turn__msg[data-pending] {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 21px;
+  }
+  .turn__msg[data-pending] i {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #b3bacb;
+    animation: ai-wait 1.15s ease-in-out infinite;
+  }
+  .turn__msg[data-pending] i:nth-child(2) { animation-delay: 0.16s; }
+  .turn__msg[data-pending] i:nth-child(3) { animation-delay: 0.32s; }
+  @keyframes ai-wait {
+    0%, 60%, 100% { opacity: 0.28; transform: translateY(0); }
+    30% { opacity: 1; transform: translateY(-2px); }
+  }
+</style>

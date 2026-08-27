@@ -1,0 +1,160 @@
+---
+import WaterSurface from './WaterSurface.astro';
+
+interface Props {
+  name?: string;
+  tagline?: string;
+  avatar?: string;
+}
+const {
+  name = 'BHUPESH PARMAR',
+  tagline = 'Product designer with around 1 year of professional experience and two design degrees',
+  avatar = '/assets/hero-portrait.png',
+} = Astro.props;
+
+/* "Hi, I'm BHUPESH PARMAR," shouts and wraps. The greeting wants a first name
+   in sentence case; the display face below carries the volume. */
+const first = name.trim().split(/\s+/)[0];
+const greeting = first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+
+
+---
+
+<!-- .hero-wrap is the scroll runway that drives the white panel's expansion -->
+<div class="hero-wrap" id="heroWrap">
+  <section class="hero">
+    <!-- Layered gradient / texture / glass background -->
+    <div class="hero__bg" aria-hidden="true">
+      <div class="hero__blobs"></div>
+      <div class="hero__orb hero__orb--a"></div>
+      <div class="hero__orb hero__orb--b"></div>
+      <div class="hero__orb hero__orb--c"></div>
+      <div class="hero__burn"></div>
+      <div class="hero__glow"></div>
+      <WaterSurface class="hero__water" />
+      <div class="hero__glass"></div>
+      <div class="hero__grain"></div>
+    </div>
+
+    <!-- White panel: floats as a rounded card, expands to full-bleed on scroll -->
+    <div class="hero__panel" id="heroPanel">
+      <div class="hero__content">
+        <div class="hero__row">
+          <div class="hero__copy">
+            <h1 class="hero__title">
+              <span class="hero__hi">Hi, I&rsquo;m {greeting},</span>
+              <span class="hero__claim">I design products that make sense.</span>
+            </h1>
+            <p class="hero__desc">{tagline}</p>
+
+            {/* Lenis is configured with `anchors: true`, so a plain hash link
+                eases down to the work list — no handler needed. */}
+            <a class="hero__cta" href="#work" data-cta>
+              <span class="hero__ctaLabel">See the work</span>
+              {/* Two arrows in a clipped slot. On hover the first leaves
+                  through the bottom while the second arrives from the top, so
+                  the gesture reads as "keep going down" rather than a wiggle. */}
+              <span class="hero__ctaArrows" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 4v14M6 12.5 12 18.5l6-6" fill="none" stroke="currentColor"
+                    stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 4v14M6 12.5 12 18.5l6-6" fill="none" stroke="currentColor"
+                    stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </span>
+            </a>
+
+          </div>
+
+          {/* This export fades out at the bottom on its own, so nothing here
+              masks it. Layering a CSS gradient on top would fade an already
+              faded edge and leave him washed out rather than ended. */}
+          <figure class="hero__photo">
+            {/* Three soft forms drifting behind him. Border-radius morphing
+                rather than SVG paths: it animates on the compositor, needs no
+                geometry, and stays smooth at any size. */}
+            <span class="hero__aura" aria-hidden="true"><i></i><i></i><i></i></span>
+            <img src={avatar} alt={`Portrait of ${name}`} width="745" height="590" />
+          </figure>
+        </div>
+
+      </div>
+    </div>
+  </section>
+</div>
+
+{/* Runs during parse so the nav starts light over the blue — no flash of dark
+    labels before the module script below boots. */}
+<script is:inline>document.documentElement.dataset.navTone = 'dark';</script>
+
+<script>
+  /* Drives the white panel's expansion as you scroll through the hero runway.
+     progress 0 -> card floats over the gradient
+     progress 1 -> panel fills the viewport, flowing into the section below */
+  const wrap = document.getElementById('heroWrap');
+  const root = document.documentElement;
+  const navPill = document.querySelector<HTMLElement>('.nav__pill');
+  /* The --panel-* props are read by .hero__panel and nothing else, so they get
+     set on the panel itself. Writing them to :root invalidated style for every
+     element on the page, on every scrolled frame. */
+  const panel = document.getElementById('heroPanel');
+
+  if (wrap && panel) {
+    // Radius and shadow both land on 0 so the expanded panel reads as one
+    // continuous white surface with the section below it.
+    const from = { top: 14, x: 8, bottom: -22, radius: 60, shadow: 0.28 };
+    const to = { top: 0, x: 0, bottom: 0, radius: 0, shadow: 0 };
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+    const clamp = (v: number) => Math.min(1, Math.max(0, v));
+
+    let ticking = false;
+
+    function update() {
+      ticking = false;
+      // Runway = hero-wrap height minus one viewport (the sticky travel distance).
+      const travel = wrap!.offsetHeight - window.innerHeight;
+      const p = reduce ? 0 : clamp(window.scrollY / (travel || 1));
+
+      const s = panel!.style;
+      s.setProperty('--panel-top', lerp(from.top, to.top, p) + '%');
+      s.setProperty('--panel-x', lerp(from.x, to.x, p) + '%');
+      s.setProperty('--panel-bottom', lerp(from.bottom, to.bottom, p) + '%');
+      s.setProperty('--panel-radius', lerp(from.radius, to.radius, p) + 'px');
+      s.setProperty('--panel-shadow', String(lerp(from.shadow, to.shadow, p)));
+
+      /* The panel's top edge is the light/dark boundary. While it sits below
+         the nav, the nav is over blue; once it rises past, the nav is on white. */
+      const panelTopPx = (lerp(from.top, to.top, p) / 100) * window.innerHeight;
+      const navBottom = navPill ? navPill.getBoundingClientRect().bottom : 70;
+      root.dataset.navTone = panelTopPx > navBottom ? 'dark' : 'light';
+    }
+
+    function onScroll() {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(update);
+      }
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+  }
+
+
+  /* The cursor-tracking highlight on the CTA. One listener, two custom
+     properties, no layout read — the values go straight to the element that
+     paints them. */
+  const cta = document.querySelector<HTMLElement>('[data-cta]');
+  if (cta && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    cta.addEventListener('pointermove', (e) => {
+      const r = cta.getBoundingClientRect();
+      cta.style.setProperty('--mx', `${e.clientX - r.left}px`);
+      cta.style.setProperty('--my', `${e.clientY - r.top}px`);
+    });
+  }
+</script>

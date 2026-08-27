@@ -1,0 +1,56 @@
+---
+import Nav from '../components/Nav.astro';
+import ResumeButton from '../components/ResumeButton.astro';
+import AiBlob from '../components/AiBlob.astro';
+import Sfx from '../components/Sfx.astro';
+import ProgressiveBlur from '../components/ProgressiveBlur.astro';
+import SmoothScroll from '../components/SmoothScroll.astro';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const {
+  title,
+  description = 'Product designer with two design degrees, designing for clarity at scale.',
+} = Astro.props;
+
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="canonical" href={canonical} />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Caveat:wght@500;600&family=Inter:wght@400;500&family=Nunito:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <SmoothScroll />
+    <Nav />
+    <ResumeButton />
+    <main>
+      <slot />
+    </main>
+    <ProgressiveBlur />
+    <AiBlob />
+    <Sfx />
+    <footer class="footer">
+      <p>&copy; {new Date().getFullYear()} Bhupesh Parmar</p>
+      <p><a href="mailto:designs.bhupesh@gmail.com">designs.bhupesh@gmail.com</a></p>
+    </footer>
+  </body>
+</html>

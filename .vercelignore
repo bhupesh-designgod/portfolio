@@ -1,0 +1,8 @@
+# Vercel builds from source in its own container, so none of this needs
+# uploading — and sending it aborts the upload on a project this size.
+node_modules
+dist
+.astro
+.vercel
+.env
+.DS_Store

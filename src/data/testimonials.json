@@ -1,0 +1,42 @@
+[
+  {
+    "id": "sahil",
+    "name": "Sahil Kumar",
+    "role": "Sr. Marketing Executive",
+    "company": "Relinns Technologies",
+    "href": "https://www.linkedin.com/in/sahilkumar44/",
+    "avatar": "/assets/testimonials/sahil.png",
+    "quote": "He’s one of those rare designers who not only delivers beautiful UI/UX but also deeply understands the product and the people behind it. That synergy played a key role in shaping a smooth MVP experience.",
+    "order": 1
+  },
+  {
+    "id": "ishika",
+    "name": "Ishika Saxena",
+    "role": "Product Designer",
+    "company": "TBO",
+    "href": "https://www.linkedin.com/in/ishs3009/",
+    "avatar": "/assets/testimonials/ishika.png",
+    "quote": "From college projects to working together at Ikarus 3D, he has always been an amazing person to work with. Whenever you’re stuck, he comes up with something to help you move forward. I’ve learned a lot from him.",
+    "order": 2
+  },
+  {
+    "id": "avinash",
+    "name": "Avinash Nadh Basuvu",
+    "role": "Product Owner",
+    "company": "EY",
+    "href": "https://www.linkedin.com/in/avinash-nadh-basuvu-739918144/",
+    "avatar": "/assets/testimonials/avinash.png",
+    "quote": "His work is clean, intuitive, and always focused on communicating real value to the user. Every design choice he makes has purpose — and that’s exactly why his work consistently leads to better engagement and higher conversions.",
+    "order": 3
+  },
+  {
+    "id": "dipanshu",
+    "name": "Dipanshu Saini",
+    "role": "Product Designer",
+    "company": "IDfy",
+    "href": "https://www.linkedin.com/in/dipanshu-381864227/",
+    "avatar": "/assets/testimonials/dipanshu.png",
+    "quote": "I’ve closely worked with Bhupesh and can say he is extremely talented and reliable. He brings a high level of dedication, skill, and professionalism to every project.",
+    "order": 4
+  }
+]

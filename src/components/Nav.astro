@@ -1,0 +1,63 @@
+---
+/* Floating glass pill nav — Figma node 55:45.
+   Labels use mix-blend-mode: exclusion, so they invert against whatever
+   scrolls behind them. That replaces the old light/dark theme prop. */
+
+import MusicBlob from './MusicBlob.astro';
+
+const path = Astro.url.pathname;
+const isActive = (href: string) =>
+  href === '/' ? path === '/' : path.startsWith(href);
+
+/* Work is a section on the homepage, not its own page — Lenis eases the jump.
+   `match` is omitted for it since an anchor has no route to be current on. */
+const links = [
+  { href: '/', label: 'Home', match: '/' },
+  { href: '/#work', label: 'Work' },
+  { href: '/playground', label: 'Playground', match: '/playground' },
+  { href: '/about', label: 'About', match: '/about' },
+];
+---
+
+<header class="nav">
+  <nav class="nav__pill" aria-label="Primary">
+    <span class="nav__sheen" aria-hidden="true"></span>
+    <ul class="nav__links">
+      {
+        links.map((l) => (
+          <li>
+            <a href={l.href} aria-current={l.match && isActive(l.match) ? 'page' : undefined}>
+              {l.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </nav>
+
+  {/* Docks to the pill's right edge. In the flex flow rather than absolute, so
+      the pill + blob centre as one cluster and neither runs off a phone. */}
+  <MusicBlob />
+</header>
+
+{/* Refraction map. Displaces the backdrop rather than blurring it —
+    this is what separates liquid glass from frosted glassmorphism. */}
+<svg class="nav__filterdef" aria-hidden="true" focusable="false">
+  <filter id="liquidGlass" x="-25%" y="-25%" width="150%" height="150%">
+    <feTurbulence
+      type="fractalNoise"
+      baseFrequency="0.009 0.014"
+      numOctaves="2"
+      seed="7"
+      result="noise"
+    />
+    <feGaussianBlur in="noise" stdDeviation="7" result="softNoise" />
+    <feDisplacementMap
+      in="SourceGraphic"
+      in2="softNoise"
+      scale="42"
+      xChannelSelector="R"
+      yChannelSelector="G"
+    />
+  </filter>
+</svg>

@@ -1,0 +1,214 @@
+---
+import { getCollection, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+
+export async function getStaticPaths() {
+  const projects = await getCollection('work', ({ data }) => !data.draft);
+  return projects.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content, headings } = await render(entry);
+const d = entry.data;
+
+/* Only h2s make the contents rail — h3s are detail inside a section. */
+const toc = headings.filter((h) => h.depth === 2);
+
+/* 220 wpm is the usual figure for on-screen prose. */
+const words = (entry.body ?? '').trim().split(/\s+/).filter(Boolean).length;
+const readingTime = Math.max(1, Math.round(words / 220));
+
+/* The hook can be shorter and punchier than the card headline. */
+const hook = d.heroTitle ?? d.title;
+---
+
+<Base title={`${d.client} — ${d.title}`} description={d.summary}>
+  <article class="cs" data-costume={d.costume} data-accent={d.accent}>
+    <!-- ---------------- HERO: the hook ---------------- -->
+    <header class="cs-hero">
+      <div class="cs-hero__bg" aria-hidden="true">
+        <div class="cs-hero__blobs"></div>
+        <div class="cs-hero__orb cs-hero__orb--a"></div>
+        <div class="cs-hero__orb cs-hero__orb--b"></div>
+        <div class="cs-hero__glow"></div>
+        <div class="cs-hero__glass"></div>
+        <div class="cs-hero__grain"></div>
+      </div>
+
+      <a class="cs-hero__close" href="/#work" aria-label="Back to all work">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path
+            d="M6 6l12 12M18 6L6 18"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+          />
+        </svg>
+      </a>
+
+      <div class="cs-hero__inner">
+        {/* The hook stands on its own — no kicker above it. The client is a
+            fact about the work, so it belongs in the meta row with the rest
+            of them, not stacked over the headline as a label. */}
+        <div class="cs-hero__type">
+          <h1 class="cs-hero__title">{hook}</h1>
+        </div>
+
+        <div class="cs-hero__aside">
+          {
+            d.cover && (
+              <figure class="cs-hero__shot">
+                <img src={d.cover} alt={d.coverAlt ?? ''} />
+              </figure>
+            )
+          }
+          <p class="cs-hero__summary">{d.summary}</p>
+        </div>
+      </div>
+
+      <dl class="cs-hero__meta">
+        <div><dt>Client</dt><dd>{d.client}</dd></div>
+        {d.role && <div><dt>Role</dt><dd>{d.role}</dd></div>}
+        {d.timeline && <div><dt>Timeline</dt><dd>{d.timeline}</dd></div>}
+        {d.tags.length > 0 && <div><dt>Focus</dt><dd>{d.tags.join(', ')}</dd></div>}
+        <div><dt>Read</dt><dd>{readingTime} min</dd></div>
+      </dl>
+    </header>
+
+    <!-- ---------------- BODY: the reading environment ---------------- -->
+    <div class="cs-read">
+      <div class="cs-read__inner">
+        {
+          toc.length > 0 && (
+            <nav class="cs-toc" aria-label="On this page">
+              <div class="cs-toc__sticky">
+                <div class="cs-toc__head">
+                  <p class="cs-toc__label">Contents</p>
+                  <p class="cs-toc__pct" id="csPct">0%</p>
+                </div>
+                {/* The meter is the answer to "how much is left". It is a real
+                    progressbar rather than a decorated div so a screen reader
+                    gets the same answer the sighted reader does. */}
+                <div
+                  class="cs-toc__meter"
+                  id="csMeter"
+                  role="progressbar"
+                  aria-label="Reading progress"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  aria-valuenow="0"
+                >
+                  <span class="cs-toc__meterFill" id="csFill" />
+                </div>
+                <ol class="cs-toc__list">
+                  {toc.map((h, i) => (
+                    <li>
+                      <a href={`#${h.slug}`} data-toc={h.slug}>
+                        <span class="cs-toc__n" aria-hidden="true">
+                          {String(i + 1).padStart(2, '0')}
+                        </span>
+                        <span class="cs-toc__t">{h.text}</span>
+                      </a>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </nav>
+          )
+        }
+
+        <div class="prose cs-prose" id="csProse">
+          <Content />
+        </div>
+      </div>
+
+      <nav class="cs-foot">
+        <a href="/#work">&larr; All work</a>
+      </nav>
+    </div>
+  </article>
+</Base>
+
+{/* Runs during parse so the nav starts light over the blue hero — no flash of
+    dark labels before the module script below boots. */}
+<script is:inline>document.documentElement.dataset.navTone = 'dark';</script>
+
+<script>
+  /* Two jobs, both driven off one rAF-throttled scroll pass:
+     1. nav ink flips when the white reading surface reaches the nav
+     2. the contents rail tracks which section you're in, and how far you've read */
+  const root = document.documentElement;
+  const read = document.querySelector<HTMLElement>('.cs-read');
+  const prose = document.getElementById('csProse');
+  const fill = document.getElementById('csFill');
+  const meter = document.getElementById('csMeter');
+  const pct = document.getElementById('csPct');
+  const navPill = document.querySelector<HTMLElement>('.nav__pill');
+  const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('[data-toc]'));
+  const targets = links
+    .map((l) => document.getElementById(l.dataset.toc!))
+    .filter((el): el is HTMLElement => Boolean(el));
+
+  const clamp = (v: number) => Math.min(1, Math.max(0, v));
+  let ticking = false;
+
+  function update() {
+    ticking = false;
+
+    if (read) {
+      const navBottom = navPill ? navPill.getBoundingClientRect().bottom : 70;
+      root.dataset.navTone = read.getBoundingClientRect().top > navBottom ? 'dark' : 'light';
+    }
+
+    if (!prose) return;
+
+    /* The reading line: a little below the nav, where the eye actually sits. */
+    const line = 168;
+    const r = prose.getBoundingClientRect();
+
+    /* Progress runs from "the article's first line has reached the top of the
+       window" to "its last line has reached the bottom". The previous version
+       divided by the article's full height, which counts one screenful the
+       reader never has to scroll past — so it read ~90% at the end and never
+       arrived. `span` subtracts that screenful. */
+    const span = r.height - window.innerHeight;
+    const p = span > 0 ? clamp(-r.top / span) : r.top <= 0 ? 1 : 0;
+
+    if (fill) fill.style.transform = `scaleX(${p})`;
+
+    const shown = Math.round(p * 100);
+    if (pct && pct.textContent !== `${shown}%`) pct.textContent = `${shown}%`;
+    if (meter) meter.setAttribute('aria-valuenow', String(shown));
+
+    if (targets.length) {
+      /* -1 until the first heading crosses the line, so nothing is marked
+         current while the hero still fills the screen. */
+      let active = -1;
+      for (let i = 0; i < targets.length; i++) {
+        if (targets[i].getBoundingClientRect().top <= line) active = i;
+      }
+      links.forEach((l, i) => {
+        const on = i === active;
+        l.classList.toggle('is-active', on);
+        l.classList.toggle('is-read', i < active);
+        if (on) l.setAttribute('aria-current', 'true');
+        else l.removeAttribute('aria-current');
+      });
+    }
+  }
+
+  function onScroll() {
+    if (!ticking) {
+      ticking = true;
+      requestAnimationFrame(update);
+    }
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', update);
+  update();
+</script>

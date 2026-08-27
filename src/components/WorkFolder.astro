@@ -1,0 +1,484 @@
+---
+/* One project, as a folder you can open.
+   Replaces the collage card in the home page's work list. The row is a single
+   link target: hovering anywhere on it opens the folder, so the reader never
+   has to find the folder to trigger it.
+
+   Colour comes from the project itself. `accent` selects the palette defined
+   in global.css under `[data-accent]`; `tone` decides whether the folder body
+   carries that accent as light falling on a dark object or as a wash over a
+   pale one. Two projects from the same client take opposite tones, or the
+   pair reads as one entry. */
+interface Props {
+  href: string;
+  client: string;
+  title: string;
+  summary: string;
+  frank: string;
+  tags?: string[];
+  accent?: string;
+  tone?: 'dark' | 'light';
+  art?: string;
+  artAlt?: string;
+  clip?: string;
+  stamps: string;
+}
+
+const {
+  href,
+  client,
+  title,
+  summary,
+  frank,
+  tags = [],
+  accent = 'gold',
+  tone = 'dark',
+  art,
+  artAlt = '',
+  clip,
+  stamps,
+} = Astro.props;
+
+/* Unique per card: two seals sharing a path id would both follow the first. */
+const sealId = `seal-${href.replace(/\W+/g, '-')}`;
+---
+
+<article class="wf" data-accent={accent} data-tone={tone}>
+  <div class="wf__txt">
+    <p class="wf__client">{client}</p>
+    {/* The stretched link lives on the heading, so the accessible name is the
+        project title and the click target is the whole row. */}
+    <h3 class="wf__title"><a href={href}>{title}</a></h3>
+    <p class="wf__summary">{summary}</p>
+    {
+      tags.length > 0 && (
+        <ul class="wf__tags">
+          {tags.map((t) => (
+            <li>{t}</li>
+          ))}
+        </ul>
+      )
+    }
+  </div>
+
+  <div class="wf__folder" aria-hidden="true">
+    <div class="wf__stack">
+      <span class="wf__back"></span>
+
+      <div class="wf__stamp">
+        <p class="wf__frank">{frank}</p>
+
+        {/* One frame, 16:9, identical for the still and the clip — hovering
+            changes what is playing, never the size of what plays it. */}
+        <div class="wf__media">
+          {art && <img src={art} alt={artAlt} loading="lazy" decoding="async" />}
+          {clip && <video class="wf__vid" src={clip} muted loop playsinline preload="none" />}
+          {
+            clip && (
+              <span class="wf__play">
+                <svg viewBox="0 0 56 56">
+                  <circle cx="28" cy="28" r="26" fill="none" stroke="currentColor" stroke-width="2" />
+                  <path d="M23 19l16 9-16 9z" fill="currentColor" />
+                </svg>
+              </span>
+            )
+          }
+          {clip && <span class="wf__dur">0:00</span>}
+        </div>
+      </div>
+    </div>
+
+    <div class="wf__front">
+      <p class="wf__label">
+        <b>{client} Postmarks</b>
+        <span>{stamps} stamps</span>
+      </p>
+
+      <svg class="wf__seal" viewBox="0 0 120 120">
+        <defs>
+          <path id={sealId} d="M60 60m-40 0a40 40 0 1 1 80 0a40 40 0 1 1-80 0" />
+        </defs>
+        <circle cx="60" cy="60" r="49" fill="none" stroke="currentColor" stroke-width="2.5" />
+        <circle cx="60" cy="60" r="31" fill="none" stroke="currentColor" stroke-width="1.2" />
+        <text class="wf__sealRing">
+          <textPath href={`#${sealId}`} startOffset="50%">
+            · DRAWN · ARGUED FOR · SHIPPED ·
+          </textPath>
+        </text>
+        <text class="wf__sealWord" x="60" y="66" text-anchor="middle">Original</text>
+      </svg>
+    </div>
+  </div>
+</article>
+
+<style>
+  .wf {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) minmax(0, 420px);
+    align-items: center;
+    gap: clamp(24px, 3.4vw, 64px);
+    padding: clamp(30px, 3.4vw, 46px) clamp(24px, 3vw, 44px);
+    border: 1px solid #ebedf2;
+    border-radius: 20px;
+    background: #fff;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  .wf:hover {
+    /* The stamp floats past the top of its own card. Without this the row
+       below paints over it, because later siblings win by document order. */
+    z-index: 3;
+    border-color: rgba(var(--a-rgb), 0.34);
+    box-shadow: 0 22px 48px -32px rgba(12, 20, 45, 0.34);
+  }
+
+  /* ---- the text half ---- */
+  .wf__client {
+    margin: 0 0 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: var(--a-text);
+  }
+  .wf__title {
+    margin: 0 0 16px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: clamp(23px, 2.1vw, 30px);
+    line-height: 1.22;
+    letter-spacing: -0.5px;
+    color: #0b0d12;
+    text-wrap: balance;
+  }
+  .wf__title a {
+    color: inherit;
+    text-decoration: none;
+  }
+  /* Stretched link: the whole row is clickable, the heading is what a screen
+     reader announces, and no nested-interactive markup is needed to do it. */
+  .wf__title a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    border-radius: 20px;
+  }
+  .wf__title a:focus-visible::after {
+    outline: 2px solid var(--a-500);
+    outline-offset: 3px;
+  }
+  .wf__summary {
+    margin: 0 0 20px;
+    max-width: 46ch;
+    font-size: 15.5px;
+    line-height: 1.65;
+    color: #5b6270;
+  }
+  .wf__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .wf__tags li {
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: var(--a-soft);
+    font-family: 'Inter', sans-serif;
+    font-size: 12.5px;
+    line-height: 1.25;
+    color: var(--a-text);
+  }
+
+  /* ---- folder tones ----
+     Dark reads the accent as a light source; light reads it as a wash. The
+     ink is set per tone rather than per hue, because a colour that survives on
+     gold cream is not the one that survives on violet cream. */
+  .wf[data-tone='dark'] {
+    /* A dark body with the accent pooled at the top-left, so the colour reads
+       as light falling on the folder rather than as paint on it. Without the
+       first layer a dark folder is the same neutral grey whatever project it
+       belongs to. */
+    --fld:
+      radial-gradient(120% 96% at 14% -6%, rgba(var(--a-rgb), 0.3) 0%, rgba(var(--a-rgb), 0) 58%),
+      linear-gradient(
+        168deg,
+        rgba(104, 108, 126, 0.42) 0%,
+        rgba(48, 51, 63, 0.74) 34%,
+        rgba(19, 21, 27, 0.91) 72%,
+        rgba(12, 13, 18, 0.96) 100%
+      );
+    --fld-ink: #fff;
+    --fld-sub: rgba(255, 255, 255, 0.62);
+    --fld-seal: rgba(var(--a-rgb), 0.5);
+    --fld-edge: rgba(var(--a-rgb), 0.34);
+    --fld-back: linear-gradient(160deg, #2b2f3a, #111318 46%, #23262f);
+  }
+  .wf[data-tone='light'] {
+    --fld: linear-gradient(
+      168deg,
+      rgba(var(--a-rgb), 0.16) 0%,
+      rgba(var(--a-rgb), 0.34) 38%,
+      rgba(var(--a-rgb), 0.52) 74%,
+      rgba(var(--a-rgb), 0.62) 100%
+    );
+    --fld-ink: #1b1d24;
+    --fld-sub: rgba(27, 29, 36, 0.6);
+    --fld-seal: rgba(27, 29, 36, 0.32);
+    --fld-edge: rgba(255, 255, 255, 0.6);
+    --fld-back: linear-gradient(160deg, rgba(var(--a-rgb), 0.5), rgba(var(--a-rgb), 0.78));
+  }
+
+  /* ---- the folder ---- */
+  .wf__folder {
+    position: relative;
+    aspect-ratio: 1.18 / 1;
+  }
+
+  /* Contents. They run down behind the folder front on purpose: the front is
+     frosted, and frosted glass with nothing behind it is just a grey panel. */
+  .wf__stack {
+    position: absolute;
+    inset: 0 0 20%;
+    z-index: 1;
+  }
+  .wf__back {
+    position: absolute;
+    left: 0;
+    top: 8%;
+    width: 46%;
+    height: 84%;
+    border-radius: 16px;
+    background: var(--fld-back);
+    transform: rotate(-3deg);
+    transform-origin: 50% 100%;
+  }
+
+  /* The stamp. Perforations are four masks intersected: each layer is opaque
+     everywhere but the holes along its own edge, so the intersection is the
+     sheet minus every hole. */
+  .wf__stamp {
+    --r: 6px;
+    --step: 19px;
+
+    position: absolute;
+    left: 8%;
+    right: 1%;
+    top: 0;
+    padding: 14px 14px 12px;
+    background: #fff;
+    filter: drop-shadow(0 16px 26px rgba(12, 20, 45, 0.26));
+    transition:
+      transform 0.55s cubic-bezier(0.2, 0.9, 0.25, 1),
+      filter 0.55s cubic-bezier(0.2, 0.9, 0.25, 1);
+
+    -webkit-mask:
+      radial-gradient(circle var(--r) at 50% 0, #0000 98%, #000) 0 0 / var(--step) 100% repeat-x,
+      radial-gradient(circle var(--r) at 50% 100%, #0000 98%, #000) 0 0 / var(--step) 100% repeat-x,
+      radial-gradient(circle var(--r) at 0 50%, #0000 98%, #000) 0 0 / 100% var(--step) repeat-y,
+      radial-gradient(circle var(--r) at 100% 50%, #0000 98%, #000) 0 0 / 100% var(--step) repeat-y;
+    -webkit-mask-composite: source-in;
+    mask:
+      radial-gradient(circle var(--r) at 50% 0, #0000 98%, #000) 0 0 / var(--step) 100% repeat-x,
+      radial-gradient(circle var(--r) at 50% 100%, #0000 98%, #000) 0 0 / var(--step) 100% repeat-x,
+      radial-gradient(circle var(--r) at 0 50%, #0000 98%, #000) 0 0 / 100% var(--step) repeat-y,
+      radial-gradient(circle var(--r) at 100% 50%, #0000 98%, #000) 0 0 / 100% var(--step) repeat-y;
+    mask-composite: intersect;
+  }
+  .wf__frank {
+    margin: 0 0 10px;
+    max-width: 17ch;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: clamp(12px, 1.02vw, 14.5px);
+    line-height: 1.22;
+    letter-spacing: -0.2px;
+    color: #0b0d12;
+  }
+
+  /* The frame — fixed 16:9 so the still and the clip share one box. Stills
+     crop from the top: the top of a screen is the part that identifies it. */
+  .wf__media {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: 3px;
+    background: #e8eaf0;
+  }
+  .wf__media img,
+  .wf__vid {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top center;
+  }
+  .wf__vid {
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+  .wf__play,
+  .wf__dur {
+    position: absolute;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .wf__play {
+    left: 50%;
+    top: 50%;
+    width: 48px;
+    transform: translate(-50%, -50%);
+    color: rgba(255, 255, 255, 0.94);
+    filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.45));
+  }
+  /* Top-right, not bottom: the folder still covers the bottom of the frame
+     even with the stamp floated, and a runtime you cannot read is a rectangle. */
+  .wf__dur {
+    top: 9px;
+    right: 9px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(8, 9, 12, 0.62);
+    font-family: 'Inter', sans-serif;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The front. `backdrop-filter` is the whole trick — the artwork behind it
+     survives as a bloom of its own colour, which is what makes a flat panel
+     read as translucent rather than as a hole. */
+  .wf__front {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 52%;
+    z-index: 3;
+    display: flex;
+    align-items: flex-end;
+    padding: 0 7%;
+    border-radius: 18px 58px 22px 22px;
+    background: var(--fld);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    backdrop-filter: blur(18px) saturate(160%);
+    box-shadow:
+      0 1px 0 var(--fld-edge) inset,
+      0 26px 46px -26px rgba(12, 20, 45, 0.5);
+    transform-origin: 50% 100%;
+    transition:
+      transform 0.55s cubic-bezier(0.2, 0.9, 0.25, 1),
+      box-shadow 0.55s cubic-bezier(0.2, 0.9, 0.25, 1);
+  }
+  .wf__label {
+    margin: 0 0 clamp(14px, 2.2vw, 28px);
+    font-family: 'Inter', sans-serif;
+    color: var(--fld-ink);
+  }
+  .wf__label b {
+    display: block;
+    font-size: clamp(12.5px, 1.02vw, 14.5px);
+    font-weight: 600;
+  }
+  .wf__label span {
+    display: block;
+    margin-top: 3px;
+    font-size: 12.5px;
+    color: var(--fld-sub);
+  }
+  .wf__seal {
+    position: absolute;
+    right: 6%;
+    bottom: 15%;
+    width: clamp(66px, 7vw, 88px);
+    color: var(--fld-seal);
+  }
+  .wf__sealRing {
+    font-family: 'Inter', sans-serif;
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 1.1px;
+    fill: currentColor;
+    text-anchor: middle;
+  }
+  .wf__sealWord {
+    font-family: 'Caveat', cursive;
+    font-size: 26px;
+    fill: currentColor;
+  }
+
+  /* ---- open ----
+     Hovering anywhere on the row opens it; requiring the pointer to find the
+     folder makes the affordance the reader's problem.
+
+     The backing sheet holds still. The stamp carrying the image or the clip
+     lifts out, and the front panel tips forward and drops a little — the two
+     together read as a folder being opened toward you rather than as a pile
+     of things all sliding at once. */
+  .wf:hover .wf__stamp {
+    transform: translateY(-27%) rotate(-1.1deg) scale(1.02);
+    filter: drop-shadow(0 32px 44px rgba(12, 20, 45, 0.4));
+  }
+  /* Hinged at its base, so the lip falls toward the reader instead of the
+     whole panel sliding down the card. */
+  .wf:hover .wf__front {
+    transform: perspective(900px) rotateX(-5deg) translateY(4%);
+    box-shadow:
+      0 1px 0 var(--fld-edge) inset,
+      0 34px 54px -26px rgba(12, 20, 45, 0.55);
+  }
+  .wf:hover .wf__vid,
+  .wf:hover .wf__play,
+  .wf:hover .wf__dur { opacity: 1; }
+
+  /* ---- narrow ---- */
+  @media (max-width: 1080px) {
+    .wf {
+      grid-template-columns: minmax(240px, 1fr) minmax(0, 350px);
+      gap: clamp(20px, 3vw, 40px);
+    }
+  }
+  @media (max-width: 760px) {
+    .wf { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+    .wf__folder { max-width: 420px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wf__stamp,
+    .wf__front { transition: none; }
+  }
+</style>
+
+<script>
+  /* Clips stay off the wire until someone points at a row (`preload="none"`),
+     and the runtime label is read from the file's own metadata rather than
+     typed in, so the number on screen is never invented. */
+  const mmss = (s: number) =>
+    `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+  document.querySelectorAll<HTMLElement>('.wf').forEach((row) => {
+    const vid = row.querySelector<HTMLVideoElement>('.wf__vid');
+    if (!vid) return;
+    const dur = row.querySelector<HTMLElement>('.wf__dur');
+
+    vid.addEventListener('loadedmetadata', () => {
+      if (dur && Number.isFinite(vid.duration)) dur.textContent = mmss(vid.duration);
+    });
+
+    row.addEventListener('mouseenter', () => {
+      /* Muted autoplay can still be refused — data saver, reduced motion, a
+         browser that simply declines. The still is already the fallback. */
+      vid.play().catch(() => {});
+    });
+
+    row.addEventListener('mouseleave', () => {
+      vid.pause();
+      vid.currentTime = 0;
+    });
+  });
+</script>

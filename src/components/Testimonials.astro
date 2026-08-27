@@ -1,0 +1,109 @@
+---
+/* Testimonials as notes pinned to a board.
+ *
+ * The conceit only works if the imperfections are irregular — evenly rotated
+ * cards read as a carousel, not as paper someone stuck up. So each note gets
+ * its own tilt, its own vertical offset and its own doodle, assigned by index
+ * rather than randomly, so the arrangement is stable between builds.
+ *
+ * The headshot is treated as a photo clipped to the note rather than an avatar
+ * in a row: rotated against the card, white border, sitting over the edge.
+ */
+interface Quote {
+  name: string;
+  role: string;
+  company: string;
+  href?: string;
+  avatar?: string;
+  quote: string;
+}
+
+interface Props {
+  quotes: Quote[];
+  email?: string;
+}
+
+const { quotes, email = 'designs.bhupesh@gmail.com' } = Astro.props;
+
+/* Four pen marks, cycled — the kind of thing you scratch in a margin, not
+   emoji. Drawn rather than characters so they take the ink colour. */
+const marks = ['underline', 'check', 'arrow', 'asterisk'] as const;
+---
+
+<section class="notes" id="testimonials">
+  <div class="notes__wrap">
+    <div class="notes__head">
+      <h2 class="work__title">Notes from people I&rsquo;ve worked with</h2>
+    </div>
+
+    <ul class="notes__board">
+      {
+        quotes.map((q, i) => (
+          <li class={`note note--${i % 4}`}>
+            <blockquote class="note__text">{q.quote}</blockquote>
+
+            <div class="note__sign">
+              {q.avatar && (
+                <img
+                  class="note__photo"
+                  src={q.avatar}
+                  alt=""
+                  width="44"
+                  height="44"
+                  loading="lazy"
+                  decoding="async"
+                />
+              )}
+              <div class="note__who">
+                {q.href ? (
+                  <a class="note__name" href={q.href} target="_blank" rel="noopener noreferrer">
+                    &mdash; {q.name}
+                    <svg class="note__out" viewBox="0 0 12 12" aria-hidden="true">
+                      <path
+                        d="M4.2 2h5.8v5.8M10 2 2.6 9.4"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                    <span class="sr">on LinkedIn</span>
+                  </a>
+                ) : (
+                  <span class="note__name">&mdash; {q.name}</span>
+                )}
+                <span class="note__role">{q.role ? `${q.role}\u00A0· ${q.company}` : q.company}</span>
+              </div>
+                <svg class="note__mark" viewBox="0 0 34 20" aria-hidden="true">
+                {marks[i % 4] === 'underline' && (
+                  <g>
+                    <path d="M2 12c7-3 15-4 30-5" />
+                    <path d="M4 16c8-2.5 14-3.2 26-3.8" />
+                  </g>
+                )}
+                {marks[i % 4] === 'check' && <path d="M3 11.5 11 18 31 3" />}
+                {marks[i % 4] === 'arrow' && (
+                  <g>
+                    <path d="M2 16 30 5" />
+                    <path d="M22 3.5 30.5 4.8 29 13" />
+                  </g>
+                )}
+                {marks[i % 4] === 'asterisk' && (
+                  <g>
+                    <path d="M17 2v16M9.5 5.5l15 9M24.5 5.5l-15 9" />
+                  </g>
+                )}
+              </svg>
+            </div>
+
+          </li>
+        ))
+      }
+    </ul>
+
+    <p class="notes__foot">
+      Worked with me? <a href={`mailto:${email}?subject=A%20note%20for%20your%20portfolio`}>Leave a note</a>
+    </p>
+  </div>
+</section>

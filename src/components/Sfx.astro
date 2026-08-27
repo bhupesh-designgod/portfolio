@@ -1,0 +1,229 @@
+---
+/* Interface sounds — entirely synthesised, no audio files.
+ *
+ * The brief is soft and ambient, matching a site built out of gradients,
+ * glass and water. So every cue is air first and body second: filtered noise
+ * with a gentle attack, optionally sitting on a low-Q resonance. Nothing has a
+ * hard transient, nothing is a click, and only the reply carries any pitch.
+ *
+ * Levels were derived by simulating the whole filter chain offline and solving
+ * for a common peak, rather than guessed — a high-Q filter fed a short impulse
+ * passes far less energy than its gain suggests, and guessing once left the
+ * panel cue 47dB down and inaudible.
+ *
+ * Nothing sounds before the visitor has interacted, and nothing plays at all
+ * on touch devices.
+ */
+---
+
+<script>
+  /* The level the palette was balanced at. */
+  const MASTER = 0.6;
+
+  /* Solved offline so every cue peaks at the same place. */
+  const L = { tap: 1.7, open: 0.35, close: 0.44, send: 0.32, reply: 0.25, hover: 0.17 };
+
+  const fine = window.matchMedia('(pointer: fine)').matches;
+
+  let ctx: AudioContext | null = null;
+  let master: GainNode | null = null;
+
+  if (fine) {
+    const AC = window.AudioContext ?? (window as any).webkitAudioContext;
+    if (AC) {
+      ctx = new AC();
+      master = ctx.createGain();
+      master.gain.value = MASTER;
+      master.connect(ctx.destination);
+    }
+  }
+
+  /* Schedule the sound now and resume in parallel — never wait for resume to
+     resolve first.
+     A page always loads with the context suspended, so the click that resumes
+     it is often the same click that starts a navigation. Waiting on the promise
+     meant it settled after the page had begun tearing down, and the cue was
+     lost: every first click on a page was silent, which is nearly every nav
+     click. A suspended context has a frozen currentTime, so a node started
+     against it simply plays the instant it resumes. */
+  function run(fn: () => void) {
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    fn();
+  }
+
+  const jitter = (v: number, amt = 0.04) => v * (1 + (Math.random() * 2 - 1) * amt);
+
+  function noiseBuffer(c: AudioContext, dur: number) {
+    const frames = Math.max(1, Math.floor(c.sampleRate * dur));
+    const buf = c.createBuffer(1, frames, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < frames; i++) d[i] = Math.random() * 2 - 1;
+    return buf;
+  }
+
+  /* Air arriving and leaving. A raised-cosine attack rather than a ramp, so
+     there is no edge at the start — this is the whole reason it reads as
+     ambient instead of as a click. */
+  function swell(dur: number, from: number, to: number, q: number, attack: number, level: number) {
+    const c = ctx!;
+    const t = c.currentTime;
+    const src = c.createBufferSource();
+    src.buffer = noiseBuffer(c, dur);
+
+    const filt = c.createBiquadFilter();
+    filt.type = 'lowpass';
+    filt.Q.value = q;
+    filt.frequency.setValueAtTime(jitter(from), t);
+    filt.frequency.exponentialRampToValueAtTime(jitter(to), t + dur);
+
+    const env = c.createGain();
+    const peak = t + dur * attack;
+    env.gain.setValueAtTime(0.0001, t);
+    // setTargetAtTime gives an exponential approach — smoother in and out than
+    // a linear ramp, which is audible as a corner at this length.
+    env.gain.setTargetAtTime(level, t, (dur * attack) / 3);
+    env.gain.setTargetAtTime(0.0001, peak, (dur * (1 - attack)) / 3.5);
+
+    src.connect(filt).connect(env).connect(master!);
+    src.start(t);
+    src.stop(t + dur + 0.03);
+  }
+
+  /* A soft body under the air. Low Q on purpose — high Q rings like a bell,
+     which is the opposite of ambient. */
+  function ring(
+    modes: { f: number; q: number; g: number }[],
+    decay: number,
+    level: number,
+    attack = 0.004,
+    excite = 0.006,
+  ) {
+    const c = ctx!;
+    const t = c.currentTime;
+    const src = c.createBufferSource();
+    src.buffer = noiseBuffer(c, excite);
+
+    for (const m of modes) {
+      const bp = c.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = jitter(m.f, 0.02);
+      bp.Q.value = m.q;
+
+      const env = c.createGain();
+      env.gain.setValueAtTime(0.0001, t);
+      env.gain.linearRampToValueAtTime(m.g * level, t + attack);
+      env.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+
+      src.connect(bp).connect(env).connect(master!);
+    }
+    src.start(t);
+    src.stop(t + decay + 0.05);
+  }
+
+  const sfx = {
+    /* Any button or link. Dry and dense rather than airy — a click is the one
+       cue that should be precise, and the ambient treatment used everywhere
+       else is exactly what makes a click feel cheap.
+       Three tight modes off a 3ms impulse: 600Hz for weight, 1600Hz for the
+       tock, 3000Hz for the edge of contact. Measured at ~9ms of perceived
+       duration, with no tail at all. */
+    tap: () =>
+      run(() => {
+        ring(
+          [{ f: 1600, q: 5, g: 0.55 }, { f: 600, q: 3, g: 0.3 }, { f: 3000, q: 7, g: 0.12 }],
+          0.06,
+          L.tap,
+          0.0004,
+          0.003,
+        );
+      }),
+
+    /* Something opening: air rising, a low body underneath it. */
+    open: () =>
+      run(() => {
+        swell(0.2, 320, 1700, 0.8, 0.42, L.open);
+        ring([{ f: 190, q: 4, g: 0.5 }, { f: 430, q: 3, g: 0.18 }], 0.13, L.open);
+      }),
+
+    /* And closing: the same gesture inverted and darker. */
+    close: () =>
+      run(() => {
+        swell(0.17, 1500, 300, 0.8, 0.3, L.close);
+        ring([{ f: 160, q: 4, g: 0.45 }, { f: 360, q: 3, g: 0.15 }], 0.11, L.close);
+      }),
+
+    /* Leaving: air alone, rising. No body — nothing was touched. */
+    send: () => run(() => swell(0.11, 600, 2300, 0.7, 0.35, L.send)),
+
+    /* The only cue with pitch, because it is genuinely a notification. Soft
+       attack and a long tail so it arrives rather than announces. */
+    reply: () =>
+      run(() => {
+        ring([{ f: 528, q: 11, g: 0.55 }, { f: 792, q: 9, g: 0.2 }, { f: 1584, q: 7, g: 0.06 }], 0.45, L.reply, 0.012);
+        swell(0.09, 900, 2400, 0.8, 0.4, L.reply * 0.5);
+      }),
+
+    /* Postcards. The soft airy contact that used to be on buttons — it suits
+       a sheet being lifted far better than it suited a click, and it stays
+       well under everything else because hover is the one trigger nobody
+       chooses to make. */
+    hover: () =>
+      run(() => {
+        swell(0.075, 1500, 420, 0.9, 0.18, L.hover);
+        ring([{ f: 300, q: 3, g: 0.6 }, { f: 640, q: 2.4, g: 0.22 }], 0.085, L.hover);
+      }),
+  };
+
+  if (fine) {
+    /* Capture phase, so the context starts resuming before any cue handler
+       runs. Buys the audio a few extra milliseconds against a navigation. */
+    document.addEventListener(
+      'pointerdown',
+      () => {
+        if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+      },
+      { capture: true, passive: true },
+    );
+
+    /* On pointerdown, not click: a nav link starts unloading the page the
+       moment the click lands and takes the audio context with it. */
+    document.addEventListener(
+      'pointerdown',
+      (e) => {
+        if ((e as PointerEvent).button !== 0) return;
+        const el = e.target as Element;
+        if (!el?.closest) return;
+        // These own a more specific cue, so they must not also tap.
+        if (el.closest('[data-ai-blob], [data-send], [data-chip]')) return;
+        if (el.closest('a[href], button, [role="button"]')) sfx.tap();
+      },
+      { passive: true },
+    );
+
+    /* pointerenter doesn't bubble, so delegate and fire only when the note
+       under the pointer actually changes. */
+    let lastNote: Element | null = null;
+    document.addEventListener(
+      'pointerover',
+      (e) => {
+        const note = (e.target as Element)?.closest?.('.note');
+        if (note === lastNote) return;
+        lastNote = note;
+        if (note) sfx.hover();
+      },
+      { passive: true },
+    );
+
+    /* Driven by the events the assistant emits — its mood attribute is not
+       written while a passing expression is playing, so it can't be used as a
+       lifecycle signal. */
+    const ai = document.querySelector('[data-ai]');
+    if (ai) {
+      ai.addEventListener('ai:open', sfx.open);
+      ai.addEventListener('ai:close', sfx.close);
+      ai.addEventListener('ai:send', sfx.send);
+      ai.addEventListener('ai:reply', sfx.reply);
+    }
+  }
+</script>

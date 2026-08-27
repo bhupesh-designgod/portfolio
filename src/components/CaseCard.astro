@@ -1,0 +1,73 @@
+---
+interface Props {
+  href: string;
+  client: string;
+  title: string;
+  summary: string;
+  tags?: string[];
+  tint?: string;
+  logoStyle?: 'google' | 'plain';
+  shots?: string[];
+  /* Read by the assistant, which dresses for whichever card you're on. */
+  costume?: string;
+}
+
+const {
+  href,
+  client,
+  title,
+  summary,
+  tags = [],
+  tint = '#e3ecfd',
+  logoStyle = 'plain',
+  shots = [],
+  costume,
+} = Astro.props;
+
+/* Six fixed collage slots. The first two are polaroid-framed, matching the
+   reference layout. Slots without a photo fall back to a soft placeholder. */
+const SLOTS = ['s1', 's2', 's3', 's4', 's5', 's6'];
+const POLAROID = new Set(['s1', 's2']);
+---
+
+<a class="case" href={href} style={`--tint: ${tint}`} data-costume={costume}>
+  <div class="case__media">
+    <div class="collage">
+      {
+        SLOTS.map((slot, i) => (
+          <div
+            class:list={['shot', slot, { 'shot--polaroid': POLAROID.has(slot) }]}
+            style={shots[i] ? `--img: url('${shots[i]}')` : undefined}
+          >
+            <i />
+          </div>
+        ))
+      }
+    </div>
+  </div>
+
+  <div class="case__body">
+    {
+      logoStyle === 'google' ? (
+        <p class="case__logo logo-google" aria-label={client}>
+          {client.split('').map((ch) => (
+            <span>{ch}</span>
+          ))}
+        </p>
+      ) : (
+        <p class="case__logo">{client}</p>
+      )
+    }
+    <h3 class="case__title">{title}</h3>
+    <p class="case__desc">{summary}</p>
+    {
+      tags.length > 0 && (
+        <ul class="case__tags">
+          {tags.map((tag) => (
+            <li>{tag}</li>
+          ))}
+        </ul>
+      )
+    }
+  </div>
+</a>

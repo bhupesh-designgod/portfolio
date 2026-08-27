@@ -1,0 +1,18 @@
+[
+  {
+    "id": "upes",
+    "org": "UPES",
+    "role": "M.Des Product Design",
+    "dates": "Jul 2024 - Jul 2026",
+    "logoBg": "#0b4da2",
+    "order": 1
+  },
+  {
+    "id": "chitkara",
+    "org": "Chitkara University",
+    "role": "B.Des Design",
+    "dates": "Jul 2020 - Jun 2024",
+    "logoBg": "#b4232a",
+    "order": 2
+  }
+]

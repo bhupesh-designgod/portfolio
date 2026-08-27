@@ -1,0 +1,73 @@
+---
+interface Row {
+  org: string;
+  role: string;
+  dates: string;
+  label?: string;
+  logo?: string;
+  logoBg: string;
+  href?: string;
+}
+
+interface Props {
+  heading: string;
+  rows: Row[];
+  /* Optional line under the heading, for context the rows can't carry */
+  note?: string;
+}
+
+const { heading, rows, note } = Astro.props;
+
+/* Pick a readable monogram colour for whatever tile background is set. */
+function monogramInk(bg: string): string {
+  const hex = bg.replace('#', '');
+  const full =
+    hex.length === 3
+      ? hex.split('').map((c) => c + c).join('')
+      : hex;
+  if (full.length !== 6) return '#111318';
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16) / 255);
+  // Relative luminance (WCAG)
+  const lin = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  return L > 0.45 ? '#111318' : '#ffffff';
+}
+---
+
+<div class="resume__group">
+  <h3 class="resume__heading">{heading}</h3>
+  {note && <p class="resume__note">{note}</p>}
+  <ul class="resume__list">
+    {
+      rows.map((row) => {
+        const Tag = row.href ? 'a' : 'div';
+        return (
+          <li class="resume__row">
+            <Tag
+              class="resume__inner"
+              {...(row.href ? { href: row.href, target: '_blank', rel: 'noopener' } : {})}
+            >
+              <span class="resume__org">
+                <span class="resume__logo" style={`background: ${row.logoBg}`}>
+                  {row.logo ? (
+                    <img src={row.logo} alt="" />
+                  ) : (
+                    <span class="resume__monogram" style={`color: ${monogramInk(row.logoBg)}`}>
+                      {row.org.charAt(0)}
+                    </span>
+                  )}
+                </span>
+                <span class="resume__name">{row.org}</span>
+              </span>
+              <span class="resume__role">
+                {row.role}
+                {row.label && <span class="resume__chip">{row.label}</span>}
+              </span>
+              <span class="resume__dates">{row.dates}</span>
+            </Tag>
+          </li>
+        );
+      })
+    }
+  </ul>
+</div>

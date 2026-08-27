@@ -1,0 +1,58 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import Hero from '../components/Hero.astro';
+import WorkFolder from '../components/WorkFolder.astro';
+import ResumeList from '../components/ResumeList.astro';
+import Testimonials from '../components/Testimonials.astro';
+
+const projects = (await getCollection('work', ({ data }) => !data.draft)).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+
+const byOrder = (a: { data: { order: number } }, b: { data: { order: number } }) =>
+  a.data.order - b.data.order;
+
+const experience = (await getCollection('experience')).sort(byOrder).map((e) => e.data);
+const education = (await getCollection('education')).sort(byOrder).map((e) => e.data);
+const testimonials = (await getCollection('testimonials')).sort(byOrder).map((e) => e.data);
+---
+
+<Base title="Bhupesh Parmar — Product Designer">
+  <Hero />
+
+  <section class="work" id="work">
+    <div class="work__head">
+      <h2 class="work__title">Things I&rsquo;ve designed</h2>
+    </div>
+    <div class="work__grid">
+      {
+        projects.map((p) => (
+          <WorkFolder
+            href={`/work/${p.id}`}
+            client={p.data.client}
+            title={p.data.title}
+            summary={p.data.summary}
+            frank={p.data.heroTitle ?? p.data.title}
+            tags={p.data.tags}
+            accent={p.data.accent}
+            tone={p.data.folderTone}
+            art={p.data.folderArt ?? p.data.cover ?? p.data.shots[0]}
+            artAlt={p.data.folderArtAlt ?? p.data.coverAlt}
+            clip={p.data.folderClip}
+            stamps={String((p.body?.match(/<img/g) ?? []).length).padStart(2, '0')}
+          />
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="resume" id="resume">
+    <div class="resume__wrap">
+      <ResumeList heading="Experience" rows={experience} />
+      <ResumeList heading="Education" rows={education} />
+    </div>
+  </section>
+
+  <Testimonials quotes={testimonials} />
+</Base>
