@@ -15,10 +15,10 @@ folderArtAlt: The TBS trainer dashboard, needs-you-today queue
 costume: fitness
 role: Product Designer
 timeline: May – July 2026
-cover: /assets/projects/tbs-dash/queue.png
+cover: /assets/projects/tbs-dash/hero-laptop.png
 coverAlt: >-
-  TBS trainer dashboard — the landing view, sorted by who needs the trainer
-  today
+  The TBS trainer dashboard sign-in on a laptop — a dark brand panel reading
+  "Every rep. Every meal. Every client." beside the sign-in form
 # 1.5 so this sits directly after the client app without renumbering the rest.
 order: 1.5
 ---
@@ -374,7 +374,7 @@ contact with a real week — a client travels, gets sick, has a wedding.
 One call per week, ten minutes, inside two fixed windows in the trainer's own
 timezone.
 
-<div class="k-compare k-wide">
+<div class="k-gal k-wide">
   <figure>
     <div class="k-mount">
       <div class="k-win">

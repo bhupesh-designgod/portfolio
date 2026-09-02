@@ -34,6 +34,21 @@ import { ASSISTANT } from '../lib/portfolio-context';
   <div class="ai__panel" data-panel hidden role="dialog" aria-modal="false" aria-label="Ask about this portfolio">
     <header class="ai__head">
       <p class="ai__title">Ask {ASSISTANT}</p>
+      {/* Enters voice mode. Hidden until the script confirms the browser can
+          actually speak, so nobody is offered a control that does nothing. */}
+      <button
+        type="button"
+        class="ai__voiceBtn"
+        data-voice-on
+        aria-label="Switch to voice mode"
+        hidden
+      >
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M3 10.5v-1M6.5 13.5v-7M10 16V4M13.5 13.5v-7M17 10.5v-1"
+            fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
+        </svg>
+        <span>Voice</span>
+      </button>
       <button type="button" class="ai__close" data-panel-close aria-label="Close">
         <svg viewBox="0 0 16 16" aria-hidden="true">
           <path d="M4.6 4.6 11.4 11.4M11.4 4.6 4.6 11.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
@@ -65,6 +80,39 @@ import { ASSISTANT } from '../lib/portfolio-context';
           <button type="button" data-chip>How to reach Bhupesh</button>
         </div>
       </div>
+    </div>
+
+    {/* Voice mode. Takes the transcript's place on screen while the log stays
+        mounted and keeps filling, so leaving the mode drops you back into a
+        conversation that carried on without interruption.
+
+        aria-hidden throughout: every word here is already in the log, which is
+        the live region. Announcing it twice — once as transcript, once as
+        subtitle — is worse than not announcing it at all. */}
+    <div class="ai__stage" data-stage hidden aria-hidden="true">
+      {/* A soft bloom with one white glyph at its centre. The glyph is the
+          state — dots while it works, a waveform while it talks — and the
+          bloom breathes with --amp, which the script drives from the audio.
+
+          No filter: blur anywhere. The softness is gradient falloff, the same
+          trick .hero__orb uses, because a blurred element this size would have
+          to be re-rasterised on every frame it moves. */}
+      <div class="ai__orb" data-orb style="--amp: 0">
+        <span class="ai__bloom"></span>
+        <span class="ai__dots"><i></i><i></i><i></i><i></i></span>
+        <span class="ai__wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      </div>
+
+      {/* The question, small, so you can see what is being answered. */}
+      <p class="ai__asked" data-asked></p>
+
+      {/* Subtitles. One utterance at a time — a whole answer at this size
+          would not fit, and the point of the mode is listening, not reading
+          ahead. Words light as they are spoken where the browser reports
+          boundaries. */}
+      <p class="ai__cap" data-cap></p>
+
+      <button type="button" class="ai__voiceOff" data-voice-off>Back to chat</button>
     </div>
 
     <form class="ai__form" data-form>
@@ -498,6 +546,12 @@ import { ASSISTANT } from '../lib/portfolio-context';
     }
 
     function close() {
+      /* Leaving voice mode on the way out, not just silencing it: the mode
+         holds the music paused, and a panel closed from voice mode would
+         otherwise keep it that way with nothing left on screen to explain
+         why. setVoiceMode stops the speech itself. */
+      if (voiceMode) setVoiceMode(false);
+      else stopSpeech();
       panel.hidden = true;
       root.dataset.state = 'idle';
       setBase('idle');
@@ -514,6 +568,359 @@ import { ASSISTANT } from '../lib/portfolio-context';
     document.addEventListener('pointerdown', (e) => {
       if (!panel.hidden && !root.contains(e.target as Node)) close();
     });
+
+    /* ---- voice mode ----
+       A separate mode, entered from the header and left from the stage. While
+       it is on, answers arrive as audio with subtitles instead of as a
+       transcript you read. Input stays typed — there is no microphone here, on
+       purpose: speech recognition in the browser means shipping the visitor's
+       audio to Google or Apple, which is not a thing to do quietly on someone
+       else's portfolio.
+
+       Speech is the operating system's own synthesiser. No key, no request, no
+       cost, and no audio leaves the machine. The trade is that the voice is
+       whatever the visitor's OS ships, which is good on macOS and iOS and
+       variable on Android. */
+    const voiceBtn = root.querySelector<HTMLElement>('[data-voice-on]')!;
+    const voiceOff = root.querySelector<HTMLElement>('[data-voice-off]')!;
+    const stage = root.querySelector<HTMLElement>('[data-stage]')!;
+    const cap = root.querySelector<HTMLElement>('[data-cap]')!;
+    const asked = root.querySelector<HTMLElement>('[data-asked]')!;
+    const synth = 'speechSynthesis' in window ? window.speechSynthesis : null;
+
+    let voiceMode = false;
+    let voice: SpeechSynthesisVoice | null = null;
+    let spokenUpTo = 0; // how much of the current answer has been queued
+    let speaking = 0; // utterances in flight; the orb pulses while > 0
+    let capWords: HTMLElement[] = [];
+
+    /* The rendered reply is a tiny markup subset (see renderReply below), and
+       every part of it reads badly out loud: asterisks get spelled, and a bare
+       path becomes "slash work slash t b s". */
+    const plain = (s: string) =>
+      s
+        .replace(/\*\*([^*\n]+)\*\*/g, '$1')
+        .replace(/^\s*[-*•]\s+/gm, '')
+        .replace(/\/[a-z0-9][a-z0-9/-]*/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    /* ---- amplitude ----
+       The orb reads one number, --amp in 0…1, and knows nothing about where it
+       comes from. speechSynthesis exposes no audio graph, so there is no real
+       waveform to sample; what it does give is a `boundary` event per word,
+       which is a genuine signal about the speech even if it is not amplitude.
+       Each word kicks the value to 1 and it decays, over a slow idle sway so
+       the thing still breathes between words. Swapping in a real AnalyserNode
+       later means replacing `kick()` and the idle term — nothing else, and no
+       CSS at all. */
+    const orb = root.querySelector<HTMLElement>('[data-orb]')!;
+    let amp = 0;
+    let ampPeak = 0;
+    let ampRaf = 0;
+
+    const ampLoop = () => {
+      let target: number;
+
+      if (analyser && scope && speaking) {
+        /* The real thing: RMS of the waveform this frame. Deviation from 128
+           because time-domain data is centred there, and ×3.4 because speech
+           at a comfortable listening level sits well below full scale — raw
+           RMS would leave the orb barely moving. */
+        analyser.getByteTimeDomainData(scope);
+        let sum = 0;
+        for (let i = 0; i < scope.length; i++) {
+          const d = (scope[i] - 128) / 128;
+          sum += d * d;
+        }
+        target = Math.min(1, Math.sqrt(sum / scope.length) * 3.4);
+      } else {
+        // Fallback voice: no audio graph, so word events and a slow sway.
+        ampPeak *= 0.9;
+        target = Math.max(ampPeak, speaking ? 0.2 + Math.sin(performance.now() / 240) * 0.07 : 0);
+      }
+
+      amp += (target - amp) * 0.22; // ease, so peaks arrive as swells not steps
+      orb.style.setProperty('--amp', amp.toFixed(3));
+
+      // Drives the subtitle highlight for hosted audio, which has no boundaries.
+      if (capMs) litUpTo(((performance.now() - capStart) / capMs) * capLen);
+
+      // Keep running past the last word so the fall to rest is animated too.
+      ampRaf = speaking || amp > 0.004 ? requestAnimationFrame(ampLoop) : 0;
+    };
+    const runAmp = () => {
+      if (!ampRaf) ampRaf = requestAnimationFrame(ampLoop);
+    };
+    const kick = () => {
+      ampPeak = 1;
+      runAmp();
+    };
+
+    const stopSpeech = () => {
+      /* Bumping the generation orphans every fetch and every queued line at
+         once — cheaper and more certain than trying to unwind the chain. */
+      generation += 1;
+      chain = Promise.resolve();
+      try {
+        live?.stop();
+      } catch {
+        /* already ended */
+      }
+      live = null;
+      capMs = 0;
+      speaking = 0;
+      root.dataset.speaking = 'false';
+      ampPeak = 0;
+      runAmp(); // let it settle to rest rather than snapping
+      synth?.cancel();
+    };
+
+    /* Subtitles are rebuilt per utterance, one word per span, each tagged with
+       where it starts in the spoken string. That offset is the only thing the
+       boundary event gives us to sync against. */
+    function setCaption(text: string) {
+      cap.textContent = '';
+      capWords = [];
+      let at = 0;
+      for (const part of text.split(/(\s+)/)) {
+        if (!part) continue;
+        if (/^\s+$/.test(part)) {
+          cap.appendChild(document.createTextNode(part));
+        } else {
+          const w = document.createElement('span');
+          w.textContent = part;
+          w.dataset.at = String(at);
+          cap.appendChild(w);
+          capWords.push(w);
+        }
+        at += part.length;
+      }
+    }
+
+    /* Everything up to the word being spoken is lit. */
+    const litUpTo = (charIndex: number) => {
+      for (const w of capWords) w.dataset.on = String(Number(w.dataset.at) <= charIndex);
+    };
+
+    /* ---- hosted voice ----
+       /api/speak returns one sentence as audio. It is played through Web Audio
+       rather than an <audio> element for one reason that matters: an
+       AnalyserNode on the graph gives the orb the real waveform, so it moves
+       with the voice instead of guessing from word events.
+
+       The route answers 501 when no key is configured, which is the signal to
+       fall back to the browser's own synthesiser for the rest of the session —
+       a site deployed without a key still talks, just not as well. */
+    let audioCtx: AudioContext | null = null;
+    let analyser: AnalyserNode | null = null;
+    let scope: Uint8Array | null = null;
+    let hosted = true; // until the route says otherwise
+    let chain: Promise<void> = Promise.resolve();
+    let generation = 0; // bumped on stop; anything older is discarded
+    let live: AudioBufferSourceNode | null = null;
+
+    // Caption timing for hosted audio, which reports no word boundaries.
+    let capStart = 0;
+    let capMs = 0;
+    let capLen = 0;
+
+    const openAudio = () => {
+      if (audioCtx) return audioCtx;
+      const Ctor = window.AudioContext ?? (window as any).webkitAudioContext;
+      if (!Ctor) return null;
+      audioCtx = new Ctor();
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.75;
+      scope = new Uint8Array(analyser.fftSize);
+      analyser.connect(audioCtx.destination);
+      return audioCtx;
+    };
+
+    async function fetchLine(text: string): Promise<AudioBuffer | null> {
+      const ctx = openAudio();
+      if (!ctx) return null;
+      try {
+        const res = await fetch('/api/speak', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+        if (!res.ok) {
+          // 501 is "no key". Anything else is a fault. Both mean: stop asking.
+          hosted = false;
+          return null;
+        }
+        return await ctx.decodeAudioData(await res.arrayBuffer());
+      } catch {
+        hosted = false;
+        return null;
+      }
+    }
+
+    function playLine(buf: AudioBuffer, text: string) {
+      return new Promise<void>((resolve) => {
+        const ctx = openAudio();
+        if (!ctx || !analyser) return resolve();
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.connect(analyser);
+        live = src;
+
+        speaking += 1;
+        root.dataset.speaking = 'true';
+        setCaption(text);
+        /* No boundary events from a sound file, so the highlight is driven off
+           the clock instead: the line's own duration spread across its
+           characters. Linear is an approximation, but a steadier one than
+           `boundary` ever was — and it behaves the same in every browser,
+           which `boundary` never did. */
+        capStart = performance.now();
+        capMs = buf.duration * 1000;
+        capLen = text.length;
+        runAmp();
+
+        src.onended = () => {
+          if (live === src) live = null;
+          capMs = 0;
+          speaking = Math.max(0, speaking - 1);
+          if (!speaking) root.dataset.speaking = 'false';
+          resolve();
+        };
+        src.start();
+      });
+    }
+
+    /* Fetches run as soon as a sentence is ready — several at once — while
+       playback stays strictly in order on this chain. Waiting for one line to
+       finish before requesting the next would put the round trip into every
+       gap between sentences. */
+    function enqueueHosted(text: string) {
+      const gen = generation;
+      const pending = fetchLine(text);
+      chain = chain.then(async () => {
+        if (gen !== generation) return;
+        const buf = await pending;
+        if (gen !== generation) return;
+        if (!buf) return utterFallback(text); // the route gave up mid-answer
+        await playLine(buf, text);
+      });
+    }
+
+    /* The fallback voice: the operating system's own synthesiser. Used only
+       when /api/speak is unavailable. Not `say` — that name is taken by the
+       blob's speech-bubble copy above. */
+    const utterFallback = (text: string) => {
+      if (!synth || !text) return;
+      const u = new SpeechSynthesisUtterance(text);
+      if (voice) u.voice = voice;
+      u.rate = 1.02;
+
+      /* The caption swaps on start, not on queue: several utterances sit in
+         the synth queue at once, and showing the newest would run the
+         subtitles ahead of the voice. */
+      u.onstart = () => {
+        speaking += 1;
+        root.dataset.speaking = 'true';
+        setCaption(text);
+        runAmp();
+      };
+      u.onboundary = (e) => {
+        litUpTo(e.charIndex);
+        kick();
+      };
+      const settle = () => {
+        speaking = Math.max(0, speaking - 1);
+        if (!speaking) root.dataset.speaking = 'false';
+      };
+      u.onend = settle;
+      u.onerror = settle;
+
+      synth.speak(u);
+    };
+
+    /* Speaks each complete sentence as it arrives rather than waiting for the
+       whole answer, so the voice starts while the model is still writing. It
+       also sidesteps a long-standing Chrome bug that truncates any single
+       utterance running past roughly fifteen seconds, and it gives the
+       subtitles a natural unit to show one at a time. */
+    const SENTENCE = /[^.!?]+[.!?]+\s*/g;
+    const speakStream = (full: string, final = false) => {
+      if (!voiceMode) return;
+      const pending = full.slice(spokenUpTo);
+      let cut = 0;
+      let m: RegExpExecArray | null;
+      SENTENCE.lastIndex = 0;
+      while ((m = SENTENCE.exec(pending))) cut = m.index + m[0].length;
+      // On the last call take the remainder, sentence-final or not.
+      const chunk = final ? pending : pending.slice(0, cut);
+      const line = plain(chunk);
+      if (!line) return;
+      spokenUpTo += chunk.length;
+      /* One sentence per request keeps each one short enough to start playing
+         while the model is still writing the next. */
+      if (hosted) enqueueHosted(line);
+      else utterFallback(line);
+    };
+
+    function setVoiceMode(on: boolean) {
+      voiceMode = on;
+      root.dataset.mode = on ? 'voice' : '';
+      stage.hidden = !on;
+      voiceBtn.hidden = on;
+      /* Announced on document rather than called directly: the player is a
+         sibling component that may not be on the page at all, and this side of
+         it should not have to know. MusicBlob decides what to do about it. */
+      document.dispatchEvent(new CustomEvent('scout:voice', { detail: { on } }));
+      if (!on) {
+        stopSpeech();
+        cap.textContent = '';
+        asked.textContent = '';
+      }
+      input.focus();
+    }
+
+    /* Voice mode needs one of the two engines: Web Audio for the hosted voice,
+       or the synthesiser for the fallback. With neither there is nothing to
+       offer, and the button stays hidden. */
+    if (window.AudioContext || (window as any).webkitAudioContext || synth) {
+      voiceBtn.hidden = false;
+
+      if (synth) {
+        /* getVoices() returns an empty list on the first call in Chrome and
+           Safari — the list arrives later. Read it both times and never wait
+           on it: leaving `voice` null just means the platform default. */
+        const pickVoice = () => {
+          const en = synth.getVoices().filter((v) => v.lang.startsWith('en'));
+          if (!en.length) return;
+          voice = en.find((v) => v.localService && /samantha|daniel|karen/i.test(v.name))
+            ?? en.find((v) => v.localService)
+            ?? en[0];
+        };
+        pickVoice();
+        synth.addEventListener('voiceschanged', pickVoice);
+      }
+
+      voiceBtn.addEventListener('click', () => {
+        setVoiceMode(true);
+        /* Both engines are gesture-gated, and this click is the only gesture
+           voice mode gets — everything after it is driven by the stream.
+           Opening the context here is what stops browsers suspending the
+           audio graph; the silent utterance is the same unlock for iOS
+           Safari's synthesiser. */
+        openAudio()?.resume().catch(() => {});
+        if (synth) {
+          const prime = new SpeechSynthesisUtterance(' ');
+          prime.volume = 0;
+          synth.speak(prime);
+        }
+      });
+      voiceOff.addEventListener('click', () => setVoiceMode(false));
+
+      // Speech outlives the document otherwise — it keeps talking on the next page.
+      window.addEventListener('pagehide', stopSpeech);
+    }
 
     /* Each turn is avatar + label + bubble rather than a bare bubble. Colour
        and alignment alone tell you *that* the speaker changed; the label and
@@ -574,6 +981,17 @@ import { ASSISTANT } from '../lib/portfolio-context';
       out.append(...[0, 1, 2].map(() => document.createElement('i')));
       let acc = '';
 
+      // A new question cuts off the old answer mid-sentence, as it should.
+      stopSpeech();
+      spokenUpTo = 0;
+      if (voiceMode) {
+        asked.textContent = text;
+        // Held until the first utterance starts, so the subtitle never leads
+        // the voice. The orb carries the wait.
+        cap.textContent = '';
+        capWords = [];
+      }
+
       try {
         const res = await fetch('/api/chat', {
           method: 'POST',
@@ -612,11 +1030,14 @@ import { ASSISTANT } from '../lib/portfolio-context';
             acc += payload.text;
             delete out.dataset.pending;
             renderReply(out, acc);
+            speakStream(acc);
             log.scrollTop = log.scrollHeight;
           }
         }
 
         if (acc) {
+          // Flush whatever tail never ended in a full stop.
+          speakStream(acc, true);
           history.push({ role: 'assistant', content: acc });
           flash('excited', 2400); // it was just useful — let it show
           emit('ai:reply');
@@ -1055,6 +1476,220 @@ import { ASSISTANT } from '../lib/portfolio-context';
   .ai__close:hover { background: rgba(17, 19, 24, 0.13); }
   .ai__close svg { width: 12px; height: 12px; }
 
+  /* Entry to voice mode. A labelled pill rather than a bare icon: a mode
+     switch is a bigger promise than a toggle and should say what it is. */
+  .ai__voiceBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: auto;
+    margin-right: 6px;
+    padding: 5px 10px 5px 8px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(17, 19, 24, 0.06);
+    color: #14161c;
+    font-family: inherit;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: -0.1px;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+  .ai__voiceBtn:hover { background: rgba(0, 89, 255, 0.13); color: #0b46c9; }
+  .ai__voiceBtn:focus-visible { outline: 2px solid var(--blue-500, #0059ff); outline-offset: 2px; }
+  .ai__voiceBtn svg { width: 15px; height: 15px; }
+
+  /* ---------------- voice stage ----------------
+     Laid over the transcript, not swapped with it, so the log keeps filling
+     underneath and leaving the mode reveals a conversation that carried on. */
+  /* Takes the log's slot in the panel's flex column rather than being pinned
+     over it with offsets — the header grew when the Voice button landed in it,
+     and any hardcoded inset would have been wrong from that moment on. */
+  .ai__stage {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 20px 26px;
+    text-align: center;
+    animation: ai-stage-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  /* The UA's [hidden] rule loses to the class selector above. */
+  .ai__stage[hidden] { display: none; }
+  /* Hidden, not unmounted: the transcript keeps filling while you listen, so
+     leaving voice mode reveals a conversation that carried on. */
+  .ai[data-mode='voice'] .ai__log { display: none; }
+  @keyframes ai-stage-in {
+    from { opacity: 0; transform: scale(0.985); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* ---- the orb ----
+     --amp (0…1) is written by the script once per frame and is the only thing
+     that couples this to the voice. Everything here reads it; nothing here
+     knows where it came from, which is what lets a real audio analyser take
+     over from the synthetic one later without touching a line of CSS. */
+  /* ---- the orb ----
+     --amp (0…1) is written by the script once per frame from the audio graph,
+     and is the only thing coupling this to the voice. Everything here reads
+     it; nothing here knows where it came from. */
+  .ai__orb {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 150px;
+    height: 150px;
+    flex: 0 0 auto;
+  }
+
+  /* Concentric falloff rather than one gradient: each layer is a wider, fainter
+     circle, and the small overlaps between them are what give the edge its
+     depth instead of a flat fade. */
+  .ai__bloom {
+    position: absolute;
+    inset: -26%;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(48, 92, 255, 0.95) 0%, rgba(48, 92, 255, 0.72) 14%, rgba(48, 92, 255, 0) 36%),
+      radial-gradient(circle at 50% 50%, rgba(70, 110, 255, 0.42) 0%, rgba(70, 110, 255, 0) 50%),
+      radial-gradient(circle at 50% 50%, rgba(108, 142, 255, 0.24) 0%, rgba(108, 142, 255, 0) 64%),
+      radial-gradient(circle at 50% 50%, rgba(150, 178, 255, 0.14) 0%, rgba(150, 178, 255, 0) 78%),
+      radial-gradient(circle at 50% 50%, rgba(196, 214, 255, 0.09) 0%, rgba(196, 214, 255, 0) 92%);
+    /* Breathes slowly at rest, harder as the voice gets loud. */
+    transform: scale(calc(0.9 + var(--amp) * 0.18));
+    will-change: transform;
+    animation: ai-breathe 5.2s ease-in-out infinite alternate;
+  }
+  @keyframes ai-breathe {
+    from { opacity: 0.86; }
+    to   { opacity: 1; }
+  }
+
+  /* Both glyphs sit in the same cell and cross-fade, so the swap between
+     working and talking never moves anything. */
+  .ai__dots,
+  .ai__wave {
+    position: relative;
+    display: flex;
+    align-items: center;
+    grid-area: 1 / 1;
+    transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* ---- processing ---- */
+  .ai__dots { gap: 9px; }
+  .ai__dots i {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #fff;
+    animation: ai-dot 1.25s ease-in-out infinite;
+  }
+  .ai__dots i:nth-child(2) { animation-delay: 0.12s; }
+  .ai__dots i:nth-child(3) { animation-delay: 0.24s; }
+  .ai__dots i:nth-child(4) { animation-delay: 0.36s; }
+  @keyframes ai-dot {
+    0%, 100% { opacity: 0.45; transform: scale(0.78); }
+    40%      { opacity: 1;    transform: scale(1.12); }
+  }
+
+  /* ---- speaking ---- */
+  .ai__wave {
+    gap: 4px;
+    height: 34px;
+    /* The whole waveform scales with the measured loudness; the bars below
+       carry the per-bar movement. Two levels, so real amplitude reads as
+       volume and the animation only supplies texture. */
+    transform: scaleY(calc(0.34 + var(--amp) * 0.66));
+  }
+  .ai__wave i {
+    width: 4px;
+    height: 34px;
+    border-radius: 3px;
+    background: #fff;
+    transform: scaleY(0.3);
+    animation: ai-wave 0.82s ease-in-out infinite alternate;
+  }
+  /* Durations share no common factor, so the bars never fall into step. */
+  .ai__wave i:nth-child(1) { animation-duration: 0.79s; animation-delay: -0.10s; }
+  .ai__wave i:nth-child(2) { animation-duration: 1.13s; animation-delay: -0.42s; }
+  .ai__wave i:nth-child(3) { animation-duration: 0.63s; animation-delay: -0.19s; }
+  .ai__wave i:nth-child(4) { animation-duration: 0.97s; animation-delay: -0.58s; }
+  .ai__wave i:nth-child(5) { animation-duration: 0.71s; animation-delay: -0.31s; }
+  .ai__wave i:nth-child(6) { animation-duration: 1.07s; animation-delay: -0.07s; }
+  .ai__wave i:nth-child(7) { animation-duration: 0.86s; animation-delay: -0.49s; }
+  @keyframes ai-wave {
+    from { transform: scaleY(0.24); }
+    to   { transform: scaleY(1); }
+  }
+
+  /* Dots are the resting and working face; the waveform takes over the moment
+     audio is actually playing. */
+  .ai__wave { opacity: 0; transform: scale(0.7); }
+  .ai[data-speaking='true'] .ai__dots { opacity: 0; transform: scale(0.7); }
+  .ai[data-speaking='true'] .ai__wave {
+    opacity: 1;
+    transform: scaleY(calc(0.34 + var(--amp) * 0.66));
+  }
+
+  .ai__asked {
+    margin: 0;
+    max-width: 30ch;
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: #8b91a0;
+  }
+
+  /* One utterance at a time, set large enough to read from back in your chair
+     — the whole point of the mode is that you are not leaning in. */
+  .ai__cap {
+    margin: 0;
+    max-width: 34ch;
+    min-height: 3.4em;
+    font-size: 19px;
+    font-weight: 700;
+    line-height: 1.45;
+    letter-spacing: -0.2px;
+    color: #c3c8d4;
+  }
+  /* The per-word spans are styled in the is:global block below, not here:
+     scoped styles match on a data-astro-cid attribute that Astro stamps onto
+     template elements, and those spans are built at runtime by setCaption(),
+     so they never carry it. Same reason .turn__link lives down there. */
+
+  .ai__voiceOff {
+    margin-top: 2px;
+    padding: 7px 14px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(17, 19, 24, 0.06);
+    color: #4a5162;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+  .ai__voiceOff:hover { background: rgba(17, 19, 24, 0.12); color: #14161c; }
+  .ai__voiceOff:focus-visible { outline: 2px solid var(--blue-500, #0059ff); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ai__stage { animation: none; }
+    /* The lobes stop drifting, but --amp still moves the cluster: that is the
+       part carrying meaning (it is speaking), not decoration. */
+    /* The glyphs stop dancing, but --amp still scales the bloom and the
+       waveform: that is the part carrying meaning, not decoration. */
+    .ai__bloom,
+    .ai__dots i,
+    .ai__wave i { animation: none !important; }
+    .ai__wave i { transform: scaleY(0.62); }
+  }
+
   .ai__log {
     flex: 1;
     min-height: 0;
@@ -1344,6 +1979,14 @@ import { ASSISTANT } from '../lib/portfolio-context';
     border-bottom: 1px solid rgba(0, 89, 255, 0.32);
   }
   .turn__link:hover { border-bottom-color: var(--blue-500); }
+
+  /* Voice-mode subtitles. Global for the same reason as .turn__link above —
+     setCaption() builds one span per word at runtime, and runtime elements
+     never receive Astro's scoping attribute. Spoken words light; the rest
+     stay on the dim base colour set on .ai__cap, so the line reads as one
+     sentence with a moving edge rather than as two colours of text. */
+  .ai__cap span { transition: color 0.16s linear; }
+  .ai__cap span[data-on='true'] { color: #14161c; }
 
   .turn__msg[data-pending] {
     display: flex;

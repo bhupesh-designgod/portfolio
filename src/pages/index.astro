@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import Base from '../layouts/Base.astro';
 import Hero from '../components/Hero.astro';
 import WorkFolder from '../components/WorkFolder.astro';
+import HoverCue from '../components/HoverCue.astro';
 import ResumeList from '../components/ResumeList.astro';
 import Testimonials from '../components/Testimonials.astro';
 
@@ -55,4 +56,7 @@ const testimonials = (await getCollection('testimonials')).sort(byOrder).map((e)
   </section>
 
   <Testimonials quotes={testimonials} />
+
+  {/* One per page, shared by every [data-cue] target above. */}
+  <HoverCue />
 </Base>

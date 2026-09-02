@@ -3,34 +3,45 @@ import WaterSurface from './WaterSurface.astro';
 
 interface Props {
   name?: string;
-  tagline?: string;
   avatar?: string;
 }
-const {
-  name = 'BHUPESH PARMAR',
-  tagline = 'Product designer with around 1 year of professional experience and two design degrees',
-  avatar = '/assets/hero-portrait.png',
-} = Astro.props;
-
-/* "Hi, I'm BHUPESH PARMAR," shouts and wraps. The greeting wants a first name
-   in sentence case; the display face below carries the volume. */
-const first = name.trim().split(/\s+/)[0];
-const greeting = first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
-
+const { name = 'Bhupesh Parmar', avatar = '/assets/avatar.png' } = Astro.props;
 
 ---
 
 <!-- .hero-wrap is the scroll runway that drives the white panel's expansion -->
 <div class="hero-wrap" id="heroWrap">
   <section class="hero">
-    <!-- Layered gradient / texture / glass background -->
-    <div class="hero__bg" aria-hidden="true">
-      <div class="hero__blobs"></div>
-      <div class="hero__orb hero__orb--a"></div>
-      <div class="hero__orb hero__orb--b"></div>
-      <div class="hero__orb hero__orb--c"></div>
-      <div class="hero__burn"></div>
-      <div class="hero__glow"></div>
+    {/* Layered gradient / texture / glass background.
+        data-hero-tint marks this as the one surface the music player may
+        recolour. It is a deliberate opt-in rather than a class lookup: the
+        case study pages build their own dark, per-project accented field
+        (.cs-hero__bg) and must never be retinted by whatever is playing.
+        Not `data-mood` — AiBlob already owns that attribute, on every page. */}
+    <div class="hero__bg" data-hero-tint aria-hidden="true">
+      {/* The tinted layers, twice. `base` is what you see; `next` sits on top
+          at opacity 0 holding the incoming palette, and the music player
+          crossfades it in. Fading one stack over another is the only way to
+          change these colours smoothly — animating the colours themselves
+          means re-rasterising five gradients, a 160px blur and a color-burn
+          layer every frame, which janks. Opacity stays on the compositor.
+
+          Both copies are in the DOM from load so their drift animations run
+          from the same start time. A duplicate created on demand would begin
+          its 37–73s cycles out of phase, and the crossfade would ghost. */}
+      {(['base', 'next'] as const).map((role) => (
+        <div
+          class:list={['hero__tint', role === 'next' && 'hero__tint--next']}
+          data-tint={role}
+        >
+          <div class="hero__blobs"></div>
+          <div class="hero__orb hero__orb--a"></div>
+          <div class="hero__orb hero__orb--b"></div>
+          <div class="hero__orb hero__orb--c"></div>
+          <div class="hero__burn"></div>
+          <div class="hero__glow"></div>
+        </div>
+      ))}
       <WaterSurface class="hero__water" />
       <div class="hero__glass"></div>
       <div class="hero__grain"></div>
@@ -39,47 +50,40 @@ const greeting = first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
     <!-- White panel: floats as a rounded card, expands to full-bleed on scroll -->
     <div class="hero__panel" id="heroPanel">
       <div class="hero__content">
-        <div class="hero__row">
-          <div class="hero__copy">
-            <h1 class="hero__title">
-              <span class="hero__hi">Hi, I&rsquo;m {greeting},</span>
-              <span class="hero__claim">I design products that make sense.</span>
-            </h1>
-            <p class="hero__desc">{tagline}</p>
-
-            {/* Lenis is configured with `anchors: true`, so a plain hash link
-                eases down to the work list — no handler needed. */}
-            <a class="hero__cta" href="#work" data-cta>
-              <span class="hero__ctaLabel">See the work</span>
-              {/* Two arrows in a clipped slot. On hover the first leaves
-                  through the bottom while the second arrives from the top, so
-                  the gesture reads as "keep going down" rather than a wiggle. */}
-              <span class="hero__ctaArrows" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M12 4v14M6 12.5 12 18.5l6-6" fill="none" stroke="currentColor"
-                    stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-                <svg viewBox="0 0 24 24">
-                  <path d="M12 4v14M6 12.5 12 18.5l6-6" fill="none" stroke="currentColor"
-                    stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </span>
-            </a>
-
+        <div class="hero__stack">
+          <div class="hero__chip">
+            <img class="hero__ava" src={avatar} alt={`Portrait of ${name}`} width="400" height="400" />
+            <span class="hero__chipTxt">
+              <b class="hero__name">{name}</b>
+              <span class="hero__kind">Product Designer</span>
+            </span>
           </div>
 
-          {/* This export fades out at the bottom on its own, so nothing here
-              masks it. Layering a CSS gradient on top would fade an already
-              faded edge and leave him washed out rather than ended. */}
-          <figure class="hero__photo">
-            {/* Three soft forms drifting behind him. Border-radius morphing
-                rather than SVG paths: it animates on the compositor, needs no
-                geometry, and stays smooth at any size. */}
-            <span class="hero__aura" aria-hidden="true"><i></i><i></i><i></i></span>
-            <img src={avatar} alt={`Portrait of ${name}`} width="745" height="590" />
-          </figure>
-        </div>
+          {/* Written in sentence case and uppercased in CSS: Bebas Neue only
+              has caps, but the DOM should still read as a normal sentence for
+              screen readers and search. The two spans force the break — left
+              to itself the ampersand orphans onto line two. */}
+          <h1 class="hero__title">
+            <span>Designing for consumer &amp;</span>{' '}
+            <span>enterprise products</span>
+          </h1>
 
+          <p class="hero__sub">
+            Hi! My name is <b>Bhupesh</b>, with two design degrees and around a
+            year of <b>professional experience</b>.
+          </p>
+
+          <div class="hero__acts">
+            <a class="hero__btn" href="/about">
+              See my journey
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 12h13M12.5 6.5 19 12l-6.5 5.5" fill="none" stroke="currentColor"
+                  stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </a>
+            <a class="hero__ghost" href="#work">Skip to work</a>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -145,16 +149,4 @@ const greeting = first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
     update();
   }
 
-
-  /* The cursor-tracking highlight on the CTA. One listener, two custom
-     properties, no layout read — the values go straight to the element that
-     paints them. */
-  const cta = document.querySelector<HTMLElement>('[data-cta]');
-  if (cta && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
-    cta.addEventListener('pointermove', (e) => {
-      const r = cta.getBoundingClientRect();
-      cta.style.setProperty('--mx', `${e.clientX - r.left}px`);
-      cta.style.setProperty('--my', `${e.clientY - r.top}px`);
-    });
-  }
 </script>

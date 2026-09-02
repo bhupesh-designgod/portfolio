@@ -56,7 +56,55 @@ body {
 
 /* -- Background layers -- */
 .hero__bg { position: absolute; inset: 0; z-index: 0; }
-.hero__bg > * { position: absolute; inset: 0; }
+.hero__bg > *,
+.hero__tint > * { position: absolute; inset: 0; }
+
+/* The two tint stacks the music player crossfades between (see Hero.astro).
+   `isolation` is load-bearing, not tidiness: .hero__burn blends in color-burn
+   against whatever is behind it, and the overlay is already an isolated group
+   by virtue of its opacity. Without this the base stack would blend against a
+   different backdrop and the two copies would not match, so the crossfade
+   would drift in colour instead of holding still. */
+.hero__tint { isolation: isolate; }
+
+.hero__tint--next {
+  opacity: 0;
+  /* Only ever painted mid-fade — at rest the compositor skips it entirely. */
+  will-change: opacity;
+  transition: opacity 0.85s cubic-bezier(0.37, 0, 0.28, 1);
+}
+
+/* ---- mood: the hero's hue follows whatever is playing ----
+ * These eleven tokens are the hero's whole palette. Blue is the default and
+ * the resting state; MusicBlob.astro overwrites them inline with a flat hex
+ * palette while a track plays, and removes the inline values when it stops,
+ * which drops the page straight back to what is written here.
+ *
+ * The palettes are computed at build time and land as plain hex, on purpose.
+ * The first version derived them here with
+ *   oklch(from #0059ff l calc(c * var(--sat)) calc(h + var(--shift)))
+ * and transitioned the rotation. That meant re-substituting eleven custom
+ * properties and then re-rasterising five radial gradients, a 160px blur and
+ * a color-burn layer on every frame of the transition — it janked badly. The
+ * change is now one repaint on a keypress: a discrete action, so a discrete
+ * change reads as intent rather than as a dropped frame.
+ *
+ * Only [data-hero-tint] is ever written to, and only the homepage hero
+ * carries it — the case study fields are never touched.
+ */
+.hero__bg {
+  --m-hi: #74a5ff;
+  --m-mid: #0059ff;
+  --m-deep: #003dae;
+  --m-dark: #001845;
+  --m-glow: #392ffa;
+  --m-g1: #01113a;
+  --m-g2: #012a86;
+  --m-g3: #0146c9;
+  --m-orb-a: rgba(122, 170, 255, 0.8);
+  --m-orb-b: rgba(28, 86, 235, 0.75);
+  --m-orb-c: rgba(60, 120, 255, 0.55);
+}
 
 /* Soft blue blobs recreated from the Figma texture (blurred circles).
    Oversized by 20% on every side so the slow drift never exposes an edge. */
@@ -64,12 +112,15 @@ body {
   inset: -20%;
   animation: blobs-drift 73s ease-in-out infinite alternate;
   will-change: transform;
+  /* The zero stops are plain `transparent`: gradients interpolate with
+     premultiplied alpha, so it fades out to nothing rather than through grey,
+     and it costs one token per stop instead of two. */
   background:
-    radial-gradient(60% 55% at 74% 20%, var(--blue-300) 0%, rgba(116,165,255,0) 55%),
-    radial-gradient(70% 65% at 47% 92%, var(--blue-500) 0%, rgba(0,89,255,0) 55%),
-    radial-gradient(85% 80% at 47% 108%, var(--blue-700) 0%, rgba(0,61,174,0) 60%),
-    radial-gradient(120% 110% at 47% 130%, var(--blue-900) 0%, rgba(0,24,69,0) 70%),
-    linear-gradient(160deg, #01113a 0%, #012a86 45%, #0146c9 100%);
+    radial-gradient(60% 55% at 74% 20%, var(--m-hi) 0%, transparent 55%),
+    radial-gradient(70% 65% at 47% 92%, var(--m-mid) 0%, transparent 55%),
+    radial-gradient(85% 80% at 47% 108%, var(--m-deep) 0%, transparent 60%),
+    radial-gradient(120% 110% at 47% 130%, var(--m-dark) 0%, transparent 70%),
+    linear-gradient(160deg, var(--m-g1) 0%, var(--m-g2) 45%, var(--m-g3) 100%);
   filter: saturate(1.05);
 }
 @keyframes blobs-drift {
@@ -88,19 +139,19 @@ body {
 .hero__orb--a {
   left: -12%; top: -4%;
   width: 72vw; height: 72vw;
-  background: radial-gradient(circle, rgba(122,170,255,0.8) 0%, rgba(122,170,255,0) 66%);
+  background: radial-gradient(circle, var(--m-orb-a) 0%, transparent 66%);
   animation: orb-a 37s ease-in-out infinite alternate;
 }
 .hero__orb--b {
   right: -16%; bottom: -22%;
   width: 80vw; height: 80vw;
-  background: radial-gradient(circle, rgba(28,86,235,0.75) 0%, rgba(28,86,235,0) 64%);
+  background: radial-gradient(circle, var(--m-orb-b) 0%, transparent 64%);
   animation: orb-b 43s ease-in-out infinite alternate;
 }
 .hero__orb--c {
   left: 28%; top: 30%;
   width: 58vw; height: 58vw;
-  background: radial-gradient(circle, rgba(60,120,255,0.55) 0%, rgba(60,120,255,0) 62%);
+  background: radial-gradient(circle, var(--m-orb-c) 0%, transparent 62%);
   animation: orb-c 59s ease-in-out infinite alternate;
 }
 
@@ -119,9 +170,10 @@ body {
   to   { transform: translate3d(12%, -9%, 0) scale(0.9); }
 }
 
-/* Color-burn gradient overlay (Figma: from #0059ff, via white 52%, to #73a4ff) */
+/* Color-burn gradient overlay (Figma: from #0059ff, via white 52%, to #73a4ff)
+   The white stop is neutral and stays put — the mood only moves the ends. */
 .hero__burn {
-  background: linear-gradient(90deg, var(--blue-500) 0%, #ffffff 52%, #73a4ff 100%);
+  background: linear-gradient(90deg, var(--m-mid) 0%, #ffffff 52%, var(--m-hi) 100%);
   mix-blend-mode: color-burn;
   opacity: 0.59;
 }
@@ -130,7 +182,7 @@ body {
 .hero__glow {
   left: auto; top: -8%; right: -6%; bottom: auto;
   width: 54%; height: 120%;
-  background: var(--glow);
+  background: var(--m-glow);
   filter: blur(160px);
   opacity: 0.55;
   border-radius: 50%;
@@ -172,6 +224,8 @@ body {
   right: var(--panel-x);
   bottom: var(--panel-bottom);
   z-index: 2;
+  /* Matches .work exactly — at full expansion the two surfaces meet, and any
+     difference reads as a seam across the page. */
   background: #ffffff;
   /* Bottom corners stay square so the panel flows straight into .work */
   border-radius: var(--panel-radius) var(--panel-radius) 0 0;
@@ -200,218 +254,159 @@ body {
 .hero__content {
   position: absolute;
   z-index: 1;
-  /* The panel runs past the fold, so `inset: 0` would centre this on the
-     panel's midpoint rather than the screen's. */
+  /* The panel runs well past the fold, so `inset: 0` would centre this on the
+     panel's midpoint rather than on the screen. */
   inset: 0 0 auto;
-  /* Panel top sits at 14vh, so 82 lands the marquee just above the fold —
-     with nothing beneath him now, the row takes the full visible panel. */
-  height: min(86vh, 100%);
-  width: min(1180px, 100%);
-  margin: 0 auto;
-  padding: 24px clamp(16px, 3vw, 40px) 0;
+  height: min(88vh, 100%);
+  width: 100%;
+  padding: 24px clamp(20px, 5vw, 64px) 0;
+  display: grid;
+  place-items: center;
+}
+
+/* One centred column. Every child is centred by the flex parent, so nothing
+   below needs its own margin auto. */
+.hero__stack {
+  width: min(1000px, 100%);
   display: flex;
   flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
-/* Copy and portrait share a row; the marquee is the floor they stand on. */
-.hero__row {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.96fr);
-  align-items: end;
-  gap: clamp(20px, 3vw, 48px);
-}
-
-.hero__copy {
-  align-self: center;
-  padding-bottom: clamp(8px, 3vh, 40px);
-  max-width: 46ch;
-}
-
-/* Bigger, and bottom-aligned so he lands on the marquee rather than hovering
-   over it. Deliberately wider than his own column — `justify-self: end` sends
-   the overflow leftward, into the slack the copy leaves. */
-.hero__photo {
-  position: relative;
-  margin: 0;
-  align-self: end;
-  justify-self: end;
-  width: clamp(320px, 58vw, 810px);
-  max-width: none;
-  pointer-events: none;
-}
-/* ---- the aura ----
-   Soft forms behind him, so the cut-out has an atmosphere to sit in instead of
-   a white void. Morphing `border-radius` rather than SVG paths: no geometry to
-   maintain, and it stays smooth at any size. */
-.hero__aura {
-  position: absolute;
-  inset: -6% -4% 8% -10%;
-  z-index: 0;
-  pointer-events: none;
-}
-.hero__aura i {
-  position: absolute;
-  display: block;
-  border-radius: 58% 42% 46% 54% / 52% 48% 52% 48%;
-}
-.hero__aura i:nth-child(1) {
-  inset: 4% 6% 12% 8%;
-  background: radial-gradient(58% 62% at 46% 40%, rgba(70, 118, 255, 0.26), rgba(70, 118, 255, 0.05) 66%, rgba(70, 118, 255, 0) 82%);
-  animation: aura-a 34s ease-in-out infinite alternate;
-}
-.hero__aura i:nth-child(2) {
-  inset: 14% 18% 6% 0%;
-  background: radial-gradient(60% 60% at 58% 56%, rgba(126, 162, 255, 0.24), rgba(126, 162, 255, 0) 74%);
-  animation: aura-b 46s ease-in-out infinite alternate;
-}
-.hero__aura i:nth-child(3) {
-  inset: 28% 2% 16% 32%;
-  background: radial-gradient(58% 58% at 50% 50%, rgba(163, 190, 255, 0.3), rgba(163, 190, 255, 0) 76%);
-  animation: aura-c 40s ease-in-out infinite alternate;
-}
-/* Long, small, and out of phase — the three never come back round together, so
-   the drift reads as breathing rather than as a loop. */
-@keyframes aura-a {
-  50%  { border-radius: 46% 54% 60% 40% / 58% 44% 56% 42%; transform: translate3d(-1.4%, 1.6%, 0) scale(1.03); }
-  100% { border-radius: 62% 38% 44% 56% / 44% 58% 42% 56%; transform: translate3d(1.4%, -1%, 0) scale(0.98); }
-}
-@keyframes aura-b {
-  50%  { border-radius: 40% 60% 52% 48% / 60% 40% 60% 40%; transform: translate3d(1.8%, -1.4%, 0) scale(1.04); }
-  100% { border-radius: 56% 44% 38% 62% / 42% 62% 38% 58%; transform: translate3d(-1%, 1.8%, 0) scale(0.97); }
-}
-@keyframes aura-c {
-  50%  { border-radius: 52% 48% 40% 60% / 44% 56% 44% 56%; transform: translate3d(-1.8%, -1.2%, 0) scale(1.02); }
-  100% { border-radius: 44% 56% 58% 42% / 58% 42% 56% 44%; transform: translate3d(1.2%, 1.4%, 0) scale(1.01); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .hero__aura i { animation: none; }
-}
-
-/* No mask, no contact shadow. The export ends itself, and a shadow beneath a
-   figure that is already dissolving reads as a mistake. */
-.hero__photo img {
-  position: relative;
-  z-index: 1;
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-.hero__title { margin: 0 0 clamp(16px, 1.8vw, 24px); }
-.hero__hi {
-  display: block;
-  font-family: "Bebas Neue", "Nunito", sans-serif;
-  font-weight: 400;
-  font-size: clamp(26px, 3vw, 44px);
-  line-height: 1.02;
-  letter-spacing: 0.5px;
-  color: #0b0d12;
-}
-/* Both lines are the same face now, so size and colour carry the hierarchy —
-   the same way the rest of the site's headings do it. */
-.hero__claim {
-  display: block;
-  margin-top: 8px;
-  font-family: "Bebas Neue", "Nunito", sans-serif;
-  font-weight: 400;
-  font-size: clamp(34px, 5vw, 74px);
-  line-height: 0.9;
-  letter-spacing: 0.5px;
-  color: var(--blue-500);
-  /* At 13ch this broke as "I DESIGN / PRODUCTS THAT / MAKE SENSE." — three
-     lines of very different length. Given room and told to balance, it settles
-     into two even ones instead. */
-  max-width: 20ch;
-  text-wrap: balance;
-}
-
-.hero__desc {
-  font-size: clamp(15px, 1.25vw, 17.5px);
-  line-height: 1.62;
-  color: #4b5261;
-  margin: 0;
-}
-
-/* The one call to action on the page. Nothing else in the hero points at the
-   work, and the work is what everyone came for.
-
-   Flat blue, not a gradient stack — the delight is in the behaviour, not the
-   surface. Two things move: a soft highlight tracks the cursor across the face
-   of the button, and the arrow leaves through the bottom while its twin
-   arrives from the top, so the gesture says "keep going down". */
-.hero__cta {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
+/* ---- the name chip ---- */
+.hero__chip {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  margin-top: 32px;
-  padding: 16px 28px;
+  gap: 13px;
+  /* Tighter on the left: the avatar is already a disc, so equal padding would
+     read as too much air on that side. */
+  padding: 7px 24px 7px 7px;
   border-radius: 999px;
-  font-family: "Inter", "Nunito", system-ui, sans-serif;
-  font-size: 16.5px;
+  background: #f1f2f5;
+  border: 1px solid rgba(14, 16, 22, 0.05);
+}
+.hero__ava {
+  flex: 0 0 auto;
+  width: clamp(46px, 3.6vw, 56px);
+  height: clamp(46px, 3.6vw, 56px);
+  border-radius: 50%;
+  object-fit: cover;
+  /* The cut-out carries no background of its own. */
+  background: #e4e9f5;
+  object-position: 50% 6%;
+}
+.hero__chipTxt {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-align: left;
+}
+.hero__name {
+  font-family: "Nunito", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(15px, 1.2vw, 17.5px);
+  line-height: 1.2;
+  letter-spacing: -0.2px;
+  color: #12141a;
+}
+.hero__kind {
+  font-family: "Nunito", system-ui, sans-serif;
+  font-weight: 400;
+  font-size: clamp(13px, 1.05vw, 15px);
+  line-height: 1.25;
+  color: #82889a;
+}
+
+/* ---- the claim ---- */
+.hero__title {
+  margin: clamp(22px, 3.8vh, 42px) 0 0;
+  font-family: "Bebas Neue", sans-serif;
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: clamp(38px, 6.1vw, 88px);
+  /* Bebas sits high in its box; below ~0.95 the two lines start to touch. */
+  line-height: 0.95;
+  letter-spacing: 0.5px;
+  color: #08090c;
+}
+.hero__title span { display: block; }
+
+.hero__sub {
+  /* A measure, not a container width — this wants to break into two lines
+     under a headline that is much wider than it. */
+  max-width: 46ch;
+  margin: clamp(16px, 2.6vh, 26px) 0 0;
+  font-family: "Nunito", system-ui, sans-serif;
+  font-size: clamp(16px, 1.5vw, 22px);
+  line-height: 1.5;
+  color: #4a505c;
+  text-wrap: balance;
+}
+.hero__sub b {
+  font-weight: 700;
+  color: var(--blue-500);
+}
+
+/* ---- actions ----
+   Deliberately flat. Both buttons change one property on hover — a fill and a
+   tint — and the arrow moves 3px. No lift, no scale, no shadow. */
+.hero__acts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: clamp(24px, 4vh, 40px) 0 0;
+  /* The ghost link's right padding is invisible, so centring the *box* leaves
+     the visible ink half that padding to the left of everyone else's axis.
+     Matching it on the left puts the ink back on centre. */
+  --ghost-pad: 20px;
+  padding-left: var(--ghost-pad);
+}
+.hero__btn,
+.hero__ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border-radius: 999px;
+  font-family: "Nunito", system-ui, sans-serif;
   font-weight: 600;
-  letter-spacing: -0.1px;
-  color: #fff;
+  font-size: clamp(15px, 1.15vw, 16.5px);
   text-decoration: none;
+  white-space: nowrap;
+}
+.hero__btn {
+  padding: 13px 24px;
   background: var(--blue-500);
-  /* Flat. No elevation, no scale — the button stays exactly where it is and
-     exactly the size it is. Everything that happens on hover happens *on* its
-     surface: the highlight follows the cursor and the arrow cycles. */
-  transition: background 0.26s ease;
+  color: #fff;
+  transition: background 0.22s ease;
 }
-/* The highlight. `--mx/--my` are written by a pointermove handler in Hero, and
-   default to the centre so the button still looks right before any pointer has
-   touched it — and on touch, where none ever will. */
-.hero__cta::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: radial-gradient(
-    120px circle at var(--mx, 50%) var(--my, 50%),
-    rgba(255, 255, 255, 0.28),
-    rgba(255, 255, 255, 0) 68%
-  );
-  opacity: 0;
-  transition: opacity 0.28s ease;
-  pointer-events: none;
+.hero__btn svg {
+  width: 17px;
+  height: 17px;
+  transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.25, 1);
 }
-.hero__cta:hover::before { opacity: 1; }
+.hero__btn:hover { background: #1466ff; }
+.hero__btn:hover svg { transform: translateX(3px); }
 
-.hero__ctaLabel { position: relative; }
-
-/* One arrow's height of window, holding two arrows stacked. */
-.hero__ctaArrows {
-  position: relative;
-  display: block;
-  width: 19px;
-  height: 19px;
-  overflow: hidden;
+.hero__ghost {
+  padding: 13px var(--ghost-pad, 20px);
+  color: var(--blue-500);
+  background: transparent;
+  transition: background 0.22s ease;
 }
-.hero__ctaArrows svg {
-  position: absolute;
-  left: 0;
-  width: 19px;
-  height: 19px;
-  transition: transform 0.42s cubic-bezier(0.34, 1.4, 0.5, 1);
-}
-.hero__ctaArrows svg:first-child { top: 0; }
-.hero__ctaArrows svg:last-child { top: -100%; }
-.hero__cta:hover .hero__ctaArrows svg:first-child { transform: translateY(100%); }
-.hero__cta:hover .hero__ctaArrows svg:last-child { transform: translateY(100%); }
+.hero__ghost:hover { background: rgba(0, 89, 255, 0.08); }
 
-.hero__cta:hover { background: #1466ff; }
-.hero__cta:active { background: #0046cc; }
-.hero__cta:focus-visible { outline: 2px solid var(--blue-500); outline-offset: 3px; }
+.hero__btn:focus-visible,
+.hero__ghost:focus-visible {
+  outline: 2px solid var(--blue-500);
+  outline-offset: 3px;
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .hero__cta,
-  .hero__cta::before,
-  .hero__ctaArrows svg { transition: none; }
+  .hero__btn,
+  .hero__btn svg,
+  .hero__ghost { transition: none; }
+  .hero__btn:hover svg { transform: none; }
 }
 
 /* ----------------------- WORK ----------------------- */
@@ -1117,10 +1112,20 @@ main { background: #fff; }
   --a-dash: var(--a-dash);         /* dashed border */
   --a-wash: var(--a-wash);         /* barely-there surface tint */
   --a-rgb: 246, 180, 28;     /* for alpha compositing */
-  --cs-g1: #050506;          /* hero ground, top */
-  --cs-g2: #0c0b0e;          /* hero ground, middle */
-  --cs-g3: #15110b;          /* hero ground, bottom — carries the accent hue */
-  --cs-warm-rgb: 58, 44, 16; /* where the light pools in the hero */
+  /* A gym after hours: a neutral black room with one warm lamp in it. The
+     previous stops were warm all the way up, which mixed with the accent glow
+     into olive rather than reading as light on a dark floor. Neutral above,
+     amber only where the light actually falls. */
+  --cs-g1: #050506;          /* hero ground, top — neutral, the room */
+  --cs-g2: #070709;          /* hero ground, middle */
+  --cs-g3: #0e0b07;          /* hero ground, bottom — carries the accent hue */
+  --cs-warm-rgb: 104, 62, 10; /* where the light pools in the hero */
+  /* Gold is far lighter than the other three accents, so the same alpha that
+     reads as a moody wash in violet reads as khaki here. Both the pooled
+     light and the lamp are dialled back for it; the others keep the original
+     strengths below. */
+  --cs-warm-a: 0.12;         /* the wide pool at the foot of the hero */
+  --cs-glow-a: 0.085;        /* the lamp, top-right */
 }
 
 /* Ikarus Nest — the platform's own primary ramp, 500. */
@@ -1141,6 +1146,8 @@ main { background: #fff; }
   --cs-g2: #0a0a12;
   --cs-g3: #0e0d1e;
   --cs-warm-rgb: 30, 28, 74;
+  --cs-warm-a: 0.34;
+  --cs-glow-a: 0.15;
 }
 
 /* Ikarus Delta — the vermilion the configurator uses for every primary action. */
@@ -1161,6 +1168,8 @@ main { background: #fff; }
   --cs-g2: #0e0a09;
   --cs-g3: #1b0f0a;
   --cs-warm-rgb: 62, 28, 16;
+  --cs-warm-a: 0.34;
+  --cs-glow-a: 0.15;
 }
 
 /* Google — the product blue. */
@@ -1181,6 +1190,8 @@ main { background: #fff; }
   --cs-g2: #090b12;
   --cs-g3: #0a1222;
   --cs-warm-rgb: 16, 34, 62;
+  --cs-warm-a: 0.34;
+  --cs-glow-a: 0.15;
 }
 
 /* -- Hero -- */
@@ -1222,7 +1233,7 @@ main { background: #fff; }
   background:
     radial-gradient(48% 42% at 78% 14%, rgba(var(--a-rgb),0.13) 0%, rgba(var(--a-rgb),0) 60%),
     radial-gradient(72% 64% at 44% 98%, rgba(var(--a-rgb),0.05) 0%, rgba(var(--a-rgb),0) 62%),
-    radial-gradient(90% 82% at 47% 110%, rgba(var(--cs-warm-rgb),0.34) 0%, rgba(var(--cs-warm-rgb),0) 68%),
+    radial-gradient(90% 82% at 47% 110%, rgba(var(--cs-warm-rgb),var(--cs-warm-a,0.34)) 0%, rgba(var(--cs-warm-rgb),0) 68%),
     radial-gradient(120% 110% at 47% 132%, rgba(16,16,20,0.9) 0%, rgba(16,16,20,0) 72%),
     linear-gradient(160deg, var(--cs-g1) 0%, var(--cs-g2) 46%, var(--cs-g3) 100%);
 }
@@ -1241,10 +1252,12 @@ main { background: #fff; }
 }
 .cs-hero__glow {
   left: auto; top: -14%; right: -6%; bottom: auto;
-  width: 40%; height: 82%;
+  /* Narrower than it was: a lamp with a falloff, rather than a wash covering
+     half the field. */
+  width: 30%; height: 78%;
   background: var(--cs-glow);
-  filter: blur(160px);
-  opacity: 0.15;
+  filter: blur(150px);
+  opacity: var(--cs-glow-a, 0.15);
   border-radius: 50%;
   animation: orb-glow 67s ease-in-out infinite alternate;
 }
@@ -1304,7 +1317,17 @@ main { background: #fff; }
   max-width: 1360px;
   margin: 0 auto;
 }
+.cs-hero__inner--solo { grid-template-columns: minmax(0, 1fr); }
 
+
+/* The hook and its summary are one column now: the sentence reads directly
+   under the headline it explains, rather than across the page beside a
+   picture. */
+.cs-hero__type {
+  display: grid;
+  gap: clamp(18px, 2.6vh, 30px);
+  align-content: center;
+}
 
 /* The hook. Display face, set tight and large enough to be read as an image
    before it is read as a sentence. */
@@ -1322,15 +1345,20 @@ main { background: #fff; }
 .cs-hero__aside { display: grid; gap: clamp(20px, 3vw, 30px); }
 
 /* The panel motif again: white card, big radius, deep blue shadow. */
+/* No frame and no fill. A box-shadow draws the figure's rectangle, which on a
+   cut-out PNG reads as a sticker sitting on the page; drop-shadow follows the
+   artwork's own alpha instead. The radius still rounds a flat screenshot and
+   is simply invisible on a cut-out. */
 .cs-hero__shot {
   margin: 0;
   border-radius: 24px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(var(--a-rgb), 0.2);
-  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.6);
+  filter: drop-shadow(0 34px 48px rgba(0, 0, 0, 0.55));
 }
-.cs-hero__shot img { display: block; width: 100%; height: auto; }
+/* One cap for every cover. A portrait render would otherwise size the hero
+   from the image and push the meta row past the fold; landscape screenshots
+   never come near it, so this costs them nothing. */
+.cs-hero__shot img { display: block; width: 100%; height: auto; max-height: 50vh; object-fit: contain; }
 
 /* Warm white rather than neutral — pure #fff at 86% goes slightly blue
    against the gold light and reads as a different page from the headline. */
@@ -2444,6 +2472,158 @@ main { background: #fff; }
   color: var(--k-mute);
 }
 .k-compare figcaption b { display: block; margin-bottom: 3px; font-size: 14px; color: var(--k-ink); font-weight: 600; }
+
+/* ---- k-compare, live ----
+ * Two 1440px screens at 50/50 land at ~0.35× each, under what this UI needs
+ * to be read. Hovering hands the column to whichever one you are looking at:
+ * it takes 72% (~0.50×) and the other retreats to 28%.
+ *
+ * `is-live` is added by script (see [slug].astro), and only where the pointer
+ * is fine and there is width to redistribute. Without it — no JS, touch,
+ * narrow — the 2-up above stands exactly as it always has.
+ *
+ * The tracks are real grid columns, so this genuinely relayouts. What makes
+ * that safe is the pinned image height below: normally the row height follows
+ * the image height, so widening one panel would grow the row and shove every
+ * paragraph below it down the page as the cursor crossed the gap. With the
+ * height fixed, the widths are free to move and nothing outside the component
+ * shifts by a pixel.
+ *
+ * Both states are written in `fr` on purpose. Mixing a length into one track
+ * makes the two lists non-interpolable and the transition falls back to a
+ * jump. 50/50 is spelled out for the same reason.
+ */
+.k-compare.is-live {
+  grid-template-columns: 50fr 50fr;
+  transition: grid-template-columns 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.k-compare.is-live:has(> figure:first-of-type:hover) { grid-template-columns: 72fr 28fr; }
+.k-compare.is-live:has(> figure:last-of-type:hover) { grid-template-columns: 28fr 72fr; }
+
+/* Height is pinned inline by script to what the image occupies at rest, so
+   the panel widens without the row growing. `cover` then scales the shot up
+   to the new width and takes the overflow off the bottom — anchored to the
+   top, where the window chrome and the page title are, because that is what
+   makes a screen recognisable while it is moving. */
+.k-compare.is-live img {
+  object-fit: cover;
+  object-position: top center;
+}
+/* The lean is the whole affordance, so the panel that is shrinking gets out
+   of the way visually as well as dimensionally. */
+.k-compare.is-live > figure { transition: opacity 0.42s ease; }
+.k-compare.is-live:has(> figure:hover) > figure:not(:hover) { opacity: 0.72; }
+
+@media (prefers-reduced-motion: reduce) {
+  /* The lean still happens — it just arrives rather than travels. */
+  .k-compare.is-live,
+  .k-compare.is-live > figure { transition: none; }
+}
+
+/* ---- k-gal ----
+   A picker for dense screenshots. Two 1440px dashboards side by side in a
+   k-compare land at ~46% width each, which is where the UI stops being
+   readable — this shows one at full column width and keeps the rest as
+   thumbnails.
+
+   Authoring is identical to k-compare (figures containing a k-mount and a
+   figcaption), so switching between the two is a one-word change. The rail is
+   built by script from those figures; before that runs — and if it never does
+   — the figures simply stack full width, which is still better than the 2-up
+   for this content. So the fallback is not a downgrade. */
+.k-gal { margin: 2.4em 0; }
+.k-gal > figure { margin: 0 0 26px !important; }
+.k-gal > figure:last-of-type { margin-bottom: 0 !important; }
+
+.k-gal.is-ready {
+  display: grid;
+  grid-template-columns: clamp(112px, 12vw, 158px) minmax(0, 1fr);
+  gap: clamp(14px, 1.6vw, 22px);
+  align-items: start;
+}
+/* Every figure occupies the same cell; only the selected one is displayed. */
+.k-gal.is-ready > figure { grid-area: 1 / 2; margin: 0 !important; }
+.k-gal.is-ready > figure[hidden] { display: none; }
+
+.k-gal__rail {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.k-gal__thumb {
+  display: block;
+  width: 100%;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid var(--k-line);
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+.k-gal__shot {
+  display: block;
+  overflow: hidden;
+  border-radius: 7px;
+  background: #f4f6fa;
+  /* Fixed ratio so a 4:3 and a 16:9 screenshot make equal-sized thumbnails —
+     the rail reads as a list of choices, not as a set of mismatched pictures. */
+  aspect-ratio: 4 / 3;
+}
+.k-gal__shot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Top-anchored: dashboard chrome and the page title live at the top, and
+     that is what makes a thumbnail identifiable at this size. */
+  object-fit: cover;
+  object-position: top center;
+}
+.k-gal__lab {
+  display: block;
+  margin: 7px 2px 3px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--k-mute);
+}
+.k-gal__thumb:hover { border-color: #d3d9e6; background: #fcfdff; }
+.k-gal__thumb[aria-selected='true'] {
+  border-color: var(--a-line);
+  background: var(--a-soft);
+}
+.k-gal__thumb[aria-selected='true'] .k-gal__lab { color: var(--a-text); }
+.k-gal__thumb:focus-visible { outline: 2px solid var(--a-500); outline-offset: 2px; }
+
+.k-gal figcaption {
+  margin-top: 12px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--k-mute);
+}
+.k-gal figcaption b {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--k-ink);
+}
+
+@media (max-width: 820px) {
+  /* The rail turns into a strip above the stage — a 112px column next to a
+     full-width screenshot leaves neither of them readable. */
+  .k-gal.is-ready { grid-template-columns: minmax(0, 1fr); }
+  .k-gal.is-ready > figure { grid-area: 2 / 1; }
+  .k-gal__rail {
+    grid-area: 1 / 1;
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .k-gal__thumb { flex: 0 0 132px; }
+}
+
 .k-verdict {
   display: inline-block;
   margin-bottom: 8px;
@@ -2547,13 +2727,14 @@ main { background: #fff; }
     --panel-bottom: -30%;
     --panel-radius: 36px;
   }
-  .hero__row { grid-template-columns: minmax(0, 1fr); text-align: center; }
-  .hero__copy { max-width: 100%; justify-self: center; padding-bottom: 0; }
-  .hero__photo { justify-self: center; width: min(420px, 96%); }
-  .hero__hi { font-size: clamp(22px, 6.2vw, 30px); }
-  .hero__claim { font-size: clamp(30px, 8.6vw, 44px); max-width: 100%; }
-  .hero__desc { font-size: 18px; }
-  .hero__cta { margin-top: 24px; padding: 14px 24px; font-size: 15.5px; }
+  /* The forced break is tuned for a wide headline; on a phone it just makes
+     line one overflow, so the claim goes back to flowing on its own. */
+  .hero__title span { display: inline; }
+  .hero__sub { max-width: 34ch; }
+  .hero__title { font-size: clamp(34px, 9.6vw, 56px); }
+  .hero__acts { gap: 4px; --ghost-pad: 14px; }
+  .hero__btn { padding: 12px 20px; }
+  .hero__ghost { padding: 12px var(--ghost-pad); }
   .work { padding: 80px 6% 110px; }
   .work__title { font-size: 44px; }
 

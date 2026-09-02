@@ -5,6 +5,7 @@ import AiBlob from '../components/AiBlob.astro';
 import Sfx from '../components/Sfx.astro';
 import ProgressiveBlur from '../components/ProgressiveBlur.astro';
 import SmoothScroll from '../components/SmoothScroll.astro';
+import Footer from '../components/Footer.astro';
 import '../styles/global.css';
 
 interface Props {
@@ -48,9 +49,6 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <ProgressiveBlur />
     <AiBlob />
     <Sfx />
-    <footer class="footer">
-      <p>&copy; {new Date().getFullYear()} Bhupesh Parmar</p>
-      <p><a href="mailto:designs.bhupesh@gmail.com">designs.bhupesh@gmail.com</a></p>
-    </footer>
+    <Footer />
   </body>
 </html>

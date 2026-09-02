@@ -50,12 +50,15 @@ const hook = d.heroTitle ?? d.title;
         </svg>
       </a>
 
-      <div class="cs-hero__inner">
+      {/* Without a cover the second column has nothing in it — the summary
+          used to fill it. One column rather than a void. */}
+      <div class:list={['cs-hero__inner', !d.cover && 'cs-hero__inner--solo']}>
         {/* The hook stands on its own — no kicker above it. The client is a
             fact about the work, so it belongs in the meta row with the rest
             of them, not stacked over the headline as a label. */}
         <div class="cs-hero__type">
           <h1 class="cs-hero__title">{hook}</h1>
+          <p class="cs-hero__summary">{d.summary}</p>
         </div>
 
         <div class="cs-hero__aside">
@@ -66,7 +69,6 @@ const hook = d.heroTitle ?? d.title;
               </figure>
             )
           }
-          <p class="cs-hero__summary">{d.summary}</p>
         </div>
       </div>
 
@@ -211,4 +213,171 @@ const hook = d.heroTitle ?? d.title;
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', update);
   update();
+
+  /* ---- k-gal ----
+     Upgrades a plain stack of figures into a thumbnail rail plus one large
+     stage. Runs only if there are at least two figures — a gallery of one is
+     just a picture with extra chrome. */
+  document.querySelectorAll<HTMLElement>('.k-gal').forEach((gal, gi) => {
+    const figs = Array.from(gal.querySelectorAll<HTMLElement>(':scope > figure'));
+    if (figs.length < 2) return;
+
+    const rail = document.createElement('div');
+    rail.className = 'k-gal__rail';
+    rail.setAttribute('role', 'tablist');
+    rail.setAttribute('aria-label', 'Screens');
+
+    const tabs: HTMLButtonElement[] = [];
+
+    figs.forEach((fig, i) => {
+      const img = fig.querySelector('img');
+      const cap = fig.querySelector('figcaption');
+      /* The bold lead of the caption is the screen's name; without one, fall
+         back to the window chrome's title, then to a number. */
+      const label =
+        cap?.querySelector('b')?.textContent?.trim() ||
+        fig.querySelector('.k-win__title')?.textContent?.trim() ||
+        `Screen ${i + 1}`;
+
+      const panelId = `gal-${gi}-p${i}`;
+      const tabId = `gal-${gi}-t${i}`;
+      fig.id = panelId;
+      fig.setAttribute('role', 'tabpanel');
+      fig.setAttribute('aria-labelledby', tabId);
+
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'k-gal__thumb';
+      b.id = tabId;
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-controls', panelId);
+
+      const shot = document.createElement('span');
+      shot.className = 'k-gal__shot';
+      if (img) {
+        /* Same src as the stage, so the thumbnail costs no extra request. */
+        const t = document.createElement('img');
+        t.src = img.getAttribute('src') || '';
+        t.alt = '';
+        t.loading = 'lazy';
+        t.decoding = 'async';
+        shot.appendChild(t);
+      }
+
+      const lab = document.createElement('span');
+      lab.className = 'k-gal__lab';
+      lab.textContent = label.replace(/[\u2014\u2013-]\s*$/, '').trim();
+
+      b.append(shot, lab);
+      tabs.push(b);
+      rail.appendChild(b);
+    });
+
+    function select(n: number, focus = false) {
+      figs.forEach((f, i) => (f.hidden = i !== n));
+      tabs.forEach((t, i) => {
+        const on = i === n;
+        t.setAttribute('aria-selected', String(on));
+        // Roving tabindex: the strip is one stop, arrows move within it.
+        t.tabIndex = on ? 0 : -1;
+        if (on && focus) t.focus();
+      });
+    }
+
+    tabs.forEach((t, i) => {
+      t.addEventListener('click', () => select(i));
+      t.addEventListener('keydown', (e) => {
+        const d = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1
+          : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
+        if (!d) return;
+        e.preventDefault();
+        select((i + d + tabs.length) % tabs.length, true);
+      });
+    });
+
+    gal.prepend(rail);
+    gal.classList.add('is-ready');
+    select(0);
+  });
+
+  /* ---- k-compare, live ----
+     The lean itself is pure CSS (see global.css) — :has() on the hovered
+     figure redistributes the grid columns. All this does is pin each image to
+     the height it occupies at rest, which is what makes leaning on hover safe
+     to do at all: the row height otherwise tracks the image height, so
+     widening a panel would grow the row and push everything below it down the
+     page every time the cursor crossed the gap.
+
+     Enhancement only. On touch, a narrow window, or with no JS, none of this
+     is switched on and the 2-up behaves as it always has. */
+  const canLean = window.matchMedia('(min-width: 821px) and (hover: hover) and (pointer: fine)');
+
+  document.querySelectorAll<HTMLElement>('.k-compare').forEach((cmp) => {
+    const figs = Array.from(cmp.querySelectorAll<HTMLElement>(':scope > figure'));
+    // Written for a pair: the 72/28 split in CSS assumes two tracks.
+    if (figs.length !== 2) return;
+
+    const GAP = 20; // .k-compare's gap, in px
+
+    /* Ratio comes from the img's own width/height attributes rather than a
+       measurement, so it is right before the lazy image has loaded. `inset`
+       is everything in the column that is not the image — mount padding,
+       window border, title bar — measured once at rest, where hovering cannot
+       have distorted it. */
+    const specs = figs.map((fig) => {
+      const img = fig.querySelector<HTMLImageElement>('img');
+      if (!img) return null;
+      const w = Number(img.getAttribute('width'));
+      const h = Number(img.getAttribute('height'));
+      return {
+        img,
+        ar: w && h ? w / h : 0,
+        inset: fig.getBoundingClientRect().width - img.getBoundingClientRect().width,
+      };
+    });
+    if (specs.some((s) => !s || !s.ar)) return;
+
+    /* Leaning costs about a third of the image's height off the bottom, since
+       the height is pinned and `cover` takes the overflow. On a dashboard
+       that spends the crop on lower table rows. On a wide process strip the
+       entire diagram lives inside that band and the crop would cut it in
+       half, so those keep the plain 50/50 — the lean is worth less there than
+       the diagram is. Raise this to lean on everything. */
+    const MAX_AR = 2.4;
+    if (specs.some((s) => s!.ar > MAX_AR)) return;
+
+    const pin = () => {
+      const col = (cmp.getBoundingClientRect().width - GAP) / 2;
+      specs.forEach((s) => {
+        s!.img.style.height = `${Math.round((col - s!.inset) / s!.ar)}px`;
+      });
+    };
+    const unpin = () => specs.forEach((s) => s!.img.style.removeProperty('height'));
+
+    /* Below the breakpoint the pair has already wrapped to one column, where
+       each screen is full width and there is nothing left to redistribute. */
+    const sync = () => {
+      if (canLean.matches) {
+        cmp.classList.add('is-live');
+        pin();
+      } else {
+        cmp.classList.remove('is-live');
+        unpin();
+      }
+    };
+
+    sync();
+    canLean.addEventListener('change', sync);
+
+    /* Re-pin on resize, but never mid-hover: the pin is measured from the
+       container, which hovering does not move, yet re-running it while a
+       panel is leaning would fight the transition. */
+    let pinTimer = 0;
+    window.addEventListener('resize', () => {
+      clearTimeout(pinTimer);
+      pinTimer = window.setTimeout(() => {
+        if (canLean.matches && !cmp.matches(':hover')) pin();
+      }, 150);
+    });
+  });
 </script>

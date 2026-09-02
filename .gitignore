@@ -1,6 +1,57 @@
+# Dependencies & build output
 node_modules
 dist
 .astro
+.output
 .vercel
+.netlify
+
+# ---------------------------------------------------------------------------
+# Secrets
+#
+# `.env` alone does not cover `.env.local`, `.env.production`, or the
+# `.env.production.local` that `vercel env pull` writes by default — which is
+# the realistic way a key ends up committed from this project. So: ignore every
+# .env variant, then re-admit the example, which holds names and no values.
+# ---------------------------------------------------------------------------
 .env
+.env.*
+!.env.example
+
+# Keys, certs and service-account files, wherever they land
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*-credentials.json
+*-service-account.json
+gha-creds-*.json
+
+# CLI and tool state that can carry tokens
+.vercel/
+.wrangler/
+.firebase/
+.supabase/
+
+# OS & editor noise
 .DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Logs & local caches
+*.log
+npm-debug.log*
+yarn-error.log*
+.eslintcache
+.cache/
+coverage/
+
+# Local scratch — anything you want kept out of a public repo without
+# thinking about it goes in here.
+/private/
+/scratch/

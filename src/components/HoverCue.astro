@@ -1,0 +1,163 @@
+---
+/* A label that trails the pointer over anything marked [data-cue].
+ *
+ * The work cards are a title, a summary and a folder illustration — none of
+ * which says "this is a link you can open". The row highlights on hover, but a
+ * highlight only says "you are here". This says what happens if you click.
+ *
+ * Rendered once per page and reused by every target, so ten cards cost one
+ * element and one rAF loop. The label comes from each target's data-cue, so a
+ * card can name its own action.
+ *
+ * Mouse-only by design: it is a pointer affordance, hidden from assistive tech
+ * and never mounted on a coarse pointer, where there is no cursor to trail and
+ * a tap already reveals the destination.
+ */
+interface Props {
+  /* Used when a target sets data-cue with no value of its own. */
+  label?: string;
+}
+const { label = 'View case study' } = Astro.props;
+---
+
+<div class="cue" data-cue-el aria-hidden="true">
+  {/* Two elements on purpose: the outer one is moved by script every frame,
+      the inner one carries the scale-in so CSS owns the entrance and JS only
+      ever writes a translate. Sharing one transform would mean re-deriving
+      the scale in JS on every frame. */}
+  <span class="cue__in">
+    <span class="cue__txt">{label}</span>
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M5 12h13M12.5 6.5 19 12l-6.5 5.5"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.2"
+        stroke-linecap="round"
+        stroke-linejoin="round"></path>
+    </svg>
+  </span>
+</div>
+
+<script>
+  const cue = document.querySelector<HTMLElement>('[data-cue-el]');
+  const targets = Array.from(document.querySelectorAll<HTMLElement>('[data-cue]'));
+  const fine = window.matchMedia('(hover: hover) and (pointer: fine)');
+
+  if (cue && targets.length && fine.matches) {
+    const txt = cue.querySelector<HTMLElement>('.cue__txt')!;
+    const fallback = txt.textContent || 'View case study';
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Target position (the pointer) and rendered position (what chases it).
+    let tx = 0;
+    let ty = 0;
+    let x = 0;
+    let y = 0;
+    let on = false;
+    let raf = 0;
+
+    const loop = () => {
+      /* Easing toward the pointer rather than pinning to it is the whole
+         character of the thing — it reads as something following you instead
+         of something stuck to the cursor. Reduced motion gets no trail. */
+      const k = reduce ? 1 : 0.19;
+      x += (tx - x) * k;
+      y += (ty - y) * k;
+      cue.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+
+      // Keep going while it is visible, then only until it has caught up.
+      const settled = Math.abs(tx - x) < 0.4 && Math.abs(ty - y) < 0.4;
+      raf = on || !settled ? requestAnimationFrame(loop) : 0;
+    };
+    const start = () => {
+      if (!raf) raf = requestAnimationFrame(loop);
+    };
+
+    /* clientX/Y against a position:fixed element, so scrolling under a
+       stationary cursor needs no work — both are in viewport space. */
+    document.addEventListener(
+      'pointermove',
+      (e) => {
+        tx = e.clientX;
+        ty = e.clientY;
+        if (on) start();
+      },
+      { passive: true }
+    );
+
+    targets.forEach((t) => {
+      t.addEventListener('pointerenter', (e) => {
+        txt.textContent = t.dataset.cue || fallback;
+        /* Snap to the pointer on entry. Without this it flies across the page
+           from wherever the last card left it, which reads as a stray object
+           rather than as this card's label. */
+        tx = x = e.clientX;
+        ty = y = e.clientY;
+        on = true;
+        cue.classList.add('is-on');
+        start();
+      });
+      t.addEventListener('pointerleave', () => {
+        on = false;
+        cue.classList.remove('is-on');
+      });
+    });
+  }
+</script>
+
+<style>
+  .cue {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 60;
+    /* Never a hit target: it sits under the cursor, and swallowing the click
+       would break the very link it is advertising. */
+    pointer-events: none;
+    will-change: transform;
+  }
+
+  .cue__in {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    /* Offset down-right of the hotspot so the native arrow stays readable.
+       The system cursor is deliberately left alone — hiding it is a real cost
+       to anyone who tracks it, and buys only a little polish. */
+    margin: 15px 0 0 17px;
+    padding: 9px 15px;
+    border-radius: 999px;
+    background: #0b0d12;
+    color: #fff;
+    font-family: 'Nunito', system-ui, sans-serif;
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: -0.1px;
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 10px 26px rgba(12, 20, 45, 0.26);
+
+    opacity: 0;
+    transform: scale(0.68);
+    transform-origin: 0 0;
+    transition:
+      transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.18s ease;
+  }
+  .cue.is-on .cue__in {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .cue__in svg {
+    width: 14px;
+    height: 14px;
+    margin-right: -1px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cue__in { transition: opacity 0.18s ease; transform: none; }
+    .cue.is-on .cue__in { transform: none; }
+  }
+</style>
