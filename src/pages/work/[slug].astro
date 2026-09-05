@@ -1,6 +1,8 @@
 ---
 import { getCollection, render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
+import CaseHeroField from '../../components/CaseHeroField.astro';
+import CaseBlocks from '../../components/CaseBlocks.astro';
 
 export async function getStaticPaths() {
   const projects = await getCollection('work', ({ data }) => !data.draft);
@@ -21,19 +23,42 @@ const toc = headings.filter((h) => h.depth === 2);
 const words = (entry.body ?? '').trim().split(/\s+/).filter(Boolean).length;
 const readingTime = Math.max(1, Math.round(words / 220));
 
-/* The hook can be shorter and punchier than the card headline. */
+/* The hook can be shorter and punchier than the card headline. A phrase
+   wrapped in *asterisks* is the part that takes the accent — one per hook,
+   so the colour marks the point of the sentence rather than decorating it. */
 const hook = d.heroTitle ?? d.title;
+const hookParts = hook.split(/\*(.+?)\*/);
+
+/* What to read next. The projects in home-page order, minus this one; the
+   first of them is the "next" and gets the banner, the rest go in the grid.
+   Wrapping around means the last case study still has a next. */
+const all = (await getCollection('work', ({ data }) => !data.draft)).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+const idx = all.findIndex((p) => p.id === entry.id);
+const rest = [...all.slice(idx + 1), ...all.slice(0, idx)];
+const next = rest[0];
+const more = rest.slice(1);
+
+const shotOf = (p: (typeof all)[number]) =>
+  p.data.cover ?? p.data.folderArt ?? p.data.shots?.[0];
 ---
 
 <Base title={`${d.client} — ${d.title}`} description={d.summary}>
+  {/* Reading progress, as a hairline across the very top of the window. The
+      contents rail has its own meter, but the rail is gone on phones and
+      off screen while the hero fills it; this one is always there. */}
+  <div class="cs-progress" aria-hidden="true"><span id="csBar"></span></div>
+
   <article class="cs" data-costume={d.costume} data-accent={d.accent}>
     <!-- ---------------- HERO: the hook ---------------- -->
-    <header class="cs-hero">
+    <header class="cs-hero" id="csHero">
       <div class="cs-hero__bg" aria-hidden="true">
         <div class="cs-hero__blobs"></div>
         <div class="cs-hero__orb cs-hero__orb--a"></div>
         <div class="cs-hero__orb cs-hero__orb--b"></div>
         <div class="cs-hero__glow"></div>
+        <CaseHeroField />
         <div class="cs-hero__glass"></div>
         <div class="cs-hero__grain"></div>
       </div>
@@ -50,35 +75,48 @@ const hook = d.heroTitle ?? d.title;
         </svg>
       </a>
 
-      {/* Without a cover the second column has nothing in it — the summary
-          used to fill it. One column rather than a void. */}
       <div class:list={['cs-hero__inner', !d.cover && 'cs-hero__inner--solo']}>
-        {/* The hook stands on its own — no kicker above it. The client is a
-            fact about the work, so it belongs in the meta row with the rest
-            of them, not stacked over the headline as a label. */}
         <div class="cs-hero__type">
-          <h1 class="cs-hero__title">{hook}</h1>
+          <p class="cs-hero__kicker">
+            <span class="cs-hero__client">{d.client}</span>
+            <span class="cs-hero__dot" aria-hidden="true"></span>
+            <span>Case study</span>
+          </p>
+          <h1 class="cs-hero__title">
+            {hookParts.map((part, i) =>
+              i % 2 === 1 ? <em>{part}</em> : part,
+            )}
+          </h1>
           <p class="cs-hero__summary">{d.summary}</p>
         </div>
 
-        <div class="cs-hero__aside">
-          {
-            d.cover && (
-              <figure class="cs-hero__shot">
-                <img src={d.cover} alt={d.coverAlt ?? ''} />
+        {
+          d.cover && (
+            <div class="cs-hero__aside" data-tilt>
+              <figure class:list={['cs-hero__shot', `cs-hero__shot--${d.coverKind}`]}>
+                {d.coverKind === 'window' && (
+                  <span class="cs-hero__bar" aria-hidden="true"><i /><i /><i /></span>
+                )}
+                <img src={d.cover} alt={d.coverAlt ?? ''} fetchpriority="high" />
               </figure>
-            )
-          }
-        </div>
+            </div>
+          )
+        }
       </div>
 
-      <dl class="cs-hero__meta">
-        <div><dt>Client</dt><dd>{d.client}</dd></div>
-        {d.role && <div><dt>Role</dt><dd>{d.role}</dd></div>}
-        {d.timeline && <div><dt>Timeline</dt><dd>{d.timeline}</dd></div>}
-        {d.tags.length > 0 && <div><dt>Focus</dt><dd>{d.tags.join(', ')}</dd></div>}
-        <div><dt>Read</dt><dd>{readingTime} min</dd></div>
-      </dl>
+      <div class="cs-hero__foot">
+        <dl class="cs-hero__meta">
+          <div><dt>Client</dt><dd>{d.client}</dd></div>
+          {d.role && <div><dt>Role</dt><dd>{d.role}</dd></div>}
+          {d.timeline && <div><dt>Timeline</dt><dd>{d.timeline}</dd></div>}
+          {d.tags.length > 0 && <div><dt>Focus</dt><dd>{d.tags.join(', ')}</dd></div>}
+          <div><dt>Read</dt><dd>{readingTime} min</dd></div>
+        </dl>
+        <a class="cs-hero__cue" href={toc[0] ? `#${toc[0].slug}` : '#csProse'} aria-label="Start reading">
+          <span>Scroll</span>
+          <i aria-hidden="true"></i>
+        </a>
+      </div>
     </header>
 
     <!-- ---------------- BODY: the reading environment ---------------- -->
@@ -92,9 +130,6 @@ const hook = d.heroTitle ?? d.title;
                   <p class="cs-toc__label">Contents</p>
                   <p class="cs-toc__pct" id="csPct">0%</p>
                 </div>
-                {/* The meter is the answer to "how much is left". It is a real
-                    progressbar rather than a decorated div so a screen reader
-                    gets the same answer the sighted reader does. */}
                 <div
                   class="cs-toc__meter"
                   id="csMeter"
@@ -128,35 +163,148 @@ const hook = d.heroTitle ?? d.title;
         </div>
       </div>
 
+      {/* Phones: the rail has collapsed into a list above the article, so
+          once you are reading there is no way to see where you are or jump.
+          This pill sits at the bottom of the screen and opens the same list
+          as a sheet. */}
+      {toc.length > 0 && (
+        <>
+          <button class="cs-jump" id="csJump" type="button" aria-haspopup="dialog" aria-controls="csSheet">
+            <span class="cs-jump__n" id="csJumpN">01</span>
+            <span class="cs-jump__t" id="csJumpT">{toc[0].text}</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+          </button>
+          <dialog class="cs-sheet" id="csSheet" aria-label="Jump to a section">
+            <div class="cs-sheet__head">
+              <p>On this page</p>
+              <button type="button" class="cs-sheet__close" id="csSheetClose" aria-label="Close">
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              </button>
+            </div>
+            <ol class="cs-sheet__list">
+              {toc.map((h, i) => (
+                <li><a href={`#${h.slug}`} data-sheet={h.slug}><span>{String(i + 1).padStart(2, '0')}</span>{h.text}</a></li>
+              ))}
+            </ol>
+          </dialog>
+        </>
+      )}
+
+      {next && (
+        <section class="cs-next" aria-labelledby="cs-next-head">
+          <a class="cs-next__card" href={`/work/${next.id}`} data-accent={next.data.accent}>
+            <div class="cs-next__bg" aria-hidden="true"></div>
+            <div class="cs-next__txt">
+              <p class="cs-next__label" id="cs-next-head">Next case study</p>
+              <p class="cs-next__client">{next.data.client}</p>
+              <h2 class="cs-next__title">{(next.data.heroTitle ?? next.data.title).replace(/\*/g, '')}</h2>
+              <p class="cs-next__sum">{next.data.summary}</p>
+              <span class="cs-next__go">
+                Read it
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 12h13M12.5 6.5 19 12l-6.5 5.5" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </span>
+            </div>
+            <span class="cs-next__shot">
+              {shotOf(next) && <img src={shotOf(next)} alt="" loading="lazy" decoding="async" />}
+            </span>
+          </a>
+        </section>
+      )}
+
+      {more.length > 0 && (
+        <section class="cs-more" aria-labelledby="cs-more-head">
+          <h2 class="cs-more__head" id="cs-more-head">More work</h2>
+          <ul class="cs-more__grid">
+            {more.map((p) => {
+              const shot = shotOf(p);
+              return (
+                <li>
+                  <a class="cs-more__card" href={`/work/${p.id}`} data-accent={p.data.accent}>
+                    <span class="cs-more__shot">
+                      {shot && <img src={shot} alt="" loading="lazy" decoding="async" />}
+                    </span>
+                    <span class="cs-more__txt">
+                      <span class="cs-more__client">{p.data.client}</span>
+                      <b class="cs-more__title">{p.data.title}</b>
+                      <span class="cs-more__sum">{p.data.summary}</span>
+                      <span class="cs-more__go">
+                        Read the case study
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M5 12h13M12.5 6.5 19 12l-6.5 5.5" fill="none"
+                            stroke="currentColor" stroke-width="2.1"
+                            stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                      </span>
+                    </span>
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       <nav class="cs-foot">
         <a href="/#work">&larr; All work</a>
+        <a href="#csHero" class="cs-foot__top">Back to top &uarr;</a>
       </nav>
     </div>
   </article>
+
+  {/* Lightbox. One dialog for every image on the page; the script fills it
+      from whichever figure was clicked and walks prev/next through the rest. */}
+  <dialog class="cs-lb" id="csLb" aria-label="Image viewer">
+    <button type="button" class="cs-lb__btn cs-lb__close" id="csLbClose" aria-label="Close">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+    <button type="button" class="cs-lb__btn cs-lb__prev" id="csLbPrev" aria-label="Previous image">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button type="button" class="cs-lb__btn cs-lb__next" id="csLbNext" aria-label="Next image">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <figure class="cs-lb__fig">
+      <img id="csLbImg" alt="" />
+      <figcaption id="csLbCap"></figcaption>
+    </figure>
+    <p class="cs-lb__count" id="csLbCount"></p>
+  </dialog>
+  <CaseBlocks />
 </Base>
 
-{/* Runs during parse so the nav starts light over the blue hero — no flash of
+{/* Runs during parse so the nav starts light over the dark hero — no flash of
     dark labels before the module script below boots. */}
 <script is:inline>document.documentElement.dataset.navTone = 'dark';</script>
 
 <script>
-  /* Two jobs, both driven off one rAF-throttled scroll pass:
-     1. nav ink flips when the white reading surface reaches the nav
-     2. the contents rail tracks which section you're in, and how far you've read */
+  /* ---- scroll-driven state ----
+     One rAF-throttled pass drives: nav ink, the top hairline, the rail meter,
+     the current section (rail + phone pill), and the hero's parallax. */
   const root = document.documentElement;
+  const hero = document.getElementById('csHero');
   const read = document.querySelector<HTMLElement>('.cs-read');
   const prose = document.getElementById('csProse');
   const fill = document.getElementById('csFill');
+  const bar = document.getElementById('csBar');
   const meter = document.getElementById('csMeter');
   const pct = document.getElementById('csPct');
+  const jumpN = document.getElementById('csJumpN');
+  const jumpT = document.getElementById('csJumpT');
   const navPill = document.querySelector<HTMLElement>('.nav__pill');
   const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('[data-toc]'));
+  const sheetLinks = Array.from(document.querySelectorAll<HTMLAnchorElement>('[data-sheet]'));
   const targets = links
     .map((l) => document.getElementById(l.dataset.toc!))
     .filter((el): el is HTMLElement => Boolean(el));
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const clamp = (v: number) => Math.min(1, Math.max(0, v));
   let ticking = false;
+  let lastActive = -2;
 
   function update() {
     ticking = false;
@@ -166,40 +314,48 @@ const hook = d.heroTitle ?? d.title;
       root.dataset.navTone = read.getBoundingClientRect().top > navBottom ? 'dark' : 'light';
     }
 
+    /* The hero's type drifts up at half scroll speed and fades, so the
+       reading surface reads as rising over it rather than shoving it away. */
+    if (hero && !reduce) {
+      const y = window.scrollY;
+      const h = hero.offsetHeight || 1;
+      const p = clamp(y / h);
+      hero.style.setProperty('--cs-scroll', String(p));
+    }
+
     if (!prose) return;
 
-    /* The reading line: a little below the nav, where the eye actually sits. */
     const line = 168;
     const r = prose.getBoundingClientRect();
-
-    /* Progress runs from "the article's first line has reached the top of the
-       window" to "its last line has reached the bottom". The previous version
-       divided by the article's full height, which counts one screenful the
-       reader never has to scroll past — so it read ~90% at the end and never
-       arrived. `span` subtracts that screenful. */
     const span = r.height - window.innerHeight;
     const p = span > 0 ? clamp(-r.top / span) : r.top <= 0 ? 1 : 0;
 
     if (fill) fill.style.transform = `scaleX(${p})`;
+    if (bar) bar.style.transform = `scaleX(${p})`;
 
     const shown = Math.round(p * 100);
     if (pct && pct.textContent !== `${shown}%`) pct.textContent = `${shown}%`;
     if (meter) meter.setAttribute('aria-valuenow', String(shown));
 
     if (targets.length) {
-      /* -1 until the first heading crosses the line, so nothing is marked
-         current while the hero still fills the screen. */
       let active = -1;
       for (let i = 0; i < targets.length; i++) {
         if (targets[i].getBoundingClientRect().top <= line) active = i;
       }
-      links.forEach((l, i) => {
-        const on = i === active;
-        l.classList.toggle('is-active', on);
-        l.classList.toggle('is-read', i < active);
-        if (on) l.setAttribute('aria-current', 'true');
-        else l.removeAttribute('aria-current');
-      });
+      if (active !== lastActive) {
+        lastActive = active;
+        links.forEach((l, i) => {
+          const on = i === active;
+          l.classList.toggle('is-active', on);
+          l.classList.toggle('is-read', i < active);
+          if (on) l.setAttribute('aria-current', 'true');
+          else l.removeAttribute('aria-current');
+        });
+        sheetLinks.forEach((l, i) => l.classList.toggle('is-active', i === active));
+        const shownIdx = Math.max(0, active);
+        if (jumpN) jumpN.textContent = String(shownIdx + 1).padStart(2, '0');
+        if (jumpT && links[shownIdx]) jumpT.textContent = links[shownIdx].querySelector('.cs-toc__t')?.textContent ?? '';
+      }
     }
   }
 
@@ -214,170 +370,150 @@ const hook = d.heroTitle ?? d.title;
   window.addEventListener('resize', update);
   update();
 
-  /* ---- k-gal ----
-     Upgrades a plain stack of figures into a thumbnail rail plus one large
-     stage. Runs only if there are at least two figures — a gallery of one is
-     just a picture with extra chrome. */
-  document.querySelectorAll<HTMLElement>('.k-gal').forEach((gal, gi) => {
-    const figs = Array.from(gal.querySelectorAll<HTMLElement>(':scope > figure'));
-    if (figs.length < 2) return;
+  /* ---- hero entrance ----
+     Held for the display face, same as the home page: a headline that rises
+     in a fallback font and then snaps is worse than a beat of stillness. */
+  if (hero) {
+    const reveal = () => hero.classList.add('is-in');
+    const ready = (document as any).fonts?.ready;
+    if (ready) {
+      let done = false;
+      const once = () => { if (!done) { done = true; reveal(); } };
+      ready.then(once);
+      setTimeout(once, 900);
+    } else reveal();
+  }
 
-    const rail = document.createElement('div');
-    rail.className = 'k-gal__rail';
-    rail.setAttribute('role', 'tablist');
-    rail.setAttribute('aria-label', 'Screens');
-
-    const tabs: HTMLButtonElement[] = [];
-
-    figs.forEach((fig, i) => {
-      const img = fig.querySelector('img');
-      const cap = fig.querySelector('figcaption');
-      /* The bold lead of the caption is the screen's name; without one, fall
-         back to the window chrome's title, then to a number. */
-      const label =
-        cap?.querySelector('b')?.textContent?.trim() ||
-        fig.querySelector('.k-win__title')?.textContent?.trim() ||
-        `Screen ${i + 1}`;
-
-      const panelId = `gal-${gi}-p${i}`;
-      const tabId = `gal-${gi}-t${i}`;
-      fig.id = panelId;
-      fig.setAttribute('role', 'tabpanel');
-      fig.setAttribute('aria-labelledby', tabId);
-
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'k-gal__thumb';
-      b.id = tabId;
-      b.setAttribute('role', 'tab');
-      b.setAttribute('aria-controls', panelId);
-
-      const shot = document.createElement('span');
-      shot.className = 'k-gal__shot';
-      if (img) {
-        /* Same src as the stage, so the thumbnail costs no extra request. */
-        const t = document.createElement('img');
-        t.src = img.getAttribute('src') || '';
-        t.alt = '';
-        t.loading = 'lazy';
-        t.decoding = 'async';
-        shot.appendChild(t);
-      }
-
-      const lab = document.createElement('span');
-      lab.className = 'k-gal__lab';
-      lab.textContent = label.replace(/[\u2014\u2013-]\s*$/, '').trim();
-
-      b.append(shot, lab);
-      tabs.push(b);
-      rail.appendChild(b);
-    });
-
-    function select(n: number, focus = false) {
-      figs.forEach((f, i) => (f.hidden = i !== n));
-      tabs.forEach((t, i) => {
-        const on = i === n;
-        t.setAttribute('aria-selected', String(on));
-        // Roving tabindex: the strip is one stop, arrows move within it.
-        t.tabIndex = on ? 0 : -1;
-        if (on && focus) t.focus();
-      });
-    }
-
-    tabs.forEach((t, i) => {
-      t.addEventListener('click', () => select(i));
-      t.addEventListener('keydown', (e) => {
-        const d = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1
-          : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
-        if (!d) return;
-        e.preventDefault();
-        select((i + d + tabs.length) % tabs.length, true);
-      });
-    });
-
-    gal.prepend(rail);
-    gal.classList.add('is-ready');
-    select(0);
-  });
-
-  /* ---- k-compare, live ----
-     The lean itself is pure CSS (see global.css) — :has() on the hovered
-     figure redistributes the grid columns. All this does is pin each image to
-     the height it occupies at rest, which is what makes leaning on hover safe
-     to do at all: the row height otherwise tracks the image height, so
-     widening a panel would grow the row and push everything below it down the
-     page every time the cursor crossed the gap.
-
-     Enhancement only. On touch, a narrow window, or with no JS, none of this
-     is switched on and the 2-up behaves as it always has. */
-  const canLean = window.matchMedia('(min-width: 821px) and (hover: hover) and (pointer: fine)');
-
-  document.querySelectorAll<HTMLElement>('.k-compare').forEach((cmp) => {
-    const figs = Array.from(cmp.querySelectorAll<HTMLElement>(':scope > figure'));
-    // Written for a pair: the 72/28 split in CSS assumes two tracks.
-    if (figs.length !== 2) return;
-
-    const GAP = 20; // .k-compare's gap, in px
-
-    /* Ratio comes from the img's own width/height attributes rather than a
-       measurement, so it is right before the lazy image has loaded. `inset`
-       is everything in the column that is not the image — mount padding,
-       window border, title bar — measured once at rest, where hovering cannot
-       have distorted it. */
-    const specs = figs.map((fig) => {
-      const img = fig.querySelector<HTMLImageElement>('img');
-      if (!img) return null;
-      const w = Number(img.getAttribute('width'));
-      const h = Number(img.getAttribute('height'));
-      return {
-        img,
-        ar: w && h ? w / h : 0,
-        inset: fig.getBoundingClientRect().width - img.getBoundingClientRect().width,
-      };
-    });
-    if (specs.some((s) => !s || !s.ar)) return;
-
-    /* Leaning costs about a third of the image's height off the bottom, since
-       the height is pinned and `cover` takes the overflow. On a dashboard
-       that spends the crop on lower table rows. On a wide process strip the
-       entire diagram lives inside that band and the crop would cut it in
-       half, so those keep the plain 50/50 — the lean is worth less there than
-       the diagram is. Raise this to lean on everything. */
-    const MAX_AR = 2.4;
-    if (specs.some((s) => s!.ar > MAX_AR)) return;
-
-    const pin = () => {
-      const col = (cmp.getBoundingClientRect().width - GAP) / 2;
-      specs.forEach((s) => {
-        s!.img.style.height = `${Math.round((col - s!.inset) / s!.ar)}px`;
-      });
+  /* ---- cover tilt ----
+     The cover leans toward the pointer, a few degrees at most. Mouse only:
+     on touch there is no pointer to lean toward and the float animation in
+     CSS carries it. */
+  const tilt = document.querySelector<HTMLElement>('[data-tilt]');
+  if (tilt && hero && window.matchMedia('(hover: hover) and (pointer: fine)').matches && !reduce) {
+    let rx = 0, ry = 0, tx = 0, ty = 0, raf = 0;
+    const ease = () => {
+      raf = 0;
+      rx += (tx - rx) * 0.08;
+      ry += (ty - ry) * 0.08;
+      tilt.style.setProperty('--rx', `${rx.toFixed(2)}deg`);
+      tilt.style.setProperty('--ry', `${ry.toFixed(2)}deg`);
+      if (Math.abs(tx - rx) > 0.01 || Math.abs(ty - ry) > 0.01) raf = requestAnimationFrame(ease);
     };
-    const unpin = () => specs.forEach((s) => s!.img.style.removeProperty('height'));
+    hero.addEventListener('pointermove', (e) => {
+      const r = hero.getBoundingClientRect();
+      const nx = (e.clientX - r.left) / r.width - 0.5;
+      const ny = (e.clientY - r.top) / r.height - 0.5;
+      tx = -ny * 9;
+      ty = nx * 11;
+      if (!raf) raf = requestAnimationFrame(ease);
+    }, { passive: true });
+    hero.addEventListener('pointerleave', () => { tx = 0; ty = 0; if (!raf) raf = requestAnimationFrame(ease); });
+  }
 
-    /* Below the breakpoint the pair has already wrapped to one column, where
-       each screen is full width and there is nothing left to redistribute. */
-    const sync = () => {
-      if (canLean.matches) {
-        cmp.classList.add('is-live');
-        pin();
-      } else {
-        cmp.classList.remove('is-live');
-        unpin();
-      }
+  /* ---- counters ----
+     Every number in a stat counts up from zero the first time its block is
+     seen. Years are left alone: 2026 counting up from 0 reads as a bug.
+
+     This is the only scroll-driven motion left in the article. The blanket
+     fade-up that used to run on every block was watching eighty-odd elements
+     and writing a stagger index onto every one of their children at load,
+     which is a lot of style recalculation to buy an effect nobody asked the
+     page for. */
+  if (prose && !reduce && 'IntersectionObserver' in window) {
+    const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+    const cio = new IntersectionObserver((entries) => {
+      entries.forEach((en) => {
+        if (!en.isIntersecting) return;
+        cio.unobserve(en.target);
+        const el = en.target as HTMLElement;
+        const final = el.textContent || '';
+        const parts = final.split(/(\d+)/);
+        if (!parts.some((p, i) => i % 2 === 1 && Number(p) < 1900)) return;
+        const t0 = performance.now();
+        const dur = 1100;
+        const tick = (now: number) => {
+          const p = Math.min(1, (now - t0) / dur);
+          el.textContent = parts
+            .map((seg, i) => {
+              if (i % 2 === 0) return seg;
+              const n = Number(seg);
+              return n >= 1900 ? seg : String(Math.round(n * ease(p)));
+            })
+            .join('');
+          if (p < 1) requestAnimationFrame(tick);
+          else el.textContent = final;
+        };
+        requestAnimationFrame(tick);
+      });
+    }, { threshold: 0.4 });
+    prose.querySelectorAll<HTMLElement>('.k-stats b').forEach((c) => cio.observe(c));
+  }
+
+  /* ---- phone section sheet ---- */
+  const jump = document.getElementById('csJump');
+  const sheet = document.getElementById('csSheet') as HTMLDialogElement | null;
+  const sheetClose = document.getElementById('csSheetClose');
+  if (jump && sheet) {
+    jump.addEventListener('click', () => sheet.showModal());
+    sheetClose?.addEventListener('click', () => sheet.close());
+    sheet.addEventListener('click', (e) => { if (e.target === sheet) sheet.close(); });
+    sheetLinks.forEach((l) => l.addEventListener('click', () => sheet.close()));
+  }
+
+  /* ---- lightbox ----
+     Every image inside the article, in document order. Clicking one opens
+     it at full size; arrows and swipes walk the set. Tiny images (icons,
+     swatches) are skipped by the size check. */
+  const lb = document.getElementById('csLb') as HTMLDialogElement | null;
+  const lbImg = document.getElementById('csLbImg') as HTMLImageElement | null;
+  const lbCap = document.getElementById('csLbCap');
+  const lbCount = document.getElementById('csLbCount');
+  if (prose && lb && lbImg) {
+    const imgs = Array.from(prose.querySelectorAll<HTMLImageElement>('img')).filter((im) => {
+      const w = Number(im.getAttribute('width')) || im.naturalWidth || 0;
+      return w >= 300;
+    });
+    let cur = 0;
+
+    const captionFor = (im: HTMLImageElement) => {
+      const fig = im.closest('figure');
+      const cap = fig?.querySelector('figcaption');
+      if (cap) return cap.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+      return im.alt;
     };
 
-    sync();
-    canLean.addEventListener('change', sync);
+    const show = (n: number) => {
+      cur = (n + imgs.length) % imgs.length;
+      const im = imgs[cur];
+      lbImg.src = im.currentSrc || im.src;
+      lbImg.alt = im.alt;
+      if (lbCap) lbCap.textContent = captionFor(im);
+      if (lbCount) lbCount.textContent = `${cur + 1} / ${imgs.length}`;
+    };
 
-    /* Re-pin on resize, but never mid-hover: the pin is measured from the
-       container, which hovering does not move, yet re-running it while a
-       panel is leaning would fight the transition. */
-    let pinTimer = 0;
-    window.addEventListener('resize', () => {
-      clearTimeout(pinTimer);
-      pinTimer = window.setTimeout(() => {
-        if (canLean.matches && !cmp.matches(':hover')) pin();
-      }, 150);
+    imgs.forEach((im, i) => {
+      im.classList.add('is-zoomable');
+      im.setAttribute('tabindex', '0');
+      im.setAttribute('role', 'button');
+      const open = () => { show(i); lb.showModal(); };
+      im.addEventListener('click', open);
+      im.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
     });
-  });
+
+    document.getElementById('csLbClose')?.addEventListener('click', () => lb.close());
+    document.getElementById('csLbPrev')?.addEventListener('click', () => show(cur - 1));
+    document.getElementById('csLbNext')?.addEventListener('click', () => show(cur + 1));
+    lb.addEventListener('click', (e) => { if (e.target === lb) lb.close(); });
+    lb.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') show(cur - 1);
+      if (e.key === 'ArrowRight') show(cur + 1);
+    });
+    let sx = 0;
+    lb.addEventListener('touchstart', (e) => { sx = e.touches[0].clientX; }, { passive: true });
+    lb.addEventListener('touchend', (e) => {
+      const dx = e.changedTouches[0].clientX - sx;
+      if (Math.abs(dx) > 48) show(cur + (dx < 0 ? 1 : -1));
+    }, { passive: true });
+  }
+
 </script>

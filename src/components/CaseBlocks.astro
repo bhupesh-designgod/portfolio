@@ -1,0 +1,154 @@
+---
+/* Behaviour shared by every surface that renders case-study blocks: the
+   case study page itself and the lab preview of its body. Script only. */
+---
+
+<script>
+  /* ---- decision labels ----
+     The colour of a Decision / Because / Trade-off label follows its word;
+     CSS cannot read text, so the word is copied onto a data attribute. */
+  document.querySelectorAll<HTMLElement>('.k-decision dt').forEach((dt) => {
+    dt.dataset.k = (dt.textContent || '').trim().toLowerCase();
+  });
+
+  /* ---- lean ----
+     Any set of two or more screens side by side: point at one and it takes
+     the room, the others shrink to thumbnails beside it. Two 1440px captures
+     at half width each is where a UI stops being readable, and this is the
+     cheapest way to give one of them full attention without a click.
+
+     The redistribution itself is pure CSS — `:has()` on the hovered figure
+     rewrites three custom properties. All the script does is measure: how
+     many columns the set actually has at this width, and what height each
+     image occupies at rest. Pinning that height is what makes leaning safe:
+     the row height would otherwise track the widening image and push the
+     whole page down every time the cursor crossed a gap.
+
+     Enhancement only. On touch, on a narrow window, without `:has()`, or
+     with no JS at all, none of this switches on and the set behaves exactly
+     as it always has. */
+  const canLean = window.matchMedia('(min-width: 821px) and (hover: hover) and (pointer: fine)');
+  const hasHas = typeof CSS !== 'undefined' && CSS.supports?.('selector(:has(*))');
+
+  if (hasHas) {
+    document.querySelectorAll<HTMLElement>('.k-compare, .k-grid').forEach((set) => {
+      const figs = Array.from(set.querySelectorAll<HTMLElement>(':scope > figure'));
+      if (figs.length < 2) return;
+
+      /* Ratio comes from the img's own width/height attributes rather than a
+         measurement, so it is right before a lazy image has loaded. */
+      const specs = figs.map((fig) => {
+        const img = fig.querySelector<HTMLImageElement>('img');
+        if (!img) return null;
+        const w = Number(img.getAttribute('width')) || img.naturalWidth;
+        const h = Number(img.getAttribute('height')) || img.naturalHeight;
+        return { fig, img, ar: w && h ? w / h : 0, inset: 0 };
+      });
+      if (specs.some((s) => !s || !s.ar)) return;
+
+      /* Leaning costs about a third of the image's height off the bottom,
+         since the height is pinned and `cover` takes the overflow. On a
+         dashboard that spends the crop on lower table rows. On a wide process
+         strip the whole diagram lives inside that band and the crop would cut
+         it in half, so those keep their plain layout. */
+      const MAX_AR = 2.4;
+      if (specs.some((s) => s!.ar > MAX_AR)) return;
+
+      /* Every media element gets a slot around it: a box tall enough for the
+         widest this set will ever lean, with the screen centred inside. The
+         wrapper is inert (`display: contents`) until the lean is live, so
+         nothing about the markup changes when it is not. */
+      const slots = figs.map((fig) => {
+        const media = fig.querySelector<HTMLElement>(':scope > .k-mount, :scope > .k-plate, :scope > .k-win, :scope > img');
+        if (!media) return null;
+        const slot = document.createElement('div');
+        slot.className = 'k-lean-slot';
+        media.before(slot);
+        slot.appendChild(media);
+        return slot;
+      });
+      if (slots.some((s) => !s)) return;
+
+      const measure = () => {
+        /* Columns counted from where the figures actually sit, not from the
+           track list: `repeat(auto-fit, …)` reports every track the grid could
+           make, which on a two-figure set at this width is three. */
+        const gap = parseFloat(getComputedStyle(set).columnGap) || 0;
+        const top = figs[0].offsetTop;
+        const cols = figs.filter((f) => Math.abs(f.offsetTop - top) < 2).length;
+        return { cols, gap };
+      };
+
+      const pin = () => {
+        const { cols, gap } = measure();
+        if (cols < 2) return false;
+
+        /* Fractions of the width left after the gaps. A pair lands on 60/40:
+           enough to give one screen the attention, gentle enough that the
+           room reserved for it above the captions is not a hole in the page
+           at rest. */
+        const rest = 1 / cols;
+        /* 58/42 on a pair. The ceiling matters more than the drama does:
+           whatever height the leaned screen can reach has to stand reserved
+           above every caption at rest, and past about a sixth that reserve
+           stops reading as air and starts reading as a hole. */
+        const grown = Math.min(0.58, rest * (cols === 2 ? 1.16 : 1.35));
+        /* A hair under the exact remainder. At exactly (1 - grown) the row
+           sums to 100% and a sub-pixel rounding error wraps the last figure
+           onto its own line mid-transition. */
+        const shrunk = ((1 - grown) / (cols - 1)) * 0.99;
+        const gaps = `${gap * (cols - 1)}px`;
+        set.style.setProperty('--k-rest', `calc((100% - ${gaps}) * ${rest})`);
+        set.style.setProperty('--k-grown', `calc((100% - ${gaps}) * ${grown})`);
+        set.style.setProperty('--k-shrunk', `calc((100% - ${gaps}) * ${shrunk})`);
+
+        /* `inset` is everything across the column that is not the image —
+           mount padding, window border — and `chrome` is everything down it
+           that does not scale with the image, like the title bar. Both are
+           measured at rest, where hovering cannot have distorted them. */
+        const avail = set.getBoundingClientRect().width - gap * (cols - 1);
+        let slot = 0;
+        specs.forEach((sp, i) => {
+          const media = slots[i]!.firstElementChild as HTMLElement | null;
+          if (!media) return;
+          const figW = sp!.fig.getBoundingClientRect().width;
+          const imgBox = sp!.img.getBoundingClientRect();
+          if (figW && imgBox.width) sp!.inset = figW - imgBox.width;
+          const chrome = media.getBoundingClientRect().height - imgBox.height;
+          /* Any one of them could be the one being leaned on, so the slot has
+             to fit whichever grows tallest. */
+          slot = Math.max(slot, chrome + (avail * grown - sp!.inset) / sp!.ar);
+        });
+        if (slot > 0) set.style.setProperty('--k-slot', `${Math.ceil(slot)}px`);
+        return true;
+      };
+
+      const unpin = () => {
+        set.style.removeProperty('--k-slot');
+        set.style.removeProperty('--k-rest');
+      };
+
+      const sync = () => {
+        if (canLean.matches && pin()) set.classList.add('k-lean-set', 'is-live');
+        else {
+          set.classList.remove('k-lean-set', 'is-live');
+          unpin();
+        }
+      };
+
+      sync();
+      canLean.addEventListener('change', sync);
+
+      /* Re-measure on resize, but never mid-hover: the measurement is taken
+         from the container, which hovering does not move, yet re-running it
+         while a figure is leaning would fight the transition. */
+      let timer = 0;
+      window.addEventListener('resize', () => {
+        clearTimeout(timer);
+        timer = window.setTimeout(() => {
+          if (!set.matches(':hover')) sync();
+        }, 150);
+      });
+    });
+  }
+</script>

@@ -1,0 +1,26 @@
+---
+/* Lab: a case study's body without its hero, for reviewing the info blocks
+   at full width in one tall capture. Same accent, same reading surface. */
+import { getCollection, render } from 'astro:content';
+import Base from '../../../layouts/Base.astro';
+import CaseBlocks from '../../../components/CaseBlocks.astro';
+
+export async function getStaticPaths() {
+  const projects = await getCollection('work');
+  return projects.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+---
+
+<Base title={`Blocks — ${entry.data.client}`}>
+  <article class="cs" data-accent={entry.data.accent}>
+    <div class="cs-read" style="margin-top:0;padding-top:120px">
+      <div class="cs-read__inner">
+        <div></div>
+        <div class="prose cs-prose" id="csProse"><Content /></div>
+      </div>
+    </div>
+  </article>
+  <CaseBlocks />
+</Base>

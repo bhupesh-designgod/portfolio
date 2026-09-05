@@ -1,19 +1,23 @@
 ---
 client: TBS
-title: A WhatsApp coaching practice, rebuilt as a product
-heroTitle: There was no room for a 31st client
+title: Helping a fitness coach grow past 30 clients without losing the human touch
+heroTitle: Making room for the *31st client*
 summary: >-
-  A fitness coaching practice run entirely inside WhatsApp. Thirty clients was
-  the ceiling — not because demand ran out, but because one trainer's day did.
+  A fitness coach ran his whole business on WhatsApp and hit a ceiling at 30
+  clients. I designed the client app that lets him coach more people without
+  coaching any of them less.
 tags: [Product strategy, 0 → 1, Information architecture, Design systems]
 tint: '#e7f0e9'
 accent: gold
 folderTone: dark
-folderArt: /assets/projects/tbs/checkin.png
+folderArt: /assets/projects/tbs/checkin.webp
 folderArtAlt: The TBS client app check-in screen
 costume: fitness
 role: Product Designer
 timeline: May – July 2026
+cover: /assets/projects/tbs/home.webp
+coverAlt: The TBS client app Home screen — a voice note from the coach, plan status and today's three tasks
+coverKind: phone
 order: 1
 ---
 
@@ -42,18 +46,36 @@ order: 1
   <symbol id="i-send" viewBox="0 0 24 24"><path d="M21.5 2.5 10.5 13.5M21.5 2.5 14.5 21.5l-4-8-8-4z"/></symbol>
   <symbol id="i-card" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20M6 15h4"/></symbol>
   <symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M3 12h18M12 8v13"/><path d="M12 8S10.5 3 8 3a2.5 2.5 0 0 0 0 5M12 8s1.5-5 4-5a2.5 2.5 0 0 1 0 5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m4.5 12.5 5 5 10-11"/></symbol>
+  <symbol id="i-repeat" viewBox="0 0 24 24"><path d="M4 9a5 5 0 0 1 5-5h11M20 15a5 5 0 0 1-5 5H4"/><path d="m17 1 3 3-3 3M7 17l-3 3 3 3"/></symbol>
 </svg>
 
 ## Overview
 
-TBS is the coaching arm of a fitness creator with 404k followers on Instagram.
-Clients arrive from a story, pay over WhatsApp, and get coached there — voice
-notes, meal plans as files, calls at whatever hour they dial. It works, and it
-stops working at about thirty people.
+TBS is the online coaching business of a fitness creator with 404k followers
+on Instagram. Until this project, the whole business ran inside WhatsApp:
+clients paid there, got their meal plans there as files, and got coached there
+by voice note. It worked well, right up to about thirty clients. At that point
+one trainer's day was full, and the business could not grow.
 
-I joined as product designer to turn that practice into a product: research,
-information architecture, both surfaces, and the design system. The PM held the
-vision; the specification did not exist yet.
+I was the product designer on the project, working with a PM who held the
+vision but had no written specification yet. Over three months I did the
+research, worked out how the product should be organised, designed all three
+surfaces (a sign-up funnel, a client app and a trainer dashboard) and built the
+design system they share. This page follows the **client app**. The
+<a href="/work/tbs-dashboard">trainer dashboard has its own case study</a>.
+
+The result is a five-tab app, now in development, that moves the repetitive
+parts of coaching into software while keeping the coach himself at the centre.
+
+<div class="k-tldr k-wide">
+  <p class="k-tldr__label">The short version</p>
+  <div class="k-tldr__grid">
+    <div><span class="k-tile"><svg class="k-ic"><use href="#i-x"/></svg></span><b>The problem</b><p>One coach, thirty clients, and no way to take a thirty-first. Every plan, reminder and check-in lived in a chat thread and in his head.</p></div>
+    <div><span class="k-tile"><svg class="k-ic"><use href="#i-phone"/></svg></span><b>What I did</b><p>Designed the client app from scratch: research, structure, ~60 screens and a design system, then a clickable prototype to settle decisions faster.</p></div>
+    <div><span class="k-tile"><svg class="k-ic"><use href="#i-target"/></svg></span><b>Where it landed</b><p>Into development in July 2026 as designed. No usage numbers yet, so none are claimed here. The metrics that will judge it are listed at the end.</p></div>
+  </div>
+</div>
 
 <div class="k-stats k-wide">
   <div><span class="k-tile"><svg class="k-ic"><use href="#i-phone"/></svg></span><span class="k-stats__v"><b>3</b><span>surfaces designed</span></span></div>
@@ -62,48 +84,49 @@ vision; the specification did not exist yet.
   <div><span class="k-tile"><svg class="k-ic"><use href="#i-calendar"/></svg></span><span class="k-stats__v"><b>Jul 2026</b><span>into development</span></span></div>
 </div>
 
-<div class="k-band k-wide">
-  <span class="k-tile"><svg class="k-ic"><use href="#i-target"/></svg></span>
-  <div><h4>Three surfaces. <em>One case study.</em></h4><p>An acquisition funnel brings the right clients in. A trainer dashboard turns conversations into structured action. A client app builds the daily habit — and that is the one this follows, because it is where the product's promise actually lives.</p></div>
+## My role
+
+<div class="k-role k-wide">
+  <div><span class="k-tile"><svg class="k-ic"><use href="#i-calendar"/></svg></span><b>The project</b><p>A three-month client engagement, May to July 2026. One product designer (me), one PM, one founder-trainer, and the development team that took the handoff.</p></div>
+  <div><span class="k-tile"><svg class="k-ic"><use href="#i-user"/></svg></span><b>What I owned</b><p>Research into how the practice actually ran, the structure of all three surfaces, every screen in the client app and dashboard, and the shared design system. The PM set direction; the detail was mine to work out and argue for.</p></div>
+  <div><span class="k-tile"><svg class="k-ic"><use href="#i-grid"/></svg></span><b>Tools</b><p>Figma for design and handoff. Claude Code to build a clickable prototype of the app, which is what we reviewed against in the second half.</p></div>
+  <div><span class="k-tile"><svg class="k-ic"><use href="#i-doc"/></svg></span><b>What I delivered</b><p>An 11-step sign-up funnel, a 5-tab client app, a ~50-screen trainer dashboard, empty and error states throughout, and the colour, type, component and motion foundations for both themes.</p></div>
 </div>
 
-## Context
+<div class="k-band k-wide">
+  <span class="k-tile"><svg class="k-ic"><use href="#i-target"/></svg></span>
+  <div><h4>Three surfaces. <em>This page follows one.</em></h4><p>The funnel brings the right clients in. The dashboard turns conversations into a to-do list for the coach. The client app is where a client lives every day, and that is the one this case study follows, because it is where the product's promise is kept or broken.</p></div>
+</div>
 
-Everything in the business ran through one thread. A story goes up, a number
-goes out, one or two people field the replies. Once someone pays, the coaching
-is a conversation: a group thread for general questions, one-to-one voice notes
-for personal ones, plans sent as attachments, calls whenever a client decides
-to make one.
+## The problem
 
-<p class="k-hook">WhatsApp wasn't broken. <em>It was the wrong container.</em></p>
+Here is how the business worked before. A story goes up on Instagram with a
+phone number. Someone messages, pays, and is added to a group chat. From then
+on, coaching is a conversation: questions in the group, personal advice by
+voice note, meal plans sent as attachments, and calls whenever the client
+decides to ring.
+
+<p class="k-hook">WhatsApp wasn't broken. <em>It was the wrong place to keep a plan.</em></p>
 
 <div class="k-duo k-duo--tight k-wide">
   <div class="k-card">
-    <div class="k-card__h"><span class="k-tile k-tile--plain"><svg class="k-ic"><use href="#i-search"/></svg></span><h4>A conversation</h4></div>
+    <div class="k-card__h"><span class="k-tile k-tile--plain"><svg class="k-ic"><use href="#i-search"/></svg></span><h4>A chat</h4></div>
     <div class="k-thread" aria-hidden="true"><i class="k-thread__b"></i><i class="k-thread__b k-thread__b--me"></i><i class="k-thread__b"></i><i class="k-thread__b k-thread__b--me"></i><i class="k-thread__b"></i></div>
-    <p>Moves forward, and buries what came before. Out of order, hard to search, impossible to compare.</p>
+    <p>Only moves forward. Whatever was said last week is buried under this week. Hard to search, impossible to compare.</p>
   </div>
   <div class="k-card k-card--gold">
     <div class="k-card__h"><span class="k-tile"><svg class="k-ic"><use href="#i-doc"/></svg></span><h4>A record</h4></div>
     <div class="k-record" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-    <p>The plan, the history and the progress against it — in one place, a tap away, every time.</p>
+    <p>Your plan, your history, and how you are doing against it. In one place, one tap away, every time you look.</p>
   </div>
 </div>
 
-The gap between those two is the whole project. Nothing was broken enough to
-lose clients — the coaching was good and people were getting results. What was
-broken was that none of it scaled past the limits of one person's day and one
-person's memory.
-
-## Problem space
+Nothing was broken badly enough to lose clients. The coaching was good and
+people got results. What was broken was that none of it could grow past what
+one person can hold in his head in a single day.
 
 <p class="k-claim">The business could not sell a 31st place, because there was
 nowhere to put one.</p>
-
-Growth was capped by the only resource that could not be bought more of: the
-trainer's time and recall. Every new client added a case to hold in his head, a
-plan to write from scratch, and a phone that could ring at any hour. Thirty was
-not a target. It was the point at which the day filled up.
 
 <div class="k-seats k-wide">
   <div>
@@ -113,84 +136,108 @@ not a target. It was the point at which the day filled up.
   <div class="k-seats__none">
     <span class="k-seats__slot"><svg class="k-ic" style="width:26px;height:26px"><use href="#i-x"/></svg></span>
     <b>31st client</b>
-    <span>Nowhere to put.</span>
+    <span>Nowhere to put them.</span>
   </div>
 </div>
+
+The same missing thing hurt both sides, from opposite ends:
 
 <div class="k-duo k-wide">
   <div class="k-card">
     <div class="k-card__h"><span class="k-tile"><svg class="k-ic"><use href="#i-user"/></svg></span><h4>For the trainer</h4></div>
     <ul>
-      <li>Thirty cases held in memory — goals, history and context recalled the moment someone messaged.</li>
-      <li>No shape to the day. Calls landed whenever a client chose to dial, working hours or not.</li>
-      <li>Plans went out as files. A few were kept and reused to coach other people — survivable at thirty, not at three hundred.</li>
+      <li>Thirty people's goals, history and injuries, all held in memory and recalled the moment someone messaged.</li>
+      <li>No shape to the day. Calls came whenever a client chose to dial, working hours or not.</li>
+      <li>Every plan written from a blank page. Survivable at thirty clients, not at three hundred.</li>
     </ul>
   </div>
   <div class="k-card">
     <div class="k-card__h"><span class="k-tile"><svg class="k-ic"><use href="#i-users"/></svg></span><h4>For the client</h4></div>
     <ul>
-      <li>Progress was invisible unless they produced the evidence themselves — photos from whatever angle, with nothing to compare against.</li>
-      <li>Their plan sat somewhere above them in a thread, so the same questions came back week after week.</li>
-      <li>Accountability was a conversation. When it stopped, so did the accountability — and quiet clients stayed quiet.</li>
+      <li>Progress was invisible unless they took the photos themselves, from whatever angle, with nothing to compare against.</li>
+      <li>Their plan sat somewhere up the thread, so the same questions came back week after week.</li>
+      <li>Accountability was a conversation. When the conversation went quiet, so did the client.</li>
     </ul>
   </div>
 </div>
 
-Both sides were failing at the same thing from opposite ends. The trainer was
-running out of room to remember; the client had no way to retrieve. Same
-missing object.
+Written as a problem statement, so it can be checked against every decision
+that follows:
 
-<p class="k-claim k-claim--sub">The plan survives only in the trainer's memory
-and the client's scroll history. Neither one holds past thirty people.</p>
+<div class="k-problem k-wide">
+  <div><dt>Who</dt><dd>People paying for personal fitness coaching, most of them Indians living abroad, who want a real coach rather than an app.</dd></div>
+  <div><dt>Need</dt><dd>A way to see their plan, log their day and hear from their coach without scrolling back through weeks of chat.</dd></div>
+  <div><dt>Because</dt><dd>Right now everything lives in one WhatsApp thread and one person's memory. Neither of those holds past thirty people, so the coach cannot take on more clients, and the clients he has lose track of where they are.</dd></div>
+  <p class="k-problem__hmw">How might we let one coach look after far more clients, without any client feeling like they've been handed to a machine?</p>
+</div>
 
-## Goal and vision
+## The goal
 
-The obvious move was to replace WhatsApp. It was also the wrong one.
+The obvious answer was to replace WhatsApp with an app. It was also the wrong
+answer.
 
-Clients were not paying for the meal plan — plans are commodity. They were
+Clients were not paying for meal plans. Meal plans are everywhere. They were
 paying for a specific person paying attention to them. Automate the coach out
 of the relationship and you destroy the thing being sold.
 
-<p class="k-claim k-claim--goal">Automate the logistics.<br><em>Protect the contact.</em></p>
+<p class="k-claim k-claim--goal">Automate the admin.<br><em>Protect the contact.</em></p>
 
-Everything mechanical moves into the product. Everything relational stays human,
-and gets more room, because the mechanical work stopped eating the day. Three
-constraints carried that from a sentence into a build:
+So the rule for the whole product became: everything mechanical moves into
+the app. Everything human stays human, and gets more room, because the
+mechanical work stopped eating the day. Three changes carried that rule from a
+sentence into a build:
 
 <div class="k-shift k-wide">
+  <div class="k-shift__head" aria-hidden="true"><span>Before</span><span>After</span></div>
   <div class="k-shift__row">
     <span class="k-tile"><svg class="k-ic"><use href="#i-calendar"/></svg></span>
     <h4>Calls</h4>
-    <p class="k-shift__was">Client dials whenever they want. The day belongs to whoever calls first.</p>
-    <p class="k-shift__now">One a week, ten minutes, inside two fixed windows in the trainer's timezone.</p>
-    <p class="k-shift__why">Bounding the call is what makes a hundred clients arithmetically possible.</p>
+    <p class="k-shift__was">The client dials whenever they want. The day belongs to whoever calls first.</p>
+    <p class="k-shift__now">One call a week, ten minutes, inside two fixed windows in the coach's own timezone.</p>
+    <p class="k-shift__why">Putting a limit on calls is what makes a hundred clients possible on a calendar.</p>
   </div>
   <div class="k-shift__row">
     <span class="k-tile"><svg class="k-ic"><use href="#i-users"/></svg></span>
-    <h4>The roster</h4>
-    <p class="k-shift__was">Thirty cases held in memory, surfaced when someone messages.</p>
-    <p class="k-shift__now">A priority queue sorted by who needs something today.</p>
-    <p class="k-shift__why">A list only externalises the problem. A queue answers it.</p>
+    <h4>The client list</h4>
+    <p class="k-shift__was">Thirty cases in the coach's head, surfaced when someone messages.</p>
+    <p class="k-shift__now">A queue that sorts itself by who needs something today.</p>
+    <p class="k-shift__why">A list just moves the names onto a screen. A queue makes the decision for him.</p>
   </div>
   <div class="k-shift__row">
     <span class="k-tile"><svg class="k-ic"><use href="#i-chart"/></svg></span>
     <h4>Progress</h4>
-    <p class="k-shift__was">Weight, and whatever the client remembered to photograph.</p>
-    <p class="k-shift__now">Habits, photos, strength and adherence, alongside weight.</p>
-    <p class="k-shift__why">Weight stalls for weeks while real change happens. A stalled number is what starts the drop-off.</p>
+    <p class="k-shift__was">Weight, plus whatever the client remembered to photograph.</p>
+    <p class="k-shift__now">Habits, photos, strength and consistency, shown alongside weight.</p>
+    <p class="k-shift__why">Weight can stall for weeks while real change happens. A stuck number is what makes people give up.</p>
   </div>
 </div>
 
 <div class="k-band k-wide">
   <span class="k-tile"><svg class="k-ic"><use href="#i-bulb"/></svg></span>
-  <div><h4>Scale without <em>removing the human.</em></h4><p>More clients, better results, and a coaching practice the coach can still stand to run.</p></div>
+  <div><h4>Grow, <em>without removing the human.</em></h4><p>More clients, better results, and a coaching business the coach can still stand to run.</p></div>
 </div>
 
-## Information architecture
+## What research changed
 
-The app is built around five tabs covering everything a client needs — plan,
-nutrition, coach, training and proof. Home brings them together by answering
-one question: *what should I focus on right now?*
+<div class="k-gain k-wide">
+  <div><b>Goal</b><p>Understand how the coaching actually ran day to day, and where clients dropped off, before drawing a single screen.</p></div>
+  <div><b>What I did</b><p>Worked through the existing practice with the coach and PM: how a client arrives, how a plan is written, what a normal week of messages looks like, and who quietly stopped replying.</p></div>
+  <div><b>What I found</b><p>Three things that shaped everything after. Drop-off clusters in <b>weeks three to eight</b>, when the scale stops moving. Most clients are <b>Indians living abroad</b>, eating with family on someone else's schedule. And clients stay for the <b>coach</b>, not the plan.</p></div>
+  <div><b>What it changed</b><p>The app had to protect the relationship first, forgive a missed meal rather than punish it, and log food the way these households actually eat.</p></div>
+</div>
+
+<div class="k-why k-wide">
+  <div><span class="k-tile"><svg class="k-ic"><use href="#i-chart"/></svg></span><div><h4>Weeks 3 to 8 are where people quit</h4><p>The pattern is specific: miss a target, feel guilty, go quiet, stop replying. Most of the behavioural decisions in the app are aimed at that window.</p></div></div>
+  <div><span class="k-tile"><svg class="k-ic"><use href="#i-fork"/></svg></span><div><h4>Food is shared, not planned</h4><p>Indian households cook one pot for everyone. A pre-built meal plan assumes you control what gets cooked. Most of these clients do not, so the app logs the dal, roti and sabzi that actually landed on the plate.</p></div></div>
+  <div><span class="k-tile"><svg class="k-ic"><use href="#i-headset"/></svg></span><div><h4>The coach is the product</h4><p>Clients pay for a person who notices them. Every screen was checked against one question: does this make the coach feel closer, or further away?</p></div></div>
+</div>
+
+## How the app is organised
+
+Information architecture is just the question of what goes where. This app
+has five tabs, one for each thing a client needs: their plan, their food, their
+coach, their training and their proof of progress. Home ties them together by
+answering one question: *what should I focus on right now?*
 
 <div class="k-ia k-wide">
   <div class="k-ia__tabs">
@@ -200,48 +247,43 @@ one question: *what should I focus on right now?*
     <div class="k-ia__tab"><svg class="k-ic"><use href="#i-dumbbell"/></svg><b>Train</b></div>
     <div class="k-ia__tab"><svg class="k-ic"><use href="#i-star"/></svg><b>Reviews</b></div>
   </div>
-  <p class="k-ia__caption">Home, expanded — in the order it reads on a 390px screen</p>
+  <p class="k-ia__caption">Home, top to bottom, in the order it reads on a phone</p>
   <ol class="k-ia__stack">
-    <li class="is-lead"><span class="k-ia__txt"><b>A voice note from your coach</b><span>relationship — the reason you paid</span></span></li>
-    <li class="is-lead"><span class="k-ia__txt"><b>Plan status</b><span>state — where you are, right now</span></span></li>
-    <li class="is-lead"><span class="k-ia__txt"><b>Today's three tasks</b><span>action — what to do next</span></span></li>
-    <li><span class="k-ia__txt"><b>Calories remaining</b><span>remaining, never planned</span></span></li>
-    <li><span class="k-ia__txt"><b>Weight &amp; plan dates</b><span>moved down, deliberately</span></span></li>
+    <li class="is-lead"><span class="k-ia__txt"><b>A voice note from your coach</b><span>the relationship — the reason you paid</span></span></li>
+    <li class="is-lead"><span class="k-ia__txt"><b>Where your plan is</b><span>your status, right now</span></span></li>
+    <li class="is-lead"><span class="k-ia__txt"><b>Today's three tasks</b><span>what to do next</span></span></li>
+    <li><span class="k-ia__txt"><b>Calories remaining</b><span>what's left, not what was planned</span></span></li>
+    <li><span class="k-ia__txt"><b>Weight &amp; plan dates</b><span>moved down, on purpose</span></span></li>
   </ol>
 </div>
 
-The spec asked for six things at the top of that screen: name and photo,
-starting versus current weight, plan end date, recommended plan, selected plan,
-and a chat bar. None of them lead.
+<div class="k-gain k-wide">
+  <div><b>Goal</b><p>Decide what a client sees first when they open the app, especially on a bad day.</p></div>
+  <div><b>What I did</b><p>Started from the PM's list of six things for the top of Home (name and photo, start weight vs now, plan end date, recommended plan, selected plan, a chat bar) and tested each against the research.</p></div>
+  <div><b>What I found</b><p>None of the six should lead. If the first thing you see is a number, the app has swapped the relationship for a metric, and that metric is exactly what stalls in weeks three to eight.</p></div>
+  <div><b>What it changed</b><p>Home opens with the coach's voice note. The chat bar became a whole tab. Three tabs became five.</p></div>
+</div>
 
-Home opens with the coach instead. If the first thing the app shows is a
-number, the app has replaced the relationship with a metric — and the metric is
-exactly the thing that stalls in weeks three to eight and makes people go quiet.
-
-Coach did not exist at first. The early structure had three tabs and treated
-messaging as a utility, a bar pinned to the bottom of Home, where it competed
-with everything else on the screen and lost. The relationship turned out to be
-a place, not a widget.
+The Coach tab did not exist at first. The early version had three tabs and
+treated messaging as a small bar at the bottom of Home, where it competed with
+everything else on the screen and lost. It turned out the relationship needed
+to be a place, not a widget.
 
 <div class="k-band k-wide">
   <span class="k-tile"><svg class="k-ic"><use href="#i-home"/></svg></span>
-  <div><h4>Home is not a menu.</h4><p>It is the day's state — where your plan is, what your coach said, what is left to do. A screen whose job is to route gives you no reason to open it.</p></div>
+  <div><h4>Home is not a menu.</h4><p>It shows the state of your day: where your plan is, what your coach said, what is left to do. A screen whose only job is to send you elsewhere gives you no reason to open it.</p></div>
 </div>
 
-The trainer dashboard follows the same logic in reverse — Dashboard, Clients,
-Check-ins, Plans, Calls — with the landing view answering *who needs me today*
-rather than listing who exists.
+## The three key flows
 
-## Core flows
-
-### Application to plan drop
+### 1. From sign-up to first plan
 
 <ol class="k-journey k-wide">
   <li><span class="k-journey__dot"><svg class="k-ic"><use href="#i-send"/></svg></span><b>Landing</b><span>Story → link</span></li>
   <li><span class="k-journey__dot"><svg class="k-ic"><use href="#i-doc"/></svg></span><b>Qualify</b><span>Four questions</span></li>
   <li><span class="k-journey__dot"><svg class="k-ic"><use href="#i-users"/></svg></span><b>Matching</b><span>Fit check</span></li>
   <li><span class="k-journey__dot"><svg class="k-ic"><use href="#i-shield"/></svg></span><b>Accepted</b><span>Coach agrees</span></li>
-  <li><span class="k-journey__dot"><svg class="k-ic"><use href="#i-card"/></svg></span><b>Payment</b><span>Behind acceptance</span></li>
+  <li><span class="k-journey__dot"><svg class="k-ic"><use href="#i-card"/></svg></span><b>Payment</b><span>After acceptance</span></li>
   <li><span class="k-journey__dot"><svg class="k-ic"><use href="#i-user"/></svg></span><b>Intake</b><span>Goals, history</span></li>
   <li><span class="k-journey__dot"><svg class="k-ic"><use href="#i-calendar"/></svg></span><b>Schedule</b><span>First call booked</span></li>
   <li class="is-key"><span class="k-journey__dot"><svg class="k-ic"><use href="#i-clock"/></svg></span><b>Day 0</b><span>The waiting room</span></li>
@@ -249,22 +291,22 @@ rather than listing who exists.
 </ol>
 
 Eleven steps, built around the one moment the flow cannot afford to lose: the
-gap between paying and receiving a plan. That gap is dead air, and dead air
-right after payment is where doubt sets in.
+gap between paying and receiving a plan. That gap is silence, and silence right
+after payment is where doubt sets in.
 
 <figure class="k-media k-wide">
   <div class="k-media__panel">
-    <div class="k-shot"><img src="/assets/projects/tbs/day0.png" alt="TBS client app — Home on Day 0, before the plan has landed" loading="lazy" width="390" /></div>
+    <div class="k-shot"><img src="/assets/projects/tbs/day0.webp" alt="TBS client app — Home on Day 0, before the plan has landed" loading="lazy" width="390" /></div>
     <ol class="k-notes">
-      <li><span><b>A countdown</b><span>Says exactly when the plan lands, so the silence has an end.</span></span></li>
-      <li><span><b>A voice note from the coach</b><span>A person, on day zero, before any feature has proved itself.</span></span></li>
+      <li><span><b>A countdown</b><span>Says exactly when the plan lands, so the silence has an end date.</span></span></li>
+      <li><span><b>A voice note from the coach</b><span>A real person on day zero, before any feature has proved itself.</span></span></li>
       <li><span><b>Three things to do now</b><span>Starting photos, a water target, a first goal.</span></span></li>
     </ol>
   </div>
-  <figcaption>Day 0 fills the dead air. The client is doing something the moment they arrive instead of waiting for the product to start.</figcaption>
+  <figcaption>Day 0 fills the silence. The client is doing something the moment they arrive, instead of waiting for the product to start.</figcaption>
 </figure>
 
-### Daily meal logging
+### 2. Logging a meal
 
 <ol class="k-journey k-wide">
   <li><span class="k-journey__dot"><svg class="k-ic"><use href="#i-home"/></svg></span><b>Home</b><span>What's left today</span></li>
@@ -273,134 +315,138 @@ right after payment is where doubt sets in.
   <li class="is-key"><span class="k-journey__dot"><svg class="k-ic"><use href="#i-chart"/></svg></span><b>Recalculates</b><span>The rest of the day adjusts</span></li>
 </ol>
 
-Each meal shows what is **left**, not what was planned, and the remaining
-allowance recalculates against everything already logged that day. Overshoot at
-lunch and dinner adjusts.
+Each meal shows what is **left**, not what was planned. Eat too much at lunch
+and dinner's allowance shrinks to fit. The day never fails; it adjusts.
 
-That single interaction carries the whole behavioural bet:
+That one small interaction carries the whole behavioural bet:
 
 <div class="k-loop k-wide">
   <div class="k-loop__col k-loop__col--old">
     <h4>The obvious build</h4>
-    <ol><li>Miss a meal target</li><li>Day marked failed</li><li>Feel guilty</li><li>Go quiet</li><li>Stop replying to the coach</li></ol>
+    <ol><li>Miss a meal target</li><li>Day marked as failed</li><li>Feel guilty</li><li>Go quiet</li><li>Stop replying to the coach</li></ol>
   </div>
   <div class="k-loop__col k-loop__col--new">
-    <h4>What we built</h4>
+    <h4>What I built</h4>
     <ol><li>Miss a meal target</li><li>Allowance recalculates</li><li>You can still land today</li><li>Come back at dinner</li><li>Stay in contact</li></ol>
   </div>
 </div>
 
-Adherence is a recoverable state, not a verdict — and the client who overshoots
-lunch is exactly the client you need to keep in the app.
+A slip is something you can recover from, not a verdict. The client who
+overshoots lunch is exactly the client you need to keep in the app.
 
-### Attention to action
+### 3. From check-in to reply
 
 <ol class="k-journey k-wide">
-  <li><span class="k-journey__dot"><svg class="k-ic"><use href="#i-grid"/></svg></span><b>Dashboard</b><span>Open the day</span></li>
-  <li class="is-key"><span class="k-journey__dot"><svg class="k-ic"><use href="#i-users"/></svg></span><b>Who needs me</b><span>Sorted by pending action</span></li>
-  <li><span class="k-journey__dot"><svg class="k-ic"><use href="#i-user"/></svg></span><b>Client detail</b><span>Context assembled</span></li>
-  <li><span class="k-journey__dot"><svg class="k-ic"><use href="#i-doc"/></svg></span><b>Review</b><span>Read the check-in</span></li>
-  <li><span class="k-journey__dot"><svg class="k-ic"><use href="#i-calendar"/></svg></span><b>Act</b><span>Adjust or book</span></li>
+  <li><span class="k-journey__dot"><svg class="k-ic"><use href="#i-phone"/></svg></span><b>Client submits</b><span>Photos, weight, mood</span></li>
+  <li class="is-key"><span class="k-journey__dot"><svg class="k-ic"><use href="#i-users"/></svg></span><b>Coach's queue</b><span>Sorted by who needs him</span></li>
+  <li><span class="k-journey__dot"><svg class="k-ic"><use href="#i-doc"/></svg></span><b>Review</b><span>The week, already gathered</span></li>
+  <li><span class="k-journey__dot"><svg class="k-ic"><use href="#i-send"/></svg></span><b>Reply</b><span>A person, not a score</span></li>
 </ol>
 
-The trainer's old loop was: remember a client, find the thread, scroll for
-context, respond. The new one starts with the system naming who is overdue, and
-opens with the context already assembled.
+The coach's old loop was: remember a client, find the thread, scroll for
+context, reply. The new one starts with the system telling him who is overdue,
+and opens with the context already on screen.
 
-## Feature breakdown
+## Screen by screen
 
-Five tabs, around 44 screens. Each one earns its place by carrying a single job
-the WhatsApp version could not hold.
+Five tabs, around 44 screens. Each one exists to hold something the WhatsApp
+version could not.
 
 <figure class="k-media k-wide">
   <div class="k-media__panel">
-    <div class="k-shot k-shot--crop"><img src="/assets/projects/tbs/home.png" alt="TBS client app — Home once the plan is live" loading="lazy" width="390" /></div>
+    <div class="k-shot k-shot--crop"><img src="/assets/projects/tbs/home.webp" alt="TBS client app — Home once the plan is live" loading="lazy" width="390" /></div>
     <ol class="k-notes">
-      <li><span><b>Relationship first</b><span>Coach message or voice note builds the connection before anything else.</span></span></li>
-      <li><span><b>Then state</b><span>Plan progress: where you are, at a glance.</span></span></li>
+      <li><span><b>Relationship first</b><span>A message or voice note from the coach, before anything else.</span></span></li>
+      <li><span><b>Then status</b><span>Where your plan is, at a glance.</span></span></li>
       <li><span><b>Then action</b><span>Three tasks. Not a directory of every screen.</span></span></li>
     </ol>
   </div>
-  <figcaption><b>Home</b> — status first. Before the plan lands it is a countdown, a voice note and three preparatory tasks. After, it becomes the day's state.</figcaption>
+  <figcaption><b>Home</b> — before the plan lands it is a countdown, a voice note and three preparatory tasks. After, it becomes the state of your day.</figcaption>
 </figure>
 
 <figure class="k-media k-wide">
   <div class="k-media__panel">
-    <div class="k-shot k-shot--crop"><img src="/assets/projects/tbs/nutrition.png" alt="TBS client app — Nutrition, showing macros remaining for the day" loading="lazy" width="390" /></div>
+    <div class="k-shot k-shot--crop"><img src="/assets/projects/tbs/nutrition.webp" alt="TBS client app — Nutrition, showing macros remaining for the day" loading="lazy" width="390" /></div>
     <ol class="k-notes">
-      <li><span><b>Items, not meals</b><span>Prebuilt meals assume you control what gets cooked. Most of these clients do not.</span></span></li>
-      <li><span><b>Built for one pot</b><span>Indian households eat together, on someone else's schedule. Item-level logging records the dal, roti and sabzi that actually landed.</span></span></li>
-      <li><span><b>Weighted to who is using it</b><span>Indian staples, plus what is buyable in the US, UK, Canada and Australia — most clients are NRI.</span></span></li>
+      <li><span><b>Items, not meals</b><span>Pre-built meals assume you control what gets cooked. Most of these clients do not.</span></span></li>
+      <li><span><b>Built for one pot</b><span>Indian households eat together, on someone else's schedule. Item-level logging records what actually landed on the plate.</span></span></li>
+      <li><span><b>Stocked for who uses it</b><span>Indian staples, plus what is buyable in the US, UK, Canada and Australia.</span></span></li>
     </ol>
   </div>
-  <figcaption><b>Nutrition</b> — macro logging against a library of food items, showing what is left rather than what was planned.</figcaption>
+  <figcaption><b>Nutrition</b> — logging against a library of food items, always showing what is left rather than what was planned.</figcaption>
 </figure>
 
 <figure class="k-media k-wide">
   <div class="k-media__panel">
-    <div class="k-shot"><img src="/assets/projects/tbs/coach.png" alt="TBS client app — the Coach tab, with actions from the trainer" loading="lazy" width="390" /></div>
+    <div class="k-shot"><img src="/assets/projects/tbs/coach.webp" alt="TBS client app — the Coach tab, with actions from the trainer" loading="lazy" width="390" /></div>
     <ol class="k-notes">
-      <li><span><b>Bounded calls</b><span>Only the two windows the trainer actually works are offered.</span></span></li>
-      <li><span><b>Voice notes both ways</b><span>Human tone, kept — not buried in a thread.</span></span></li>
+      <li><span><b>Calls with limits</b><span>Only the two windows the coach actually works are offered.</span></span></li>
+      <li><span><b>Voice notes both ways</b><span>The human tone of WhatsApp, kept, but no longer buried in a thread.</span></span></li>
       <li><span><b>Context already there</b><span>Every conversation starts with the plan and the week attached.</span></span></li>
     </ol>
   </div>
-  <figcaption><b>Coach</b> — the relationship as a destination rather than a chat bar competing for the top of Home.</figcaption>
+  <figcaption><b>Coach</b> — the relationship gets its own tab instead of a chat bar fighting for the top of Home.</figcaption>
 </figure>
 
 <figure class="k-media k-wide">
   <div class="k-media__panel">
-    <div class="k-shot k-shot--crop"><img src="/assets/projects/tbs/train.png" alt="TBS client app — Train, showing the day's session" loading="lazy" width="390" /></div>
+    <div class="k-shot k-shot--crop"><img src="/assets/projects/tbs/train.webp" alt="TBS client app — Train, showing the day's session" loading="lazy" width="390" /></div>
     <ol class="k-notes">
       <li><span><b>The week at a glance</b><span>What is scheduled, what is done.</span></span></li>
-      <li><span><b>One tap to close</b><span>Done or not done. No sets, reps or weights in Phase 0.</span></span></li>
-      <li><span><b>Enough signal to start a conversation</b><span>Which is all the trainer actually needed.</span></span></li>
+      <li><span><b>One tap to close</b><span>Done or not done. No sets, reps or weights in this first version.</span></span></li>
+      <li><span><b>Enough signal to start a conversation</b><span>Which is all the coach actually needed.</span></span></li>
     </ol>
   </div>
-  <figcaption><b>Train</b> — the workout program as a week view, deliberately cheap to complete.</figcaption>
+  <figcaption><b>Train</b> — the workout programme as a week view, deliberately cheap to complete.</figcaption>
 </figure>
 
 <figure class="k-media k-wide">
   <div class="k-media__panel">
-    <div class="k-shot k-shot--crop"><img src="/assets/projects/tbs/reviews.png" alt="TBS client app — Reviews, with the latest coach review" loading="lazy" width="390" /></div>
+    <div class="k-shot k-shot--crop"><img src="/assets/projects/tbs/reviews.webp" alt="TBS client app — Reviews, with the latest coach review" loading="lazy" width="390" /></div>
     <ol class="k-notes">
-      <li><span><b>Mood and energy</b><span>The signals a scale cannot show.</span></span></li>
-      <li><span><b>Lands in the queue</b><span>The submission is what puts the client on the trainer's dashboard.</span></span></li>
+      <li><span><b>Mood and energy</b><span>The signals a bathroom scale cannot show.</span></span></li>
+      <li><span><b>Lands in the coach's queue</b><span>Submitting is what puts the client on his dashboard.</span></span></li>
       <li><span><b>A reply, not a score</b><span>Feedback comes back from a person, with the week's data attached.</span></span></li>
     </ol>
   </div>
   <figcaption><b>Reviews</b> — the midweek check-in, and the loop that turns logged data into direction.</figcaption>
 </figure>
 
-Empty and failure states were designed throughout rather than left for the
-build — the Day 0 versions of every tab, and the ordinary unglamorous set that
-usually arrives as an afterthought.
+Empty states (what a screen shows before there is anything in it) and error
+states were designed up front rather than left to the developers: the Day 0
+version of every tab, and the ordinary unglamorous set that usually arrives as
+an afterthought.
 
 <div class="k-shots k-wide">
-  <figure><div class="k-shot"><img src="/assets/projects/tbs/empty-train.png" alt="TBS client app — Train, empty state while the plan is pending" loading="lazy" width="387" /></div><figcaption>Train — plan pending</figcaption></figure>
-  <figure><div class="k-shot"><img src="/assets/projects/tbs/empty-progress.png" alt="TBS client app — Progress, empty state on Day 0" loading="lazy" width="390" /></div><figcaption>Progress — Day 0</figcaption></figure>
-  <figure><div class="k-shot"><img src="/assets/projects/tbs/auth-error.png" alt="TBS client app — sign-in error state" loading="lazy" width="390" /></div><figcaption>Sign-in — wrong password</figcaption></figure>
+  <figure><div class="k-shot"><img src="/assets/projects/tbs/empty-train.webp" alt="TBS client app — Train, empty state while the plan is pending" loading="lazy" width="387" /></div><figcaption>Train — plan pending</figcaption></figure>
+  <figure><div class="k-shot"><img src="/assets/projects/tbs/empty-progress.webp" alt="TBS client app — Progress, empty state on Day 0" loading="lazy" width="390" /></div><figcaption>Progress — Day 0</figcaption></figure>
+  <figure><div class="k-shot"><img src="/assets/projects/tbs/auth-error.webp" alt="TBS client app — sign-in error state" loading="lazy" width="390" /></div><figcaption>Sign-in — wrong password</figcaption></figure>
 </div>
 
 The check-in and the coach's written review are the two ends of the weekly
-loop: the client submits photos, weight and measurements, and it comes back as
-a read week with a focus for the next one.
+loop: the client sends photos, weight and measurements, and gets back a read of
+the week with one focus for the next.
 
 <div class="k-shots k-wide">
-  <figure><div class="k-shot k-shot--crop"><img src="/assets/projects/tbs/checkin.png" alt="TBS client app — the bi-weekly check-in form" loading="lazy" width="390" /></div><figcaption>Check-in — photos, weight, measurements</figcaption></figure>
-  <figure><div class="k-shot k-shot--crop"><img src="/assets/projects/tbs/week-review.png" alt="TBS client app — a written coach review for weeks 9 to 10" loading="lazy" width="389" /></div><figcaption>The coach's review, weeks 9–10</figcaption></figure>
-  <figure><div class="k-shot k-shot--crop"><img src="/assets/projects/tbs/onboarding-hours.png" alt="TBS — onboarding step for setting working hours" loading="lazy" width="390" /></div><figcaption>Onboarding — call windows</figcaption></figure>
+  <figure><div class="k-shot k-shot--crop"><img src="/assets/projects/tbs/checkin.webp" alt="TBS client app — the bi-weekly check-in form" loading="lazy" width="390" /></div><figcaption>Check-in — photos, weight, measurements</figcaption></figure>
+  <figure><div class="k-shot k-shot--crop"><img src="/assets/projects/tbs/week-review.webp" alt="TBS client app — a written coach review for weeks 9 to 10" loading="lazy" width="389" /></div><figcaption>The coach's review, weeks 9–10</figcaption></figure>
+  <figure><div class="k-shot k-shot--crop"><img src="/assets/projects/tbs/onboarding-hours.webp" alt="TBS — onboarding step for setting working hours" loading="lazy" width="390" /></div><figcaption>Onboarding — call windows</figcaption></figure>
 </div>
 
 <div class="k-aside k-wide">
   <div class="k-aside__h"><span class="k-tile k-tile--plain"><svg class="k-ic"><use href="#i-grid"/></svg></span><h4>The other two surfaces</h4></div>
-  <p>An <b>11-step acquisition funnel</b>, framed as an application rather than a checkout, with payment sitting behind acceptance. And a <b>trainer dashboard</b> of around 50 screens — a queue sorted by pending action, client detail split into Overview, Diet &amp; Nutrition and Check-in, and a six-step plan builder that turns plan-writing from a memory exercise into something repeatable at a hundred clients.</p>
-  <p>Both are in the handoff. Neither is the subject here — <a href="/work/tbs-dashboard">the dashboard has its own case study</a>.</p>
+  <p>An <b>11-step sign-up funnel</b>, framed as an application rather than a checkout, with payment only after the coach accepts you. And a <b>trainer dashboard</b> of around 50 screens: a queue sorted by who needs attention, a client view split into Overview, Diet &amp; Nutrition and Check-in, and a six-step plan builder that turns plan-writing from a memory exercise into a repeatable procedure.</p>
+  <p>Both are in the handoff. <a href="/work/tbs-dashboard">The dashboard has its own case study.</a></p>
 </div>
 
 ## Design language
 
-<p class="k-hook">Consistent by design. <em>Focused by purpose.</em></p>
+<p class="k-hook">One system, two themes. <em>Because the two products are used in different rooms.</em></p>
+
+The client opens the app in a gym before sunrise, in bad light, for thirty
+seconds at a time. The coach sits at a big screen during working hours and
+stays there, moving through client after client. Same tokens, same components,
+same type scale, rendered dark for one and light for the other.
 
 <div class="k-spec k-wide">
   <div class="k-spec__themes">
@@ -416,7 +462,7 @@ a read week with a focus for the next one.
     </div>
   </div>
   <div class="k-scale">
-    <p>Colour — black and off-white carry the screen, gold is action only</p>
+    <p>Colour — black and off-white carry the screen; gold is for actions only</p>
     <div class="k-swatches">
       <div class="k-swatches__group">
         <p>Base &amp; surfaces</p>
@@ -437,7 +483,7 @@ a read week with a focus for the next one.
         </div>
       </div>
       <div class="k-swatches__group">
-        <p>Data — one solid per thing being measured</p>
+        <p>Data — one colour per thing being measured</p>
         <div class="k-swatches__row">
           <div><i style="background:#FF7A1A"></i><b>calories</b><span>#FF7A1A</span></div>
           <div><i style="background:#28A9F0"></i><b>water</b><span>#28A9F0</span></div>
@@ -449,11 +495,11 @@ a read week with a focus for the next one.
     </div>
   </div>
   <div class="k-ramp">
-    <div><span class="k-ramp__a k-ramp__a--display">Aa</span><span><b>Bebas Neue — display, one weight</b><span>96 / 64 / 48 / 40 / 32 / 24, tight leading throughout</span></span></div>
+    <div><span class="k-ramp__a k-ramp__a--display">Aa</span><span><b>Bebas Neue — headlines, one weight</b><span>96 / 64 / 48 / 40 / 32 / 24, tight leading throughout</span></span></div>
     <div><span class="k-ramp__a k-ramp__a--ui">Aa</span><span><b>Manrope — everything else</b><span>Body 15 / 14 / 12 · kicker 11 ExtraBold +9% · button 14 SemiBold +4%</span></span></div>
   </div>
   <div class="k-scale">
-    <p>Motion — snappy, athletic, nothing drifts</p>
+    <p>Motion — snappy and athletic, nothing drifts</p>
     <div class="k-swatches__row">
       <div><b>Snap, don't drift</b><span>150–220ms. No lazy fades.</span></div>
       <div><b>Spring, not slide</b><span>Springs over linear tweens.</span></div>
@@ -462,68 +508,65 @@ a read week with a focus for the next one.
     </div>
   </div>
   <dl class="k-spec__tokens">
-    <div><dt>Easing</dt><dd><code>cubic-bezier(0.16, 1, 0.3, 1)</code> — out-expo, the primary ease. Fast out, soft landing.</dd></div>
-    <div><dt>Springs</dt><dd>Snappy at stiffness 420 / damping 28 for taps, toggles and day cells. Soft at 260 / 26 for bottom sheets, large panels and the chat head.</dd></div>
-    <div><dt>Grid</dt><dd>Drawn 1:1 for iPhone 14 at 390pt — full-width controls are 350pt inside 20pt gutters, and every value is bound to a token rather than typed.</dd></div>
+    <div><dt>Easing</dt><dd><code>cubic-bezier(0.16, 1, 0.3, 1)</code> — fast out, soft landing. The primary ease everywhere.</dd></div>
+    <div><dt>Springs</dt><dd>Snappy (stiffness 420 / damping 28) for taps, toggles and day cells. Soft (260 / 26) for bottom sheets, large panels and the chat head.</dd></div>
+    <div><dt>Grid</dt><dd>Drawn 1:1 for iPhone 14 at 390pt. Full-width controls are 350pt inside 20pt gutters, and every value is bound to a token rather than typed.</dd></div>
   </dl>
 </div>
 
-One system, two themes, because the two products are used in different rooms.
-The client opens the app in a gym before sunrise, in bad light, for thirty
-seconds at a time. The trainer sits at a 1440px screen during working hours and
-stays there, moving through client after client.
-
 <div class="k-why k-wide">
-  <div><span class="k-tile"><svg class="k-ic"><use href="#i-eye"/></svg></span><div><h4>Opposite kinds of work</h4><p>The app shows one thing at a time and has to make it feel like something. The dashboard is comparison and triage — dense rows scanned fast, which is exactly where dark backgrounds cost the most.</p></div></div>
-  <div><span class="k-tile"><svg class="k-ic"><use href="#i-star"/></svg></span><div><h4>Only one of them is the brand</h4><p>The client app is what the customer paid for, so it should feel like the coach. The dashboard is a tool for doing work; its highest ambition is to disappear.</p></div></div>
-  <div><span class="k-tile"><svg class="k-ic"><use href="#i-shield"/></svg></span><div><h4>Built against a moving brand</h4><p>Positioning was being finalised in parallel, so type, spacing, components and motion were defined independently of the final identity. The layer that could change was kept thin enough to change.</p></div></div>
+  <div><span class="k-tile"><svg class="k-ic"><use href="#i-eye"/></svg></span><div><h4>Opposite kinds of work</h4><p>The app shows one thing at a time and has to make it feel like something. The dashboard is comparison and triage: dense rows scanned fast, which is exactly where dark backgrounds cost the most.</p></div></div>
+  <div><span class="k-tile"><svg class="k-ic"><use href="#i-star"/></svg></span><div><h4>Only one of them is the brand</h4><p>The client app is what the customer paid for, so it should feel like the coach. The dashboard is a tool for getting work done; its highest ambition is to disappear.</p></div></div>
+  <div><span class="k-tile"><svg class="k-ic"><use href="#i-shield"/></svg></span><div><h4>Built against a moving brand</h4><p>Positioning was being finalised in parallel, so type, spacing, components and motion were defined independently of the final identity. The layer that could still change was kept thin enough to change.</p></div></div>
 </div>
 
-## Key decisions and trade-offs
+## Decisions and trade-offs
+
+Each of these is written the same way: what I decided, why, and what it cost.
 
 <div class="k-decision k-wide">
   <div class="k-decision__h"><span class="k-tile"><svg class="k-ic"><use href="#i-home"/></svg></span><h4>Home stays</h4></div>
   <dl>
-    <div><dt>Decision</dt><dd>Keep a Home screen rather than making logging the app's landing surface.</dd></div>
-    <div><dt>Because</dt><dd>Logging is what the client does most, which made logging-as-home the efficient answer. But an app that opens on a food diary <i>is</i> a food diary. There is also a hard case: on Day 0 there is no plan, so there is nothing to log — a logging-first app has no first screen on the day the client is most uncertain about what they just bought.</dd></div>
+    <div><dt>Decision</dt><dd>Keep a Home screen rather than opening the app straight onto food logging.</dd></div>
+    <div><dt>Because</dt><dd>Logging is what the client does most, which made logging-as-home the efficient answer. But an app that opens on a food diary <i>is</i> a food diary. And on Day 0 there is no plan, so there is nothing to log: a logging-first app has no first screen on the day the client is least sure about what they just bought.</dd></div>
     <div><dt>Trade-off</dt><dd>One extra tap to log, every day, forever. Accepted.</dd></div>
   </dl>
 </div>
 
 <div class="k-decision k-wide">
-  <div class="k-decision__h"><span class="k-tile"><svg class="k-ic"><use href="#i-headset"/></svg></span><h4>Coach becomes a destination</h4></div>
+  <div class="k-decision__h"><span class="k-tile"><svg class="k-ic"><use href="#i-headset"/></svg></span><h4>Coach becomes a tab</h4></div>
   <dl>
-    <div><dt>Decision</dt><dd>Promote the coach from an avatar beside the notification icon to a top-level tab.</dd></div>
-    <div><dt>Because</dt><dd>As an element on Home he competed with status, plan and logging for the same space and lost every time. The three-tab structure treated the relationship as a utility. It is not a utility — it is the thing being sold.</dd></div>
-    <div><dt>Result</dt><dd>Home could lead with state instead of fighting a chat thread for the top of the screen. Three tabs became five.</dd></div>
+    <div><dt>Decision</dt><dd>Promote the coach from a small avatar beside the notification icon to a top-level tab.</dd></div>
+    <div><dt>Because</dt><dd>As one element on Home he competed with status, plan and logging for the same space, and lost every time. The three-tab structure treated the relationship as a utility. It is not a utility. It is the thing being sold.</dd></div>
+    <div><dt>Result</dt><dd>Home could lead with status instead of fighting a chat thread for the top of the screen. Three tabs became five.</dd></div>
   </dl>
 </div>
 
 <div class="k-decision k-wide">
   <div class="k-decision__h"><span class="k-tile"><svg class="k-ic"><use href="#i-chart"/></svg></span><h4>A day recalculates instead of failing</h4></div>
   <dl>
-    <div><dt>Decision</dt><dd>Each meal's remaining allowance recalculates against what has already been logged, rather than marking the day over budget.</dd></div>
-    <div><dt>Because</dt><dd>Weeks three to eight are the drop-off window and the mechanism is specific — miss once, feel guilty, go quiet, stop replying. A screen that says you failed at 1pm removes any reason to come back at 8pm.</dd></div>
-    <div><dt>Trade-off</dt><dd>Weaker as a compliance signal. Adherence detail moved to the trainer's side, where a human can read it, instead of being handed to the client as a verdict.</dd></div>
+    <div><dt>Decision</dt><dd>Each meal's remaining allowance recalculates against what has already been logged, rather than marking the day as over budget.</dd></div>
+    <div><dt>Because</dt><dd>Weeks three to eight are the drop-off window and the mechanism is specific: miss once, feel guilty, go quiet, stop replying. A screen that says you failed at 1pm removes any reason to come back at 8pm.</dd></div>
+    <div><dt>Trade-off</dt><dd>Weaker as a compliance signal. The full adherence picture moved to the coach's side, where a human reads it, instead of being handed to the client as a verdict.</dd></div>
   </dl>
 </div>
 
 <div class="k-decision k-wide">
-  <div class="k-decision__h"><span class="k-tile"><svg class="k-ic"><use href="#i-dumbbell"/></svg></span><h4>Workouts are binary</h4></div>
+  <div class="k-decision__h"><span class="k-tile"><svg class="k-ic"><use href="#i-dumbbell"/></svg></span><h4>Workouts are done / not done</h4></div>
   <dl>
-    <div><dt>Decision</dt><dd>Done or not done, one tap. No sets, reps or weights.</dd></div>
-    <div><dt>Because</dt><dd>Phase 0 needs exactly one habit to survive: daily meal logging. A second daily obligation competing with the first is how you get neither. But zero signal leaves the trainer blind to whether anyone trained at all.</dd></div>
-    <div><dt>Trade-off</dt><dd>No progressive-overload data, which a serious lifter would want. That waits until the meal-logging habit can bear a second ask.</dd></div>
+    <div><dt>Decision</dt><dd>One tap. No sets, reps or weights.</dd></div>
+    <div><dt>Because</dt><dd>This first version needs exactly one habit to survive: daily meal logging. A second daily chore competing with the first is how you end up with neither. But zero signal leaves the coach blind to whether anyone trained at all.</dd></div>
+    <div><dt>Trade-off</dt><dd>No progressive-overload data, which a serious lifter would want. That waits until the meal-logging habit can carry a second ask.</dd></div>
   </dl>
 </div>
 
 <div class="k-decision k-decision--cut k-wide">
   <div class="k-decision__h"><span class="k-tile"><svg class="k-ic"><use href="#i-shield"/></svg></span><h4>Blood work comes out</h4><span class="k-tag">Cut</span></div>
   <dl>
-    <div><dt>Decision</dt><dd>Cut blood work upload and review from the app. Not deferred to a later phase — removed.</dd></div>
-    <div><dt>Because</dt><dd>Storing and processing clinical health reports puts the product under health-data regulation, and in European markets in particular that means certification we would have had to obtain before launch. A large amount of compliance work attached to a feature that was never the reason anyone signed up.</dd></div>
-    <div><dt>Instead</dt><dd>The client sends reports to the trainer directly, over WhatsApp or any channel they already use, and he reviews them on the weekly call. The clinical judgement was always his and never the app's — so what the product loses is storage, not coaching.</dd></div>
-    <div><dt>Trade-off</dt><dd>One workflow stays outside the product, which is exactly what this project set out to stop. Worth it: the alternative was a certification programme blocking an MVP.</dd></div>
+    <div><dt>Decision</dt><dd>Cut blood test upload and review from the app. Not postponed. Removed.</dd></div>
+    <div><dt>Because</dt><dd>Storing clinical health reports puts the product under health-data regulation, and in European markets that means certification before launch. A large amount of compliance work attached to a feature that was never the reason anyone signed up.</dd></div>
+    <div><dt>Instead</dt><dd>The client sends reports to the coach directly, over WhatsApp or whatever they already use, and he reads them on the weekly call. The medical judgement was always his and never the app's, so the product loses storage, not coaching.</dd></div>
+    <div><dt>Trade-off</dt><dd>One workflow stays outside the product, which is exactly what this project set out to stop. Worth it: the alternative was a certification programme blocking the launch.</dd></div>
   </dl>
 </div>
 
@@ -536,57 +579,44 @@ stays there, moving through client after client.
   <div><span class="k-tile"><svg class="k-ic"><use href="#i-tabs"/></svg></span><span class="k-stats__v"><b>5</b><span>client tabs</span></span></div>
 </div>
 
-Handed over deliberately short of high fidelity — the job was to settle the
-structure of the MVP, not its finish — with foundations for colour, type,
-components and motion. Phase 0 entered development in July 2026.
+Handed over deliberately short of pixel-perfect: the job was to settle the
+structure of the first version, not its finish, with foundations for colour,
+type, components and motion. Development started in July 2026.
 
-**The prototype was not asked for.** Review was running on weekly meetings where
-I walked stakeholders through static frames and argued rationale one screen at
-a time, and decisions were landing a week apart. Building a clickable version
-in Claude Code turned that into a link: people could move through it on their
-own schedule, arrive having already formed a reaction, and spend the meeting on
-the disagreement instead of the walkthrough. It was never a deliverable —
-decisions got locked in the prototype, and the resolved screens went back into
-Figma as the handoff.
+**The prototype was not asked for.** Reviews ran in weekly meetings where I
+walked stakeholders through static frames one screen at a time, and decisions
+landed a week apart. Building a clickable version in Claude Code turned that
+into a link. People could try it on their own schedule, arrive with a reaction
+already formed, and spend the meeting on the disagreement instead of the
+walkthrough. Decisions got locked in the prototype; the resolved screens went
+back into Figma as the handoff.
 
-**No measured impact yet, and I am not going to invent any.** Phase 0 is in
-development. There is no retention data, no adherence data, and no client count
-past the original thirty. What can be claimed is that the structure held: the
-five-tab model, the recalculating day and the six-step plan builder all went
-into development as designed. Several of those started as mine rather than the
-brief's — the Coach tab, item-level logging, keeping Home when logging-first
-was the efficient answer.
+**No measured impact yet, and I am not going to invent any.** The first version
+is in development. There is no retention data, no adherence data, and no
+client count past the original thirty. What can be claimed is that the
+structure held: the five-tab model, the recalculating day and the six-step
+plan builder all went into development as designed. Several of those started
+as my proposals rather than the brief's: the Coach tab, item-level logging,
+and keeping Home when logging-first was the efficient answer.
+
+Here is how it will be judged:
 
 <div class="k-why k-wide">
-  <div><span class="k-tile"><svg class="k-ic"><use href="#i-target"/></svg></span><div><h4>North star — active coached clients per trainer</h4><p>The only number that says whether the ceiling actually moved.</p></div></div>
-  <div><span class="k-tile"><svg class="k-ic"><use href="#i-chart"/></svg></span><div><h4>Decisive measure — week 3–8 cohort retention</h4><p>The research put the drop-off there, and most behavioural decisions were aimed at that window. If the curve does not move, those decisions failed regardless of what engagement shows.</p></div></div>
-  <div><span class="k-tile"><svg class="k-ic"><use href="#i-shield"/></svg></span><div><h4>Guardrails — because both headline metrics are inflatable</h4><p>Logging rate rises with notification volume, so frequency and opt-out rate are tracked beside it. Clients per trainer rises by degrading care, so response time and check-in depth are tracked against it.</p></div></div>
+  <div><span class="k-tile"><svg class="k-ic"><use href="#i-target"/></svg></span><div><h4>North star — clients per coach</h4><p>The only number that says whether the ceiling actually moved.</p></div></div>
+  <div><span class="k-tile"><svg class="k-ic"><use href="#i-chart"/></svg></span><div><h4>The decisive test — week 3–8 retention</h4><p>The research put the drop-off there, and most behavioural decisions were aimed at that window. If that curve does not move, those decisions failed, whatever the engagement numbers say.</p></div></div>
+  <div><span class="k-tile"><svg class="k-ic"><use href="#i-shield"/></svg></span><div><h4>Guardrails — because both headline numbers can be gamed</h4><p>Logging rate rises if you send more notifications, so notification frequency and opt-outs are tracked beside it. Clients per coach rises if you degrade the coaching, so response time and check-in depth are tracked against it.</p></div></div>
 </div>
 
 ## What I learned
 
-**The home screen took the longest, and it should have.** My first version was a
-router — components that sent you to the other screens, a daily calorie total,
-everything one tap away. It was organised. The PM kept rejecting it, and for a
-while I thought the problem was layout.
+<div class="k-alif k-wide">
+  <div><span class="k-tile"><svg class="k-ic"><use href="#i-check"/></svg></span><b>What I achieved</b><p>A client app whose structure went into development as designed, with three of its biggest calls (the Coach tab, item-level logging, keeping Home) starting as my proposals rather than the brief's.</p></div>
+  <div><span class="k-tile"><svg class="k-ic"><use href="#i-bulb"/></svg></span><b>The biggest lesson</b><p>The home screen took the longest, and it should have. My first version was a menu: tidy shortcuts to every other screen. The PM kept rejecting it and for a while I thought the problem was layout. It was not. A menu gives you no reason to open an app on a day you do not feel like it. Home became a state, not a directory, and accepting one more tap on the main task is the decision I would defend hardest.</p></div>
+  <div><span class="k-tile"><svg class="k-ic"><use href="#i-repeat"/></svg></span><b>What I'd do differently</b><p>Build the prototype in week one, not week six. The spec was still forming while design was under way, so requirements arrived after screens already existed and rework compounded a week at a time. The prototype fixed that, and its real value was never validation. It was making it cheap to change our minds.</p></div>
+  <div><span class="k-tile"><svg class="k-ic"><use href="#i-send"/></svg></span><b>Going forward</b><p>The funnel went out structurally complete but with its message and proof points still needing a pass with marketing, and I said so in the handoff. Naming what is unfinished is part of the deliverable, and it is a habit I am keeping.</p></div>
+</div>
 
-It was not. A screen whose job is to route is a menu, and a menu gives you no
-reason to open an app on a day you do not feel like it. The client who is three
-weeks in and not seeing the scale move does not need efficient access to a food
-diary. They need something waiting for them.
-
-Home stopped being a directory and became a state: where your plan is, what your
-coach said, what today looks like. Logging moved one tap further away and the
-screen got better. Accepting more friction on the primary task is the decision
-I would defend hardest.
-
-**I built the prototype too late.** The spec was still forming while design was
-underway, so requirements arrived after screens already existed, and weekly
-reviews meant rework compounded a week at a time. The prototype fixed that, and
-I would build it in week one if I ran this again. Its value was never
-validation — it was making it cheap to change our minds.
-
-**The funnel went out unresolved, and I said so.** It is structurally complete
-but the message, sequence and proof points need a pass with marketing before it
-goes live, and positioning was still moving underneath it. What I handed over
-is a working skeleton, not finished copy.
+<div class="k-close k-wide">
+  <p class="k-close__label">In short</p>
+  <p>This project turned a WhatsApp coaching practice into a five-tab client app, a trainer dashboard and a sign-up funnel, all now in development. It set out to let one coach look after far more than thirty people without any of them feeling handed off to software, and it did that by moving the admin into the product and keeping the human parts human. As the sole designer, I owned the research, the structure, every screen and the design system, and the parts I am proudest of are the ones I had to argue for.</p>
+</div>

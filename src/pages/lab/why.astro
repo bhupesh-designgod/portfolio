@@ -1,0 +1,245 @@
+---
+/* Lab: the ruled-list blocks, four ways each.
+   Same markup and same copy every time — only the class beside `.k-why` or
+   `.k-role` changes, so whichever wins is a one-word edit in the case study.
+   Rendered inside the real `.cs-read` / `.cs-prose` chain, because that is
+   where `--k-line`, `--k-ink` and the accent tokens are defined; a lab that
+   redeclares them proves nothing about the page.
+
+   Nothing here is wired up: tbs-dashboard.md still renders the plain list. */
+import Base from '../../layouts/Base.astro';
+
+const problems = [
+  {
+    icon: 'i-bulb',
+    title: 'Memory as infrastructure',
+    body: 'Thirty cases held in his head: goals, history, injuries, what was tried last month. Retrieved the moment someone messaged.',
+  },
+  {
+    icon: 'i-bell',
+    title: 'No way to prioritise',
+    body: 'Recency stood in for priority. The loudest client was served first; the disengaged one was invisible.',
+  },
+  {
+    icon: 'i-doc',
+    title: 'Every plan from scratch',
+    body: 'No templates, no reuse. Writing a plan was a fresh act of memory each time, and the single most expensive thing in his week.',
+  },
+  {
+    icon: 'i-clock',
+    title: 'No shape to the day',
+    body: 'Calls landed whenever a client chose to dial, working hours or not.',
+  },
+];
+
+const role = [
+  {
+    icon: 'i-users',
+    title: 'The project',
+    body: 'Three months, May to July 2026. One product designer, with one PM and the founder-trainer as the only user. A development team took the handoff.',
+  },
+  {
+    icon: 'i-user',
+    title: 'What I owned',
+    body: 'Dashboard structure across five destinations and every screen, the shared design system, and turning the trainer’s way of working into something a second trainer could use.',
+  },
+  {
+    icon: 'i-grid',
+    title: 'Tools',
+    body: 'Figma for design and handoff. Two full alternative directions were built out and rejected before the version that shipped.',
+  },
+  {
+    icon: 'i-check',
+    title: 'What I delivered',
+    body: 'The queue, the client roster, a three-view client record, a six-step nutrition plan builder, check-in review, the workout builder and call scheduling. About fifty screens.',
+  },
+];
+
+const variants = [
+  {
+    cls: '',
+    tag: 'Current',
+    note: 'Ruled list, numbers, no glyph. Reads as writing, and costs the least room. The four items look like peers, which for the problems block is the one thing they are not.',
+  },
+  {
+    cls: 'k-panels',
+    tag: 'Panels',
+    note: 'A card per item, headed by a tinted disc. No outline and no rule under the heading — the panel is a filled shape in the accent’s own tint, so it separates from white without drawing an edge. Easiest to scan, and best where the items are reference material rather than an argument, which is what the role block is.',
+  },
+  {
+    cls: 'k-rail',
+    tag: 'Rail',
+    note: 'One column on a dotted line. The connector does the arguing: this is a chain, not a shelf. Costs the most vertical room of the four.',
+  },
+  {
+    cls: 'k-steps',
+    tag: 'Steps',
+    note: 'The rail turned on its side. Keeps the sequence but stays a strip, so it does not eat half a screen. Falls back to the rail under 980px.',
+  },
+];
+---
+
+<Base title="Lab — ruled-list blocks" description="Four ways to set the numbered case-study blocks.">
+  <svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
+    <symbol id="i-bulb" viewBox="0 0 24 24"
+      ><path d="M9 17.5a6 6 0 1 1 6 0V19a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 19z"></path><path
+        d="M10 22h4"></path></symbol
+    >
+    <symbol id="i-bell" viewBox="0 0 24 24"
+      ><path d="M18 8.5a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16s-2-1.5-2-6.5z"></path><path
+        d="M10.5 19a1.9 1.9 0 0 0 3 0"></path></symbol
+    >
+    <symbol id="i-doc" viewBox="0 0 24 24"
+      ><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path
+        d="M14 3v5h5M9 13h6M9 17h4"></path></symbol
+    >
+    <symbol id="i-clock" viewBox="0 0 24 24"
+      ><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></symbol
+    >
+    <symbol id="i-users" viewBox="0 0 24 24"
+      ><circle cx="9" cy="8" r="3.4"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0"></path><path
+        d="M16.5 5.2a3.4 3.4 0 0 1 0 6.6M17 14.2A6.5 6.5 0 0 1 21.5 20"></path></symbol
+    >
+    <symbol id="i-user" viewBox="0 0 24 24"
+      ><circle cx="12" cy="8" r="3.6"></circle><path d="M5 20a7 7 0 0 1 14 0"></path></symbol
+    >
+    <symbol id="i-grid" viewBox="0 0 24 24"
+      ><rect x="3" y="3" width="7" height="7" rx="2"></rect><rect x="14" y="3" width="7" height="7" rx="2"
+      ></rect><rect x="3" y="14" width="7" height="7" rx="2"></rect><rect
+        x="14"
+        y="14"
+        width="7"
+        height="7"
+        rx="2"></rect></symbol
+    >
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m4.5 12.5 5 5 10-11"></path></symbol>
+  </svg>
+
+  <article class="cs" data-accent="gold">
+    <div class="cs-read" style="margin-top:0;padding-top:120px;border-radius:0">
+      <div class="cs-read__inner">
+        <div></div>
+        <div class="prose cs-prose">
+          <h1 class="lab__h1">Ruled-list blocks &mdash; four ways</h1>
+          <p class="lab__sub">
+            Same markup, same copy, same accent. Only the class changes. Gold here because
+            it is TBS copy; every tint below comes from <code>data-accent</code>, so the
+            same class reads violet on Ikarus Nest and ember on the configurator.
+          </p>
+
+          <h2 class="lab__h2">The problems block <code>.k-why</code></h2>
+          {
+            variants.map((v) => (
+              <section class="lab__case">
+                <p class="lab__tag">
+                  <b>{v.tag}</b>
+                  <code>{v.cls ? `.k-why.${v.cls}` : '.k-why'}</code>
+                </p>
+                <div class:list={['k-why', 'k-wide', v.cls]}>
+                  {problems.map((it) => (
+                    <div>
+                      <span class="k-tile">
+                        <svg class="k-ic"><use href={`#${it.icon}`} /></svg>
+                      </span>
+                      <div>
+                        <h4>{it.title}</h4>
+                        <p>{it.body}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p class="lab__note">{v.note}</p>
+              </section>
+            ))
+          }
+
+          <h2 class="lab__h2">The role block <code>.k-role</code></h2>
+          {
+            variants.map((v) => (
+              <section class="lab__case">
+                <p class="lab__tag">
+                  <b>{v.tag}</b>
+                  <code>{v.cls ? `.k-role.${v.cls}` : '.k-role'}</code>
+                </p>
+                <div class:list={['k-role', 'k-wide', v.cls]}>
+                  {role.map((it) => (
+                    <div>
+                      <span class="k-tile">
+                        <svg class="k-ic"><use href={`#${it.icon}`} /></svg>
+                      </span>
+                      <b>{it.title}</b>
+                      <p>{it.body}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ))
+          }
+        </div>
+      </div>
+    </div>
+  </article>
+</Base>
+
+<style is:global>
+  /* Lab chrome only. Everything inside the blocks is global.css doing its job —
+     if it looks right here it looks right on the case study. */
+  .lab__h1 {
+    margin: 0 0 8px !important;
+    font-size: clamp(28px, 4vw, 40px);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .lab__sub {
+    max-width: 62ch;
+    margin: 0 0 12px !important;
+    color: #4b5261;
+  }
+  .lab__h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 72px 0 0 !important;
+    padding-top: 28px;
+    border-top: 2px solid #0b0d12;
+    font-size: 22px;
+    font-weight: 600;
+  }
+  .lab__h2::before { content: none !important; }
+  .lab__case {
+    padding: 30px 0 42px;
+    border-top: 1px dashed #d8dde7;
+  }
+  .lab__tag {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 0 0 6px !important;
+    font-size: 12px;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: #8b93a3;
+  }
+  .lab__tag b {
+    font-size: 13px;
+    letter-spacing: 1.6px;
+    color: #0b0d12;
+  }
+  .lab__note {
+    max-width: 68ch;
+    margin: 24px 0 0 !important;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #6b7385;
+  }
+  .lab__h2 code,
+  .lab__sub code,
+  .lab__tag code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: #8b93a3;
+  }
+</style>

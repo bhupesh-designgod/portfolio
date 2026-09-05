@@ -49,6 +49,10 @@ const work = defineCollection({
     timeline: z.string().optional(),
     cover: z.string().optional(),       // hero visual on the case study
     coverAlt: z.string().optional(),
+    /* How the hero frames the cover. A phone export gets a bezel, a desktop
+       capture gets window chrome, `plain` gets neither (cut-outs, mockups
+       that already carry their own frame). */
+    coverKind: z.enum(['phone', 'window', 'plain']).default('plain'),
     /* The hero hook. Falls back to `title` — set it when the card headline is
        too long to work at display size. */
     heroTitle: z.string().optional(),

@@ -236,7 +236,12 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
             }
           }
         }
-        send('[DONE]');
+        /* Written raw, not through send(): that helper JSON-stringifies, which
+           turned the sentinel into `data: "[DONE]"` — quotes included — so the
+           client's equality check never matched, the quoted string was parsed
+           as a payload, and `.text` on a string appended the word "undefined"
+           to the end of every answer. */
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
       } catch (err) {
         console.error('[chat] stream broke', err);
         send({ error: 'stream' });

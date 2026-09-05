@@ -25,6 +25,11 @@ const testimonials = (await getCollection('testimonials')).sort(byOrder).map((e)
   <section class="work" id="work">
     <div class="work__head">
       <h2 class="work__title">Things I&rsquo;ve designed</h2>
+      <p class="work__lead">
+        Three products, each written up so anyone can follow it: what was
+        broken, what I did about it, and what changed. No design jargon
+        without a plain-English translation next to it.
+      </p>
     </div>
     <div class="work__grid">
       {
@@ -34,7 +39,7 @@ const testimonials = (await getCollection('testimonials')).sort(byOrder).map((e)
             client={p.data.client}
             title={p.data.title}
             summary={p.data.summary}
-            frank={p.data.heroTitle ?? p.data.title}
+            frank={(p.data.heroTitle ?? p.data.title).replace(/\*/g, '')}
             tags={p.data.tags}
             accent={p.data.accent}
             tone={p.data.folderTone}
@@ -55,8 +60,9 @@ const testimonials = (await getCollection('testimonials')).sort(byOrder).map((e)
     </div>
   </section>
 
-  <Testimonials quotes={testimonials} />
-
   {/* One per page, shared by every [data-cue] target above. */}
   <HoverCue />
+
+  <Testimonials quotes={testimonials} />
+
 </Base>

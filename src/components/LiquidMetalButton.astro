@@ -1,0 +1,358 @@
+---
+/* Liquid metal button — a port of 21st.dev/@johuniq/liquid-metal-button.
+
+   Unlike the shiny button this one is not CSS: the metal is a real WebGL
+   fragment shader from @paper-design/shaders, and there is no way to fake it
+   with gradients. What the port drops is React, not the effect — ShaderMount
+   is the library's vanilla entry point and takes a plain DOM element, so the
+   whole thing runs from the module script below.
+
+   The colour change is the face only: it goes from near-black to one flat
+   blue, and the label lightens to sit on it. The shader is left untinted on
+   purpose — the chrome rim is the effect, and tinting it blue burns the
+   iridescence out of the metal.
+
+   The layer stack, the translateZ offsets, the shadow sets, the speed ramps
+   on hover and click, and the click ripple are the source's, unchanged.
+
+   The one structural change: the source hard-codes 142x46px because it
+   animates between a text and an icon mode. This is sized by its own label
+   instead, so the button fits whatever copy it's given, and the shader canvas
+   fills it. */
+interface Props {
+  href: string;
+  height?: number;
+  radius?: number;
+  fontSize?: number;
+}
+const { href, height = 56, radius = 100, fontSize = 15 } = Astro.props;
+---
+
+<div
+  class="lmb"
+  style={`--lmb-h:${height}px; --lmb-r:${radius}px; --lmb-fs:${fontSize}px;`}
+>
+  {/* The source nests three divs to get perspective + preserve-3d. The stack
+      is what the layers are positioned against, and it is sized by the label
+      in flow inside it — transforms don't affect layout, so the label can
+      carry its translateZ and still set the width. */}
+  <div class="lmb__perspective">
+    <div class="lmb__stack">
+      {/* z 10 / translateZ(0): the cast shadow and the metal itself. */}
+      <div class="lmb__ringLayer">
+        <div class="lmb__ring">
+          <div class="lmb__shader" data-lmb-shader></div>
+        </div>
+      </div>
+
+      {/* z 20 / translateZ(10px): the dark face, inset 2px so the metal
+          around it reads as a rim rather than a background. */}
+      <div class="lmb__faceLayer"><div class="lmb__face"></div></div>
+
+      {/* z 30 / translateZ(20px): the label, floating above the face. */}
+      <span class="lmb__label"><slot /></span>
+
+      {/* z 40 / translateZ(25px): the hit area, over everything. Ripples are
+          appended here on click. In the source this is the <button>; here the
+          hero CTA is a link, so it is the <a> and carries the href. */}
+      <a class="lmb__hit" href={href} data-lmb-hit>
+        <span class="lmb__srOnly"><slot /></span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<style>
+  .lmb { position: relative; display: inline-block; }
+  .lmb__perspective { perspective: 1000px; perspective-origin: 50% 50%; }
+
+  /* Every layer shares this easing in the source — a soft overshoot. */
+  .lmb__stack {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: var(--lmb-h);
+    padding: 0 calc(var(--lmb-h) * 0.55);
+    transform-style: preserve-3d;
+    transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .lmb__ringLayer,
+  .lmb__faceLayer {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    transition:
+      all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1),
+      box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .lmb__ringLayer { transform: translateZ(0); z-index: 10; }
+  .lmb__faceLayer { transform: translateZ(10px); z-index: 20; }
+
+  /* The resting shadow is a five-stop stack that collapses on hover and
+     again on press — that change in shadow spread is most of what sells the
+     button as a physical object being pushed. Tinted navy rather than the
+     source's neutral black, because it sits on the blue hero field. */
+  .lmb__ring {
+    width: 100%;
+    height: 100%;
+    border-radius: var(--lmb-r);
+    background: rgb(0 0 0 / 0);
+    box-shadow:
+      0 0 0 1px rgba(0, 12, 45, 0.3),
+      0 36px 14px 0 rgba(0, 12, 45, 0.02),
+      0 20px 12px 0 rgba(0, 12, 45, 0.08),
+      0 9px 9px 0 rgba(0, 12, 45, 0.12),
+      0 2px 5px 0 rgba(0, 12, 45, 0.15);
+    transition:
+      all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1),
+      box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .lmb:hover .lmb__ring {
+    box-shadow:
+      0 0 0 1px rgba(0, 12, 45, 0.4),
+      0 12px 6px 0 rgba(0, 12, 45, 0.05),
+      0 8px 5px 0 rgba(0, 12, 45, 0.1),
+      0 4px 4px 0 rgba(0, 12, 45, 0.15),
+      0 1px 2px 0 rgba(0, 12, 45, 0.2);
+  }
+  .lmb[data-pressed] .lmb__ring {
+    box-shadow:
+      0 0 0 1px rgba(0, 12, 45, 0.5),
+      0 1px 2px 0 rgba(0, 12, 45, 0.3);
+  }
+
+  /* ShaderMount injects its canvas here. The !important rules are the
+     source's — the library sizes the canvas itself, and this overrides it to
+     fill the pill and take its corners. */
+  .lmb__shader {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: var(--lmb-r);
+    overflow: hidden;
+  }
+  .lmb__shader :global(canvas) {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    border-radius: var(--lmb-r) !important;
+  }
+
+  /* Was linear-gradient(180deg, #202020, #000000) — the source's near-black.
+     A blue one, running across rather than down. Vertical put the dark end
+     along the bottom edge, right where the chrome rim is already at its
+     heaviest, and the two stacked into a shadow. Horizontal keeps the whole
+     lower edge at one value and lets the rim read against it.
+
+     Built around #071bd5, sampled off the reference. That blue is indigo-
+     leaning — almost no green in it — and sits well away from --blue-500,
+     which runs cyan-ward, so it is written literally rather than pulled from
+     the token scale. The two stops straddle it: their mean is the sampled
+     colour, so the button reads as that blue with a lift across it rather
+     than as a lighter blue. */
+  .lmb__face {
+    position: absolute;
+    inset: 2px;
+    border-radius: var(--lmb-r);
+    background: linear-gradient(90deg, #0617c9 0%, #1426e6 100%);
+    transition:
+      all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1),
+      box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .lmb[data-pressed] .lmb__face {
+    box-shadow:
+      inset 0 2px 4px rgba(0, 8, 30, 0.4),
+      inset 0 1px 2px rgba(0, 8, 30, 0.3);
+  }
+
+  .lmb[data-pressed] .lmb__ringLayer { transform: translateZ(0) translateY(1px) scale(0.98); }
+  .lmb[data-pressed] .lmb__faceLayer { transform: translateZ(10px) translateY(1px) scale(0.98); }
+
+  /* Was #666666 — grey on black, deliberately muted. White instead: this is
+     the page's one call to action and it should not read as disabled. */
+  .lmb__label {
+    position: relative;
+    z-index: 30;
+    transform: translateZ(20px);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: "Nunito", system-ui, sans-serif;
+    font-size: var(--lmb-fs);
+    font-weight: 400;
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0, 8, 30, 0.5);
+    white-space: nowrap;
+    pointer-events: none;
+    transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .lmb__label :global(svg) {
+    width: 1em;
+    height: 1em;
+    transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.25, 1);
+  }
+  /* Down, following the arrow. */
+  .lmb:hover .lmb__label :global(svg) { transform: translateY(2px); }
+
+  .lmb__hit {
+    position: absolute;
+    inset: 0;
+    z-index: 40;
+    transform: translateZ(25px);
+    transform-style: preserve-3d;
+    border-radius: var(--lmb-r);
+    overflow: hidden;
+    cursor: pointer;
+    outline: none;
+    background: transparent;
+  }
+  .lmb__hit:focus-visible { outline: 2px solid var(--blue-300); outline-offset: 4px; }
+
+  /* The label is aria-hidden decoration on the layer above; this is what the
+     link is actually named by. */
+  .lmb__srOnly {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .lmb__ripple {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 70%);
+    pointer-events: none;
+    animation: lmb-ripple 0.6s ease-out;
+  }
+  @keyframes lmb-ripple {
+    0%   { transform: translate(-50%, -50%) scale(0); opacity: 0.6; }
+    100% { transform: translate(-50%, -50%) scale(4); opacity: 0; }
+  }
+
+  /* The metal is motion, so under reduced-motion the shader is mounted at
+     speed 0 (see the script) — it still renders one frame, so the button
+     keeps its material and simply stops flowing. These kill the rest. */
+  @media (prefers-reduced-motion: reduce) {
+    .lmb__stack,
+    .lmb__ringLayer,
+    .lmb__faceLayer,
+    .lmb__ring,
+    .lmb__face,
+    .lmb__label,
+    .lmb__label :global(svg) { transition: none; }
+    .lmb:hover .lmb__label :global(svg) { transform: none; }
+    .lmb__ripple { animation: none; display: none; }
+  }
+</style>
+
+<script>
+  import { ShaderMount, liquidMetalFragmentShader } from '@paper-design/shaders';
+
+  /* The speed ramps are the source's: 0.6 at rest, 1 on hover, and a 2.4
+     kick for 300ms on click that falls back to whichever of the two the
+     pointer is still in. */
+  const REST = 0.6;
+  const HOVER = 1;
+  const CLICK = 2.4;
+
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  document.querySelectorAll<HTMLElement>('.lmb').forEach((root) => {
+    const host = root.querySelector<HTMLElement>('[data-lmb-shader]');
+    const hit = root.querySelector<HTMLElement>('[data-lmb-hit]');
+    if (!host || !hit) return;
+
+    const mount = new ShaderMount(
+      host,
+      liquidMetalFragmentShader,
+      {
+        /* No u_colorBack / u_colorTint. Left unset the shader renders as
+           chrome — silver with the iridescent dispersion along the top and
+           bottom arcs, which is the whole reason to use this button. Tinting
+           colorTint blue burns that away into flat blue, so the metal stays
+           untouched and the colour lives in the face below instead.
+
+           Everything here is verbatim from the source. */
+        u_repetition: 4,
+        u_softness: 0.5,
+        u_shiftRed: 0.3,
+        u_shiftBlue: 0.3,
+        u_distortion: 0,
+        u_contour: 0,
+        u_angle: 45,
+        u_scale: 8,
+        u_shape: 1,
+        u_offsetX: 0.1,
+        u_offsetY: -0.1,
+      },
+      undefined,
+      reduce ? 0 : REST,
+    );
+
+    let hovered = false;
+
+    if (!reduce) {
+      hit.addEventListener('mouseenter', () => {
+        hovered = true;
+        mount.setSpeed(HOVER);
+      });
+      hit.addEventListener('mouseleave', () => {
+        hovered = false;
+        root.removeAttribute('data-pressed');
+        mount.setSpeed(REST);
+      });
+    }
+
+    hit.addEventListener('mousedown', () => root.setAttribute('data-pressed', ''));
+    hit.addEventListener('mouseup', () => root.removeAttribute('data-pressed'));
+
+    hit.addEventListener('click', (e) => {
+      if (reduce) return;
+
+      mount.setSpeed(CLICK);
+      setTimeout(() => mount.setSpeed(hovered ? HOVER : REST), 300);
+
+      const rect = hit.getBoundingClientRect();
+      const ripple = document.createElement('span');
+      ripple.className = 'lmb__ripple';
+      ripple.style.left = `${e.clientX - rect.left}px`;
+      ripple.style.top = `${e.clientY - rect.top}px`;
+      hit.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 600);
+    });
+
+    /* Stop shading once the button leaves the screen. `REST` is a non-zero
+       speed, so without this the metal keeps animating — a full WebGL draw
+       every frame — for the entire length of a case study you scrolled past
+       ten screens ago. Speed 0 parks it; the last frame stays on the canvas,
+       so scrolling back reveals it exactly as it was rather than blank. */
+    if (!reduce && 'IntersectionObserver' in window) {
+      new IntersectionObserver(
+        ([e]) => mount.setSpeed(e.isIntersecting ? (hovered ? HOVER : REST) : 0),
+        { rootMargin: '120px' }
+      ).observe(root);
+    }
+
+    /* Same reasoning for a backgrounded tab: browsers throttle rAF but do not
+       always stop it, and there is nothing to look at either way. */
+    document.addEventListener('visibilitychange', () => {
+      if (reduce) return;
+      mount.setSpeed(document.hidden ? 0 : hovered ? HOVER : REST);
+    });
+
+    /* The source's cleanup called .destroy(), which the library does not
+       have — it was optional-chained, so it silently never ran and every
+       remount leaked a GL context. dispose() is the real method. */
+    window.addEventListener('beforeunload', () => mount.dispose(), { once: true });
+  });
+</script>

@@ -34,21 +34,6 @@ import { ASSISTANT } from '../lib/portfolio-context';
   <div class="ai__panel" data-panel hidden role="dialog" aria-modal="false" aria-label="Ask about this portfolio">
     <header class="ai__head">
       <p class="ai__title">Ask {ASSISTANT}</p>
-      {/* Enters voice mode. Hidden until the script confirms the browser can
-          actually speak, so nobody is offered a control that does nothing. */}
-      <button
-        type="button"
-        class="ai__voiceBtn"
-        data-voice-on
-        aria-label="Switch to voice mode"
-        hidden
-      >
-        <svg viewBox="0 0 20 20" aria-hidden="true">
-          <path d="M3 10.5v-1M6.5 13.5v-7M10 16V4M13.5 13.5v-7M17 10.5v-1"
-            fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
-        </svg>
-        <span>Voice</span>
-      </button>
       <button type="button" class="ai__close" data-panel-close aria-label="Close">
         <svg viewBox="0 0 16 16" aria-hidden="true">
           <path d="M4.6 4.6 11.4 11.4M11.4 4.6 4.6 11.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
@@ -62,7 +47,7 @@ import { ASSISTANT } from '../lib/portfolio-context';
           of mine". The answers then come back in the assistant's own voice. */}
       <div class="ai__empty" data-empty>
         <span class="ai__emptyAva">
-          <img src="/assets/avatar.png" alt="" width="56" height="56" decoding="async" />
+          <img src="/assets/avatar.webp" alt="" width="56" height="56" decoding="async" />
           <span class="ai__emptyBadge" aria-hidden="true"></span>
         </span>
 
@@ -90,17 +75,12 @@ import { ASSISTANT } from '../lib/portfolio-context';
         the live region. Announcing it twice — once as transcript, once as
         subtitle — is worse than not announcing it at all. */}
     <div class="ai__stage" data-stage hidden aria-hidden="true">
-      {/* A soft bloom with one white glyph at its centre. The glyph is the
-          state — dots while it works, a waveform while it talks — and the
-          bloom breathes with --amp, which the script drives from the audio.
-
-          No filter: blur anywhere. The softness is gradient falloff, the same
-          trick .hero__orb uses, because a blurred element this size would have
-          to be re-rasterised on every frame it moves. */}
-      <div class="ai__orb" data-orb style="--amp: 0">
-        <span class="ai__bloom"></span>
-        <span class="ai__dots"><i></i><i></i><i></i><i></i></span>
-        <span class="ai__wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      {/* The orb, ported from 21st.dev — a WebGL ring whose noise, spin and
+          edge distortion all rise with the voice, so loudness reads as
+          turbulence rather than as brightness. The buffer is 2x its CSS box;
+          the shader and the uniform mapping are in the script. */}
+      <div class="ai__orb" data-orb>
+        <canvas data-orb-canvas width="360" height="360"></canvas>
       </div>
 
       {/* The question, small, so you can see what is being answered. */}
@@ -124,6 +104,15 @@ import { ASSISTANT } from '../lib/portfolio-context';
         placeholder="Ask a question…"
         aria-label="Your question"
       />
+      {/* Beside Send rather than up in the header: this is the row where you
+          are already acting, and a mode switch parked next to the close button
+          read as chrome. Hidden until the script confirms Web Audio exists. */}
+      <button type="button" class="ai__voiceBtn" data-voice-on aria-label="Switch to voice mode" hidden>
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M3 10.5v-1M6.5 13.5v-7M10 16V4M13.5 13.5v-7M17 10.5v-1"
+            fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
+        </svg>
+      </button>
       <button type="submit" data-send aria-label="Send">
         <svg viewBox="0 0 16 16" aria-hidden="true">
           <path d="M2 8h11M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
@@ -204,14 +193,9 @@ import { ASSISTANT } from '../lib/portfolio-context';
           {/* wink: a chevron on the left only */}
           <path class="e-wink" d="M18 26.5 l6 5 -6 5" />
 
-          {/* eager: sparkle eyes */}
-          <path class="e-spark" d="M22 24 l1.9 5.1 5.1 1.9 -5.1 1.9 -1.9 5.1 -1.9 -5.1 -5.1 -1.9 5.1 -1.9z" />
-          <path class="e-spark" d="M42 24 l1.9 5.1 5.1 1.9 -5.1 1.9 -1.9 5.1 -1.9 -5.1 -5.1 -1.9 5.1 -1.9z" />
-
           {/* mouths */}
           <path class="m-neutral" d="M26.5 42 q5.5 4 11 0" />
           <path class="m-smile" d="M25 40.5 q7 8.5 14 0" />
-          <path class="m-squiggle" d="M25.5 43 q2.8 -3.6 5.5 0 t5.5 0" />
           <path class="m-open" d="M25.5 41 h13 a6.5 6.5 0 0 1 -13 0z" />
         </svg>
       </span>
@@ -304,14 +288,18 @@ import { ASSISTANT } from '../lib/portfolio-context';
 
     /* ---------------- expressions ----------------
      *
-     * Two layers. `base` is the standing condition — idle, or eager while the
-     * panel is open, or thinking while a reply streams. `flash` is a reaction
-     * that plays over the top for a moment and then falls back to base.
+     * Two layers. `base` is the standing condition, now always idle. `flash` is
+     * a reaction that plays over the top for a moment and then falls back to
+     * it.
      *
      * Keeping them separate is what stops a passing reaction from stranding
      * the face in the wrong expression: every flash knows where to return to.
      */
-    type Mood = 'idle' | 'curious' | 'thinking' | 'happy' | 'greet' | 'eager' | 'excited' | 'guiding' | 'relaxed';
+    /* `thinking` (squiggle mouth) and `eager` (star eyes) were removed —
+       they read as cheap where the rest of the set reads as drawn. The
+       states they covered fall back to idle, and the waiting cue moved to
+       the body's breathing rate, which is keyed off data-state instead. */
+    type Mood = 'idle' | 'curious' | 'happy' | 'greet' | 'excited' | 'guiding' | 'relaxed';
 
     let base: Mood = 'idle';
     let flashTimer = 0;
@@ -538,7 +526,7 @@ import { ASSISTANT } from '../lib/portfolio-context';
       hush();
       panel.hidden = false;
       root.dataset.state = 'open';
-      setBase('eager');
+      setBase('idle');
       stirred();
       emit('ai:open');
       blob.setAttribute('aria-expanded', 'true');
@@ -577,21 +565,20 @@ import { ASSISTANT } from '../lib/portfolio-context';
        audio to Google or Apple, which is not a thing to do quietly on someone
        else's portfolio.
 
-       Speech is the operating system's own synthesiser. No key, no request, no
-       cost, and no audio leaves the machine. The trade is that the voice is
-       whatever the visitor's OS ships, which is good on macOS and iOS and
-       variable on Android. */
+       Speech comes from /api/speak and only from there. The browser's own
+       synthesiser used to stand behind it as a fallback and has been removed:
+       it sounded a decade old, and one failed request latched the whole
+       session onto it. A line that will not synthesise is now skipped and
+       said so in the caption — silence is the better failure. */
     const voiceBtn = root.querySelector<HTMLElement>('[data-voice-on]')!;
     const voiceOff = root.querySelector<HTMLElement>('[data-voice-off]')!;
     const stage = root.querySelector<HTMLElement>('[data-stage]')!;
     const cap = root.querySelector<HTMLElement>('[data-cap]')!;
     const asked = root.querySelector<HTMLElement>('[data-asked]')!;
-    const synth = 'speechSynthesis' in window ? window.speechSynthesis : null;
 
     let voiceMode = false;
-    let voice: SpeechSynthesisVoice | null = null;
     let spokenUpTo = 0; // how much of the current answer has been queued
-    let speaking = 0; // utterances in flight; the orb pulses while > 0
+    let speaking = false; // audio is sounding or queued; the orb pulses while it is
     let capWords: HTMLElement[] = [];
 
     /* The rendered reply is a tiny markup subset (see renderReply below), and
@@ -601,32 +588,344 @@ import { ASSISTANT } from '../lib/portfolio-context';
       s
         .replace(/\*\*([^*\n]+)\*\*/g, '$1')
         .replace(/^\s*[-*•]\s+/gm, '')
-        .replace(/\/[a-z0-9][a-z0-9/-]*/gi, '')
+        /* Only a slash that *starts* a token is a path. Matching a bare slash
+           anywhere ate the second half of every ordinary pair — "design/
+           research" was read as "design", "he/she" as "he" — which is most of
+           why the voice sounded like it was skipping words. */
+        .replace(/(^|[\s([])\/[a-z0-9][a-z0-9/-]*/gi, '$1')
         .replace(/\s+/g, ' ')
         .trim();
 
     /* ---- amplitude ----
-       The orb reads one number, --amp in 0…1, and knows nothing about where it
-       comes from. speechSynthesis exposes no audio graph, so there is no real
-       waveform to sample; what it does give is a `boundary` event per word,
-       which is a genuine signal about the speech even if it is not amplitude.
-       Each word kicks the value to 1 and it decays, over a slow idle sway so
-       the thing still breathes between words. Swapping in a real AnalyserNode
-       later means replacing `kick()` and the idle term — nothing else, and no
-       CSS at all. */
-    const orb = root.querySelector<HTMLElement>('[data-orb]')!;
+       The orb reads one number, `amp` in 0…1, and knows nothing about where it
+       comes from. Normally that is the real RMS of the audio being played,
+       off the AnalyserNode further down. When there is no audio graph to
+       sample — the speechSynthesis fallback, which exposes none — a `boundary`
+       event per word kicks the value to 1 and it decays over a slow idle sway,
+       so the thing still breathes between words. Either way the orb sees the
+       same number and nothing below this changes. */
     let amp = 0;
     let ampPeak = 0;
     let ampRaf = 0;
 
-    const ampLoop = () => {
+    /* ---- the orb ----
+       A port of 21st.dev/@isaiahbjork/voice-powered-orb. The GLSL below is
+       that component's, unchanged — the simplex noise, the two light falloff
+       terms, the YIQ hue rotation and the three base colours are all its.
+
+       What changed is where the number driving it comes from. The original
+       opens the microphone and turns the visitor's own voice into rotation
+       and distortion. This mode has no microphone on purpose, and it already
+       holds a better signal than one: `amp`, the RMS of the assistant's
+       speech taken off the AnalyserNode below. So `amp` is fed in exactly
+       where the original feeds its mic level, and nothing asks the visitor
+       for permission to render a graphic.
+
+       ogl is dropped as well. It supplies a fullscreen triangle and a program
+       wrapper — the same handful of calls WaterSurface already makes against
+       raw WebGL in this codebase, so there is no reason to add a dependency
+       for them. */
+    const canvas = root.querySelector<HTMLCanvasElement>('[data-orb-canvas]');
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /* Degrees of hue rotation applied to all three base colours. 0 is the
+       component as published — cyan through white into violet. The rest of
+       this site is blue; this one graphic is left alone, because the sweep
+       between two hues is the effect and collapsing it toward a single blue
+       flattens the orb into a ring. */
+    const ORB_HUE = 0;
+    /* The original's prop defaults, kept as the constants they effectively
+       were: voiceSensitivity is already baked into `amp`. */
+    const BASE_ROT_SPEED = 0.3;
+    const MAX_ROT_SPEED = 1.2;
+    const MAX_HOVER = 0.8;
+
+    const orbVert = `
+      precision highp float;
+      attribute vec2 position;
+      attribute vec2 uv;
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const orbFrag = `
+      precision highp float;
+
+      uniform float iTime;
+      uniform vec3 iResolution;
+      uniform float hue;
+      uniform float hover;
+      uniform float rot;
+      uniform float hoverIntensity;
+      varying vec2 vUv;
+
+      vec3 rgb2yiq(vec3 c) {
+        float y = dot(c, vec3(0.299, 0.587, 0.114));
+        float i = dot(c, vec3(0.596, -0.274, -0.322));
+        float q = dot(c, vec3(0.211, -0.523, 0.312));
+        return vec3(y, i, q);
+      }
+
+      vec3 yiq2rgb(vec3 c) {
+        float r = c.x + 0.956 * c.y + 0.621 * c.z;
+        float g = c.x - 0.272 * c.y - 0.647 * c.z;
+        float b = c.x - 1.106 * c.y + 1.703 * c.z;
+        return vec3(r, g, b);
+      }
+
+      vec3 adjustHue(vec3 color, float hueDeg) {
+        float hueRad = hueDeg * 3.14159265 / 180.0;
+        vec3 yiq = rgb2yiq(color);
+        float cosA = cos(hueRad);
+        float sinA = sin(hueRad);
+        float i = yiq.y * cosA - yiq.z * sinA;
+        float q = yiq.y * sinA + yiq.z * cosA;
+        yiq.y = i;
+        yiq.z = q;
+        return yiq2rgb(yiq);
+      }
+
+      vec3 hash33(vec3 p3) {
+        p3 = fract(p3 * vec3(0.1031, 0.11369, 0.13787));
+        p3 += dot(p3, p3.yxz + 19.19);
+        return -1.0 + 2.0 * fract(vec3(
+          p3.x + p3.y,
+          p3.x + p3.z,
+          p3.y + p3.z
+        ) * p3.zyx);
+      }
+
+      float snoise3(vec3 p) {
+        const float K1 = 0.333333333;
+        const float K2 = 0.166666667;
+        vec3 i = floor(p + (p.x + p.y + p.z) * K1);
+        vec3 d0 = p - (i - (i.x + i.y + i.z) * K2);
+        vec3 e = step(vec3(0.0), d0 - d0.yzx);
+        vec3 i1 = e * (1.0 - e.zxy);
+        vec3 i2 = 1.0 - e.zxy * (1.0 - e);
+        vec3 d1 = d0 - (i1 - K2);
+        vec3 d2 = d0 - (i2 - K1);
+        vec3 d3 = d0 - 0.5;
+        vec4 h = max(0.6 - vec4(
+          dot(d0, d0),
+          dot(d1, d1),
+          dot(d2, d2),
+          dot(d3, d3)
+        ), 0.0);
+        vec4 n = h * h * h * h * vec4(
+          dot(d0, hash33(i)),
+          dot(d1, hash33(i + i1)),
+          dot(d2, hash33(i + i2)),
+          dot(d3, hash33(i + 1.0))
+        );
+        return dot(vec4(31.316), n);
+      }
+
+      vec4 extractAlpha(vec3 colorIn) {
+        float a = max(max(colorIn.r, colorIn.g), colorIn.b);
+        return vec4(colorIn.rgb / (a + 1e-5), a);
+      }
+
+      const vec3 baseColor1 = vec3(0.611765, 0.262745, 0.996078);
+      const vec3 baseColor2 = vec3(0.298039, 0.760784, 0.913725);
+      const vec3 baseColor3 = vec3(0.062745, 0.078431, 0.600000);
+      const float innerRadius = 0.6;
+      const float noiseScale = 0.65;
+
+      float light1(float intensity, float attenuation, float dist) {
+        return intensity / (1.0 + dist * attenuation);
+      }
+
+      float light2(float intensity, float attenuation, float dist) {
+        return intensity / (1.0 + dist * dist * attenuation);
+      }
+
+      vec4 draw(vec2 uv) {
+        vec3 color1 = adjustHue(baseColor1, hue);
+        vec3 color2 = adjustHue(baseColor2, hue);
+        vec3 color3 = adjustHue(baseColor3, hue);
+
+        float ang = atan(uv.y, uv.x);
+        float len = length(uv);
+        float invLen = len > 0.0 ? 1.0 / len : 0.0;
+
+        float n0 = snoise3(vec3(uv * noiseScale, iTime * 0.5)) * 0.5 + 0.5;
+        float r0 = mix(mix(innerRadius, 1.0, 0.4), mix(innerRadius, 1.0, 0.6), n0);
+        float d0 = distance(uv, (r0 * invLen) * uv);
+        float v0 = light1(1.0, 10.0, d0);
+        v0 *= smoothstep(r0 * 1.05, r0, len);
+        float cl = cos(ang + iTime * 2.0) * 0.5 + 0.5;
+
+        float a = iTime * -1.0;
+        vec2 pos = vec2(cos(a), sin(a)) * r0;
+        float d = distance(uv, pos);
+        float v1 = light2(1.5, 5.0, d);
+        v1 *= light1(1.0, 50.0, d0);
+
+        float v2 = smoothstep(1.0, mix(innerRadius, 1.0, n0 * 0.5), len);
+        float v3 = smoothstep(innerRadius, mix(innerRadius, 1.0, 0.5), len);
+
+        vec3 col = mix(color1, color2, cl);
+        col = mix(color3, col, v0);
+        col = (col + v1) * v2 * v3;
+        col = clamp(col, 0.0, 1.0);
+
+        return extractAlpha(col);
+      }
+
+      vec4 mainImage(vec2 fragCoord) {
+        vec2 center = iResolution.xy * 0.5;
+        float size = min(iResolution.x, iResolution.y);
+        vec2 uv = (fragCoord - center) / size * 2.0;
+
+        float angle = rot;
+        float s = sin(angle);
+        float c = cos(angle);
+        uv = vec2(c * uv.x - s * uv.y, s * uv.x + c * uv.y);
+
+        uv.x += hover * hoverIntensity * 0.1 * sin(uv.y * 10.0 + iTime);
+        uv.y += hover * hoverIntensity * 0.1 * sin(uv.x * 10.0 + iTime);
+
+        return draw(uv);
+      }
+
+      void main() {
+        vec2 fragCoord = vUv * iResolution.xy;
+        vec4 col = mainImage(fragCoord);
+        gl_FragColor = vec4(col.rgb * col.a, col.a);
+      }
+    `;
+
+    /* The shader's last line is `vec4(col.rgb * col.a, col.a)` — it emits
+       premultiplied colour. The component pairs that with
+       premultipliedAlpha:false and a SRC_ALPHA blend, which multiplies by
+       alpha a second time: at the soft edge of the ring the destination is
+       dimmed by (1 - a) while only a*a of the colour is added back, so the
+       falloff fills with grey. On the near-black the component was built
+       against that is invisible. This panel is white, where it reads as a
+       dirty halo around the orb.
+
+       So the blend is matched to what the shader actually emits — ONE for a
+       premultiplied source — and the context is told the same thing. The
+       shader is untouched. */
+    const gl =
+      canvas?.getContext('webgl', {
+        alpha: true,
+        premultipliedAlpha: true,
+        antialias: true,
+      }) ?? null;
+
+    type OrbGpu = {
+      u: Record<string, WebGLUniformLocation | null>;
+    };
+    let gpu: OrbGpu | null = null;
+
+    if (gl && canvas) {
+      const compile = (type: number, src: string) => {
+        const sh = gl.createShader(type)!;
+        gl.shaderSource(sh, src);
+        gl.compileShader(sh);
+        if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+          console.warn('orb shader:', gl.getShaderInfoLog(sh));
+          return null;
+        }
+        return sh;
+      };
+
+      const vs = compile(gl.VERTEX_SHADER, orbVert);
+      const fs = compile(gl.FRAGMENT_SHADER, orbFrag);
+
+      if (vs && fs) {
+        const prog = gl.createProgram()!;
+        gl.attachShader(prog, vs);
+        gl.attachShader(prog, fs);
+        gl.linkProgram(prog);
+
+        if (gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+          gl.useProgram(prog);
+
+          /* ogl's Triangle: one oversized triangle covering the viewport,
+             which beats two triangles because there is no seam down the
+             diagonal for the fragment shader to sample across. */
+          const put = (name: string, data: number[]) => {
+            const buf = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+            const loc = gl.getAttribLocation(prog, name);
+            gl.enableVertexAttribArray(loc);
+            gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+          };
+          put('position', [-1, -1, 3, -1, -1, 3]);
+          put('uv', [0, 0, 2, 0, 0, 2]);
+
+          gl.clearColor(0, 0, 0, 0);
+          gl.enable(gl.BLEND);
+          gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+          gl.viewport(0, 0, canvas.width, canvas.height);
+
+          gpu = {
+            u: {
+              iTime: gl.getUniformLocation(prog, 'iTime'),
+              iResolution: gl.getUniformLocation(prog, 'iResolution'),
+              hue: gl.getUniformLocation(prog, 'hue'),
+              hover: gl.getUniformLocation(prog, 'hover'),
+              rot: gl.getUniformLocation(prog, 'rot'),
+              hoverIntensity: gl.getUniformLocation(prog, 'hoverIntensity'),
+            },
+          };
+          gl.uniform3f(gpu.u.iResolution, canvas.width, canvas.height, canvas.width / canvas.height);
+          gl.uniform1f(gpu.u.hue, ORB_HUE);
+        }
+      }
+    }
+
+    let orbRot = 0;
+    let orbLast = 0;
+
+    function drawOrb(now: number) {
+      if (!gl || !gpu || !canvas) return;
+
+      const dt = orbLast ? (now - orbLast) * 0.001 : 0;
+      orbLast = now;
+      const t = still ? 0 : now * 0.001;
+
+      /* The original's mapping, with `amp` standing in for its mic level.
+         The 0.05 gate is its own: below that the extra spin is off and the
+         orb is carried only by the noise and the orbiting light in the
+         shader, which is what keeps it alive between answers rather than
+         frozen. */
+      if (!still && amp > 0.05) {
+        orbRot += dt * (BASE_ROT_SPEED + amp * MAX_ROT_SPEED * 2.0);
+      }
+
+      gl.uniform1f(gpu.u.iTime, t);
+      gl.uniform1f(gpu.u.rot, orbRot);
+      gl.uniform1f(gpu.u.hover, still ? 0 : Math.min(amp * 2.0, 1.0));
+      gl.uniform1f(gpu.u.hoverIntensity, still ? 0 : Math.min(amp * MAX_HOVER * 0.8, MAX_HOVER));
+
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+
+    const ampLoop = (now: number = performance.now()) => {
       let target: number;
+
+      /* Derived, not counted. The audio clock already knows whether anything is
+         sounding, and a count kept by hand drifted from it every time a clip
+         was stopped rather than allowed to end. */
+      const clock = audioCtx ? audioCtx.currentTime : 0;
+      const wasSpeaking = speaking;
+      speaking = !!audioCtx && queuedUntil > clock;
+      if (speaking !== wasSpeaking) root.dataset.speaking = String(speaking);
 
       if (analyser && scope && speaking) {
         /* The real thing: RMS of the waveform this frame. Deviation from 128
-           because time-domain data is centred there, and ×3.4 because speech
+           because time-domain data is centred there, and x3.4 because speech
            at a comfortable listening level sits well below full scale — raw
-           RMS would leave the orb barely moving. */
+           RMS would leave the field barely moving. */
         analyser.getByteTimeDomainData(scope);
         let sum = 0;
         for (let i = 0; i < scope.length; i++) {
@@ -637,17 +936,18 @@ import { ASSISTANT } from '../lib/portfolio-context';
       } else {
         // Fallback voice: no audio graph, so word events and a slow sway.
         ampPeak *= 0.9;
-        target = Math.max(ampPeak, speaking ? 0.2 + Math.sin(performance.now() / 240) * 0.07 : 0);
+        target = Math.max(ampPeak, speaking ? 0.2 + Math.sin(now / 240) * 0.07 : 0);
       }
 
       amp += (target - amp) * 0.22; // ease, so peaks arrive as swells not steps
-      orb.style.setProperty('--amp', amp.toFixed(3));
 
-      // Drives the subtitle highlight for hosted audio, which has no boundaries.
-      if (capMs) litUpTo(((performance.now() - capStart) / capMs) * capLen);
+      followCaption(clock);
+      drawOrb(now);
 
-      // Keep running past the last word so the fall to rest is animated too.
-      ampRaf = speaking || amp > 0.004 ? requestAnimationFrame(ampLoop) : 0;
+      /* Runs for as long as the mode is open, not just while a voice is
+         playing — the field turning quietly between questions is what makes
+         it feel like something waiting rather than something switched off. */
+      ampRaf = voiceMode || speaking || amp > 0.004 ? requestAnimationFrame(ampLoop) : 0;
     };
     const runAmp = () => {
       if (!ampRaf) ampRaf = requestAnimationFrame(ampLoop);
@@ -662,18 +962,23 @@ import { ASSISTANT } from '../lib/portfolio-context';
          once — cheaper and more certain than trying to unwind the chain. */
       generation += 1;
       chain = Promise.resolve();
-      try {
-        live?.stop();
-      } catch {
-        /* already ended */
+      /* Everything scheduled, not just what is audible: a clip queued to start
+         in two seconds is every bit as much a thing that must not be heard. */
+      for (const src of playing) {
+        try {
+          src.stop();
+        } catch {
+          /* already ended */
+        }
       }
-      live = null;
-      capMs = 0;
-      speaking = 0;
+      playing.clear();
+      queuedUntil = 0;
+      timeline = [];
+      shown = null;
+      speaking = false;
       root.dataset.speaking = 'false';
       ampPeak = 0;
       runAmp(); // let it settle to rest rather than snapping
-      synth?.cancel();
     };
 
     /* Subtitles are rebuilt per utterance, one word per span, each tagged with
@@ -700,30 +1005,76 @@ import { ASSISTANT } from '../lib/portfolio-context';
 
     /* Everything up to the word being spoken is lit. */
     const litUpTo = (charIndex: number) => {
-      for (const w of capWords) w.dataset.on = String(Number(w.dataset.at) <= charIndex);
+      let last: HTMLElement | null = null;
+      for (const w of capWords) {
+        const on = Number(w.dataset.at) <= charIndex;
+        w.dataset.on = String(on);
+        if (on) last = w;
+      }
+      /* The caption is a fixed window, not a growing block — a long sentence
+         used to push the stage past its own height and print itself over the
+         button. It scrolls to follow the voice instead, which is what real
+         subtitles do. */
+      if (last && cap.scrollHeight > cap.clientHeight + 1) {
+        /* Snapped to whole lines. Scrolling to an arbitrary pixel offset put
+           the boundary through the middle of a row of glyphs, which is what
+           made the top line look sliced rather than scrolled. */
+        const line = last.offsetHeight || 1;
+        const want = last.offsetTop - cap.clientHeight / 2 + line / 2;
+        cap.scrollTop = Math.max(0, Math.round(want / line) * line);
+      }
+    };
+
+    /* Reads the caption off the audio clock every frame: which utterance is
+       sounding, and how far into it the voice has got. The clip is put on
+       screen when it starts rather than when it is scheduled, so the subtitle
+       cannot run ahead of a line still waiting its turn — and the last one
+       stays up after the voice stops, which is what you want to be looking at
+       while you decide what to ask next. */
+    const followCaption = (now: number) => {
+      while (timeline.length > 1 && timeline[1].start <= now) timeline.shift();
+      const u = timeline[0];
+      if (!u || now < u.start) return;
+      if (u !== shown) {
+        setCaption(u.text);
+        shown = u;
+      }
+      litUpTo(charAt(u, (now - u.start) * 1000));
     };
 
     /* ---- hosted voice ----
-       /api/speak returns one sentence as audio. It is played through Web Audio
-       rather than an <audio> element for one reason that matters: an
-       AnalyserNode on the graph gives the orb the real waveform, so it moves
-       with the voice instead of guessing from word events.
+       /api/speak returns one sentence as audio plus a mark per spoken word. It
+       is played through Web Audio rather than an <audio> element for two
+       reasons that matter: an AnalyserNode on the graph gives the orb the real
+       waveform, so it moves with the voice instead of guessing; and clips can
+       be scheduled on the audio clock rather than started by a JavaScript
+       event, which is what closes the gap between sentences.
 
-       The route answers 501 when no key is configured, which is the signal to
-       fall back to the browser's own synthesiser for the rest of the session —
-       a site deployed without a key still talks, just not as well. */
+       A line that fails to synthesise is skipped on its own — a hiccup on one
+       sentence must not cost the rest of the answer. */
     let audioCtx: AudioContext | null = null;
     let analyser: AnalyserNode | null = null;
     let scope: Uint8Array | null = null;
-    let hosted = true; // until the route says otherwise
     let chain: Promise<void> = Promise.resolve();
     let generation = 0; // bumped on stop; anything older is discarded
-    let live: AudioBufferSourceNode | null = null;
+    /* Everything scheduled and not yet finished. More than one clip is usually
+       in here: audio is queued ahead of the moment it plays. */
+    const playing = new Set<AudioBufferSourceNode>();
+    /* When the queued audio runs out, on the AudioContext's own clock. Each
+       clip begins exactly there rather than when an `ended` event says the last
+       one finished — that wait is a frame at best, and it is what put a hole
+       between every sentence. */
+    let queuedUntil = 0;
 
-    // Caption timing for hosted audio, which reports no word boundaries.
-    let capStart = 0;
-    let capMs = 0;
-    let capLen = 0;
+    /* One scheduled utterance. `cues` are word starts in milliseconds from the
+       top of the clip; `start`/`end` are positions on the audio clock. The
+       caption is driven from this rather than from playback events, so what is
+       on screen and what is in your ears are read off the same clock and
+       cannot drift apart. */
+    type Cue = { t: number; at: number };
+    type Spoken = { text: string; cues: Cue[]; start: number; end: number; ms: number };
+    let timeline: Spoken[] = [];
+    let shown: Spoken | null = null;
 
     const openAudio = () => {
       if (audioCtx) return audioCtx;
@@ -738,7 +1089,10 @@ import { ASSISTANT } from '../lib/portfolio-context';
       return audioCtx;
     };
 
-    async function fetchLine(text: string): Promise<AudioBuffer | null> {
+    type Mark = { t: number; d: number; w: string };
+    type Line = { buf: AudioBuffer; marks: Mark[] };
+
+    async function fetchLine(text: string): Promise<Line | null> {
       const ctx = openAudio();
       if (!ctx) return null;
       try {
@@ -747,53 +1101,105 @@ import { ASSISTANT } from '../lib/portfolio-context';
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ text }),
         });
-        if (!res.ok) {
-          // 501 is "no key". Anything else is a fault. Both mean: stop asking.
-          hosted = false;
-          return null;
-        }
-        return await ctx.decodeAudioData(await res.arrayBuffer());
+        // Failures are per line, not per session: one bad request used to
+        // latch the whole conversation onto the fallback voice.
+        if (!res.ok) return null;
+        const { audio, marks } = await res.json();
+        if (typeof audio !== 'string') return null;
+        const bytes = Uint8Array.from(atob(audio), (c) => c.charCodeAt(0));
+        return {
+          buf: await ctx.decodeAudioData(bytes.buffer),
+          marks: Array.isArray(marks) ? marks : [],
+        };
       } catch {
-        hosted = false;
         return null;
       }
     }
 
-    function playLine(buf: AudioBuffer, text: string) {
-      return new Promise<void>((resolve) => {
-        const ctx = openAudio();
-        if (!ctx || !analyser) return resolve();
-        const src = ctx.createBufferSource();
-        src.buffer = buf;
-        src.connect(analyser);
-        live = src;
+    /* Marks name the word, not where it sits in the string, and the
+       synthesiser does not always split where a space does — it says "twenty
+       five" for "25". Walking forward from the previous match keeps the two in
+       step, and a mark that cannot be placed is dropped rather than guessed
+       at: the cost is one word holding its highlight a beat longer, not a
+       caption that slides out of step for the rest of the line. */
+    function cuesFor(text: string, marks: Mark[]): Cue[] {
+      const cues: Cue[] = [];
+      let from = 0;
+      for (const m of marks) {
+        const w = typeof m?.w === 'string' ? m.w.trim() : '';
+        if (!w) continue;
+        const at = text.indexOf(w, from);
+        if (at < 0) continue;
+        cues.push({ t: m.t, at });
+        from = at + w.length;
+      }
+      return cues;
+    }
 
-        speaking += 1;
-        root.dataset.speaking = 'true';
-        setCaption(text);
-        /* No boundary events from a sound file, so the highlight is driven off
-           the clock instead: the line's own duration spread across its
-           characters. Linear is an approximation, but a steadier one than
-           `boundary` ever was — and it behaves the same in every browser,
-           which `boundary` never did. */
-        capStart = performance.now();
-        capMs = buf.duration * 1000;
-        capLen = text.length;
-        runAmp();
+    /* Where the voice is in the caption, in characters. With cues this is the
+       last word the synthesiser said it had started; without them it falls
+       back to the old guess — the clip's duration spread evenly across its
+       characters — which is wrong in a readable way rather than absent. */
+    function charAt(u: Spoken, ms: number) {
+      if (!u.cues.length) return u.ms ? (ms / u.ms) * u.text.length : u.text.length;
+      let at = 0;
+      for (const c of u.cues) {
+        if (c.t > ms) break;
+        at = c.at;
+      }
+      return at;
+    }
 
-        src.onended = () => {
-          if (live === src) live = null;
-          capMs = 0;
-          speaking = Math.max(0, speaking - 1);
-          if (!speaking) root.dataset.speaking = 'false';
-          resolve();
-        };
-        src.start();
+    /* Queues one clip to begin the instant the previous one ends. Returns as
+       soon as it is scheduled — the wait is the audio clock's job, not a
+       promise's, and holding the chain here is what used to leave a hole. */
+    function schedule(buf: AudioBuffer, text: string, marks: Mark[]) {
+      const ctx = openAudio();
+      if (!ctx || !analyser) return;
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(analyser);
+
+      /* Butt up against whatever is already queued; if nothing is, start now
+         with a hair of lead time so the scheduler is not chasing a moment that
+         has already passed. */
+      const at = Math.max(ctx.currentTime + 0.06, queuedUntil);
+      queuedUntil = at + buf.duration;
+
+      timeline.push({
+        text,
+        cues: cuesFor(text, marks),
+        start: at,
+        end: queuedUntil,
+        ms: buf.duration * 1000,
       });
+
+      playing.add(src);
+      src.onended = () => playing.delete(src);
+      src.start(at);
+      runAmp();
+    }
+
+    /* Nothing to play. Silence beats the browser's own synthesiser, which is
+       the voice this mode exists to get away from — so the line is skipped and
+       the caption says so, in its turn rather than over whatever is speaking. */
+    const SKIPPED_MS = 1.2;
+    function scheduleSkip() {
+      const ctx = openAudio();
+      const at = Math.max((ctx?.currentTime ?? 0) + 0.06, queuedUntil);
+      queuedUntil = at + SKIPPED_MS;
+      timeline.push({
+        text: '— that line would not load —',
+        cues: [],
+        start: at,
+        end: queuedUntil,
+        ms: SKIPPED_MS * 1000,
+      });
+      runAmp();
     }
 
     /* Fetches run as soon as a sentence is ready — several at once — while
-       playback stays strictly in order on this chain. Waiting for one line to
+       scheduling stays strictly in order on this chain. Waiting for one line to
        finish before requesting the next would put the round trip into every
        gap between sentences. */
     function enqueueHosted(text: string) {
@@ -801,44 +1207,12 @@ import { ASSISTANT } from '../lib/portfolio-context';
       const pending = fetchLine(text);
       chain = chain.then(async () => {
         if (gen !== generation) return;
-        const buf = await pending;
+        const line = await pending;
         if (gen !== generation) return;
-        if (!buf) return utterFallback(text); // the route gave up mid-answer
-        await playLine(buf, text);
+        if (!line) return scheduleSkip();
+        schedule(line.buf, text, line.marks);
       });
     }
-
-    /* The fallback voice: the operating system's own synthesiser. Used only
-       when /api/speak is unavailable. Not `say` — that name is taken by the
-       blob's speech-bubble copy above. */
-    const utterFallback = (text: string) => {
-      if (!synth || !text) return;
-      const u = new SpeechSynthesisUtterance(text);
-      if (voice) u.voice = voice;
-      u.rate = 1.02;
-
-      /* The caption swaps on start, not on queue: several utterances sit in
-         the synth queue at once, and showing the newest would run the
-         subtitles ahead of the voice. */
-      u.onstart = () => {
-        speaking += 1;
-        root.dataset.speaking = 'true';
-        setCaption(text);
-        runAmp();
-      };
-      u.onboundary = (e) => {
-        litUpTo(e.charIndex);
-        kick();
-      };
-      const settle = () => {
-        speaking = Math.max(0, speaking - 1);
-        if (!speaking) root.dataset.speaking = 'false';
-      };
-      u.onend = settle;
-      u.onerror = settle;
-
-      synth.speak(u);
-    };
 
     /* Speaks each complete sentence as it arrives rather than waiting for the
        whole answer, so the voice starts while the model is still writing. It
@@ -846,22 +1220,51 @@ import { ASSISTANT } from '../lib/portfolio-context';
        utterance running past roughly fifteen seconds, and it gives the
        subtitles a natural unit to show one at a time. */
     const SENTENCE = /[^.!?]+[.!?]+\s*/g;
+    /* Every chunk boundary is an audible seam — two MP3s butted together each
+       carry a little encoder padding — so the aim is the fewest cuts that
+       still let the voice start before the model has finished writing. Below
+       MIN we wait for more text rather than spend a seam on a short clause;
+       MAX stays under the route's own 320-character limit. */
+    const MIN_SPEAK = 140;
+    const MAX_SPEAK = 300;
+
     const speakStream = (full: string, final = false) => {
       if (!voiceMode) return;
       const pending = full.slice(spokenUpTo);
+
+      /* Walk the sentence ends and take the last one that fits. Cutting at a
+         full stop is what makes the seam inaudible: the voice was going to
+         pause there anyway. */
       let cut = 0;
       let m: RegExpExecArray | null;
       SENTENCE.lastIndex = 0;
-      while ((m = SENTENCE.exec(pending))) cut = m.index + m[0].length;
-      // On the last call take the remainder, sentence-final or not.
-      const chunk = final ? pending : pending.slice(0, cut);
+      while ((m = SENTENCE.exec(pending))) {
+        const end = m.index + m[0].length;
+        if (end > MAX_SPEAK) break;
+        cut = end;
+      }
+
+      /* One sentence longer than MAX has no full stop to cut at, so fall back
+         to the last space that fits — mid-sentence, but at a word. */
+      if (!cut && pending.length > MAX_SPEAK) {
+        cut = pending.lastIndexOf(' ', MAX_SPEAK);
+        if (cut < 1) cut = MAX_SPEAK;
+      }
+
+      // Hold short tails back until the answer is done.
+      if (!final && cut < MIN_SPEAK) return;
+
+      const chunk = final ? pending.slice(0, MAX_SPEAK) : pending.slice(0, cut);
       const line = plain(chunk);
-      if (!line) return;
+      if (!line) {
+        if (final) spokenUpTo += chunk.length;
+        return;
+      }
       spokenUpTo += chunk.length;
-      /* One sentence per request keeps each one short enough to start playing
-         while the model is still writing the next. */
-      if (hosted) enqueueHosted(line);
-      else utterFallback(line);
+      enqueueHosted(line);
+
+      // A final flush can leave more than one chunk's worth still unsaid.
+      if (final && spokenUpTo < full.length) speakStream(full, true);
     };
 
     function setVoiceMode(on: boolean) {
@@ -869,6 +1272,7 @@ import { ASSISTANT } from '../lib/portfolio-context';
       root.dataset.mode = on ? 'voice' : '';
       stage.hidden = !on;
       voiceBtn.hidden = on;
+      if (on) runAmp(); // the field starts turning the moment the mode opens
       /* Announced on document rather than called directly: the player is a
          sibling component that may not be on the page at all, and this side of
          it should not have to know. MusicBlob decides what to do about it. */
@@ -881,40 +1285,18 @@ import { ASSISTANT } from '../lib/portfolio-context';
       input.focus();
     }
 
-    /* Voice mode needs one of the two engines: Web Audio for the hosted voice,
-       or the synthesiser for the fallback. With neither there is nothing to
-       offer, and the button stays hidden. */
-    if (window.AudioContext || (window as any).webkitAudioContext || synth) {
+    /* Voice mode needs Web Audio and nothing else now. Without it there is
+       nothing to offer, and the button stays hidden. */
+    if (window.AudioContext || (window as any).webkitAudioContext) {
       voiceBtn.hidden = false;
-
-      if (synth) {
-        /* getVoices() returns an empty list on the first call in Chrome and
-           Safari — the list arrives later. Read it both times and never wait
-           on it: leaving `voice` null just means the platform default. */
-        const pickVoice = () => {
-          const en = synth.getVoices().filter((v) => v.lang.startsWith('en'));
-          if (!en.length) return;
-          voice = en.find((v) => v.localService && /samantha|daniel|karen/i.test(v.name))
-            ?? en.find((v) => v.localService)
-            ?? en[0];
-        };
-        pickVoice();
-        synth.addEventListener('voiceschanged', pickVoice);
-      }
 
       voiceBtn.addEventListener('click', () => {
         setVoiceMode(true);
-        /* Both engines are gesture-gated, and this click is the only gesture
-           voice mode gets — everything after it is driven by the stream.
-           Opening the context here is what stops browsers suspending the
-           audio graph; the silent utterance is the same unlock for iOS
-           Safari's synthesiser. */
+        /* Web Audio is gesture-gated and this click is the only gesture voice
+           mode gets — everything after it is driven by the stream. Opening and
+           resuming the context here is what stops the browser suspending the
+           graph before the first clip arrives. */
         openAudio()?.resume().catch(() => {});
-        if (synth) {
-          const prime = new SpeechSynthesisUtterance(' ');
-          prime.volume = 0;
-          synth.speak(prime);
-        }
       });
       voiceOff.addEventListener('click', () => setVoiceMode(false));
 
@@ -967,7 +1349,7 @@ import { ASSISTANT } from '../lib/portfolio-context';
       busy = true;
       empty.hidden = true;
       root.dataset.state = 'thinking';
-      setBase('thinking');
+      setBase('idle');
       emit('ai:send');
       input.value = '';
 
@@ -1027,6 +1409,10 @@ import { ASSISTANT } from '../lib/portfolio-context';
                 "I couldn't answer that one. Try rephrasing, or email designs.bhupesh@gmail.com.";
               return;
             }
+            /* Guarded rather than assumed: anything on this stream that is
+               not a text payload must not be concatenated, or its `undefined`
+               lands in the answer as a word. */
+            if (typeof payload?.text !== 'string') continue;
             acc += payload.text;
             delete out.dataset.pending;
             renderReply(out, acc);
@@ -1049,7 +1435,7 @@ import { ASSISTANT } from '../lib/portfolio-context';
         delete out.dataset.pending;
         busy = false;
         root.dataset.state = panel.hidden ? 'idle' : 'open';
-        setBase(panel.hidden ? 'idle' : 'eager');
+        setBase('idle');
         input.focus();
       }
     }
@@ -1204,7 +1590,9 @@ import { ASSISTANT } from '../lib/portfolio-context';
   }
 
   /* Thinking: the breath quickens a little. */
-  .ai[data-mood="thinking"] .ai__body { animation-duration: 1.5s; }
+  /* Keyed to data-state, not data-mood: the quicker breath is the waiting
+     cue now that the face no longer changes for it. */
+  .ai[data-state="thinking"] .ai__body { animation-duration: 1.5s; }
 
   /* Noticing a new fold — a single squash-and-settle. */
   .ai[data-mood="curious"] .ai__body { animation: ai-notice 0.66s cubic-bezier(0.3, 1.3, 0.5, 1); }
@@ -1247,7 +1635,7 @@ import { ASSISTANT } from '../lib/portfolio-context';
     transition: opacity 0.17s ease;
   }
   /* Strokes for the drawn features, fills for the solid ones. */
-  .ai__f path:not(.m-open):not(.e-spark),
+  .ai__f path:not(.m-open),
   .ai__fx .fx-line {
     fill: none;
     stroke: #fff;
@@ -1258,7 +1646,6 @@ import { ASSISTANT } from '../lib/portfolio-context';
   .ai__f rect,
   .ai__f circle,
   .ai__f .m-open,
-  .ai__f .e-spark,
   .ai__fx .fx-spark { fill: #fff; }
   .ai__fx .fx-line { stroke-width: 2.2; opacity: 0; }
 
@@ -1272,7 +1659,6 @@ import { ASSISTANT } from '../lib/portfolio-context';
 
   /* eyes */
   .ai[data-mood="idle"] .e-cap,
-  .ai[data-mood="thinking"] .e-cap,
   .ai[data-mood="excited"] .e-cap,
   .ai[data-mood="guiding"] .e-cap,
   .ai[data-mood="curious"] .e-cap:first-of-type,   /* the other drops to a dot */
@@ -1280,8 +1666,7 @@ import { ASSISTANT } from '../lib/portfolio-context';
   .ai[data-mood="curious"] .e-dot,
   .ai[data-mood="happy"] .e-up,
   .ai[data-mood="relaxed"] .e-down,
-  .ai[data-mood="greet"] .e-wink,
-  .ai[data-mood="eager"] .e-spark { opacity: 1; }
+  .ai[data-mood="greet"] .e-wink { opacity: 1; }
 
   /* mouths */
   .ai[data-mood="idle"] .m-neutral,
@@ -1290,8 +1675,6 @@ import { ASSISTANT } from '../lib/portfolio-context';
   .ai[data-mood="happy"] .m-smile,
   .ai[data-mood="greet"] .m-smile,
   .ai[data-mood="guiding"] .m-smile,
-  .ai[data-mood="thinking"] .m-squiggle,
-  .ai[data-mood="eager"] .m-open,
   .ai[data-mood="excited"] .m-open { opacity: 1; }
 
   /* decorations */
@@ -1310,13 +1693,6 @@ import { ASSISTANT } from '../lib/portfolio-context';
 
   /* CURIOUS also tilts the head — the part that sells "noticing". */
   .ai[data-mood="curious"] .ai__face { rotate: -7deg; }
-
-  /* THINKING narrows the capsules to a focused squint. */
-  .ai[data-mood="thinking"] .e-cap {
-    transform-box: fill-box;
-    transform-origin: center;
-    scale: 1 0.45;
-  }
 
   /* Blink overlays whatever mood is running, but only where the eyes are
      actually open — closed-eye moods have nothing left to close. */
@@ -1476,29 +1852,31 @@ import { ASSISTANT } from '../lib/portfolio-context';
   .ai__close:hover { background: rgba(17, 19, 24, 0.13); }
   .ai__close svg { width: 12px; height: 12px; }
 
-  /* Entry to voice mode. A labelled pill rather than a bare icon: a mode
-     switch is a bigger promise than a toggle and should say what it is. */
+  /* Sits in the form beside Send, so it matches that button's size and
+     shape rather than the header's. Outlined, not filled — Send is the
+     primary action in this row and only one of them should look it. */
   .ai__voiceBtn {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    margin-left: auto;
-    margin-right: 6px;
-    padding: 5px 10px 5px 8px;
-    border: 0;
-    border-radius: 999px;
-    background: rgba(17, 19, 24, 0.06);
-    color: #14161c;
-    font-family: inherit;
-    font-size: 11.5px;
-    font-weight: 700;
-    letter-spacing: -0.1px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border: 1px solid var(--blue-300, #74a5ff);
+    border-radius: 50%;
+    background: rgba(0, 89, 255, 0.07);
+    color: var(--blue-500, #0059ff);
     cursor: pointer;
-    transition: background 0.2s ease, color 0.2s ease;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
   }
-  .ai__voiceBtn:hover { background: rgba(0, 89, 255, 0.13); color: #0b46c9; }
+  .ai__voiceBtn:hover {
+    background: var(--blue-500, #0059ff);
+    border-color: var(--blue-500, #0059ff);
+    color: #fff;
+  }
   .ai__voiceBtn:focus-visible { outline: 2px solid var(--blue-500, #0059ff); outline-offset: 2px; }
-  .ai__voiceBtn svg { width: 15px; height: 15px; }
+  .ai__voiceBtn svg { width: 17px; height: 17px; }
+  .ai__voiceBtn[hidden] { display: none; }
 
   /* ---------------- voice stage ----------------
      Laid over the transcript, not swapped with it, so the log keeps filling
@@ -1513,8 +1891,8 @@ import { ASSISTANT } from '../lib/portfolio-context';
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 18px;
-    padding: 20px 26px;
+    gap: 12px;
+    padding: 14px 26px 18px;
     text-align: center;
     animation: ai-stage-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
@@ -1529,111 +1907,19 @@ import { ASSISTANT } from '../lib/portfolio-context';
   }
 
   /* ---- the orb ----
-     --amp (0…1) is written by the script once per frame and is the only thing
-     that couples this to the voice. Everything here reads it; nothing here
-     knows where it came from, which is what lets a real audio analyser take
-     over from the synthetic one later without touching a line of CSS. */
-  /* ---- the orb ----
-     --amp (0…1) is written by the script once per frame from the audio graph,
-     and is the only thing coupling this to the voice. Everything here reads
-     it; nothing here knows where it came from. */
+     A canvas, sized in CSS and backed at 2x for retina. The shader loop
+     lives in the script and reads the same `amp` the speech drives, so this
+     rule only has to place it. */
   .ai__orb {
     position: relative;
-    display: grid;
-    place-items: center;
-    width: 150px;
-    height: 150px;
+    width: 180px;
+    height: 180px;
     flex: 0 0 auto;
   }
-
-  /* Concentric falloff rather than one gradient: each layer is a wider, fainter
-     circle, and the small overlaps between them are what give the edge its
-     depth instead of a flat fade. */
-  .ai__bloom {
-    position: absolute;
-    inset: -26%;
-    border-radius: 50%;
-    background:
-      radial-gradient(circle at 50% 50%, rgba(48, 92, 255, 0.95) 0%, rgba(48, 92, 255, 0.72) 14%, rgba(48, 92, 255, 0) 36%),
-      radial-gradient(circle at 50% 50%, rgba(70, 110, 255, 0.42) 0%, rgba(70, 110, 255, 0) 50%),
-      radial-gradient(circle at 50% 50%, rgba(108, 142, 255, 0.24) 0%, rgba(108, 142, 255, 0) 64%),
-      radial-gradient(circle at 50% 50%, rgba(150, 178, 255, 0.14) 0%, rgba(150, 178, 255, 0) 78%),
-      radial-gradient(circle at 50% 50%, rgba(196, 214, 255, 0.09) 0%, rgba(196, 214, 255, 0) 92%);
-    /* Breathes slowly at rest, harder as the voice gets loud. */
-    transform: scale(calc(0.9 + var(--amp) * 0.18));
-    will-change: transform;
-    animation: ai-breathe 5.2s ease-in-out infinite alternate;
-  }
-  @keyframes ai-breathe {
-    from { opacity: 0.86; }
-    to   { opacity: 1; }
-  }
-
-  /* Both glyphs sit in the same cell and cross-fade, so the swap between
-     working and talking never moves anything. */
-  .ai__dots,
-  .ai__wave {
-    position: relative;
-    display: flex;
-    align-items: center;
-    grid-area: 1 / 1;
-    transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  /* ---- processing ---- */
-  .ai__dots { gap: 9px; }
-  .ai__dots i {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: #fff;
-    animation: ai-dot 1.25s ease-in-out infinite;
-  }
-  .ai__dots i:nth-child(2) { animation-delay: 0.12s; }
-  .ai__dots i:nth-child(3) { animation-delay: 0.24s; }
-  .ai__dots i:nth-child(4) { animation-delay: 0.36s; }
-  @keyframes ai-dot {
-    0%, 100% { opacity: 0.45; transform: scale(0.78); }
-    40%      { opacity: 1;    transform: scale(1.12); }
-  }
-
-  /* ---- speaking ---- */
-  .ai__wave {
-    gap: 4px;
-    height: 34px;
-    /* The whole waveform scales with the measured loudness; the bars below
-       carry the per-bar movement. Two levels, so real amplitude reads as
-       volume and the animation only supplies texture. */
-    transform: scaleY(calc(0.34 + var(--amp) * 0.66));
-  }
-  .ai__wave i {
-    width: 4px;
-    height: 34px;
-    border-radius: 3px;
-    background: #fff;
-    transform: scaleY(0.3);
-    animation: ai-wave 0.82s ease-in-out infinite alternate;
-  }
-  /* Durations share no common factor, so the bars never fall into step. */
-  .ai__wave i:nth-child(1) { animation-duration: 0.79s; animation-delay: -0.10s; }
-  .ai__wave i:nth-child(2) { animation-duration: 1.13s; animation-delay: -0.42s; }
-  .ai__wave i:nth-child(3) { animation-duration: 0.63s; animation-delay: -0.19s; }
-  .ai__wave i:nth-child(4) { animation-duration: 0.97s; animation-delay: -0.58s; }
-  .ai__wave i:nth-child(5) { animation-duration: 0.71s; animation-delay: -0.31s; }
-  .ai__wave i:nth-child(6) { animation-duration: 1.07s; animation-delay: -0.07s; }
-  .ai__wave i:nth-child(7) { animation-duration: 0.86s; animation-delay: -0.49s; }
-  @keyframes ai-wave {
-    from { transform: scaleY(0.24); }
-    to   { transform: scaleY(1); }
-  }
-
-  /* Dots are the resting and working face; the waveform takes over the moment
-     audio is actually playing. */
-  .ai__wave { opacity: 0; transform: scale(0.7); }
-  .ai[data-speaking='true'] .ai__dots { opacity: 0; transform: scale(0.7); }
-  .ai[data-speaking='true'] .ai__wave {
-    opacity: 1;
-    transform: scaleY(calc(0.34 + var(--amp) * 0.66));
+  .ai__orb canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
   }
 
   .ai__asked {
@@ -1650,7 +1936,20 @@ import { ASSISTANT } from '../lib/portfolio-context';
   .ai__cap {
     margin: 0;
     max-width: 34ch;
-    min-height: 3.4em;
+    /* A window, not a block. min-height stops the first line shoving the
+       button down; max-height stops a long sentence from overflowing the
+       stage and printing itself over that button, which is what it did. The
+       script scrolls this to follow the spoken word. */
+    min-height: 2.9em;
+    max-height: 5.8em;
+    overflow-y: auto;
+    scrollbar-width: none;
+    scroll-behavior: smooth;
+    /* Whatever falls outside the window fades instead of ending on a hard
+       edge, so a partly-scrolled line reads as more text rather than as a
+       rendering fault. */
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 86%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 86%, transparent 100%);
     font-size: 19px;
     font-weight: 700;
     line-height: 1.45;
@@ -1663,7 +1962,7 @@ import { ASSISTANT } from '../lib/portfolio-context';
      so they never carry it. Same reason .turn__link lives down there. */
 
   .ai__voiceOff {
-    margin-top: 2px;
+    margin-top: 4px;
     padding: 7px 14px;
     border: 0;
     border-radius: 999px;
@@ -1680,14 +1979,9 @@ import { ASSISTANT } from '../lib/portfolio-context';
 
   @media (prefers-reduced-motion: reduce) {
     .ai__stage { animation: none; }
-    /* The lobes stop drifting, but --amp still moves the cluster: that is the
-       part carrying meaning (it is speaking), not decoration. */
-    /* The glyphs stop dancing, but --amp still scales the bloom and the
-       waveform: that is the part carrying meaning, not decoration. */
-    .ai__bloom,
-    .ai__dots i,
-    .ai__wave i { animation: none !important; }
-    .ai__wave i { transform: scaleY(0.62); }
+    /* The particle field handles this itself — the script stops the rotation
+       and the scatter but keeps the swell, because the swell is the part that
+       tells you it is speaking. */
   }
 
   .ai__log {
@@ -1985,6 +2279,7 @@ import { ASSISTANT } from '../lib/portfolio-context';
      never receive Astro's scoping attribute. Spoken words light; the rest
      stay on the dim base colour set on .ai__cap, so the line reads as one
      sentence with a moving edge rather than as two colours of text. */
+  .ai__cap::-webkit-scrollbar { display: none; }
   .ai__cap span { transition: color 0.16s linear; }
   .ai__cap span[data-on='true'] { color: #14161c; }
 

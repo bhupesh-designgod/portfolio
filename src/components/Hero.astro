@@ -1,11 +1,12 @@
 ---
 import WaterSurface from './WaterSurface.astro';
+import LiquidMetalButton from './LiquidMetalButton.astro';
 
 interface Props {
   name?: string;
   avatar?: string;
 }
-const { name = 'Bhupesh Parmar', avatar = '/assets/avatar.png' } = Astro.props;
+const { name = 'Bhupesh Parmar', avatar = '/assets/avatar.webp' } = Astro.props;
 
 ---
 
@@ -63,25 +64,39 @@ const { name = 'Bhupesh Parmar', avatar = '/assets/avatar.png' } = Astro.props;
               has caps, but the DOM should still read as a normal sentence for
               screen readers and search. The two spans force the break — left
               to itself the ampersand orphans onto line two. */}
+          {/* Each line is a mask plus the thing that rises through it, so the
+              words come up from behind the line above instead of fading in
+              where they already were. The outer span clips, the inner one
+              carries the movement. */}
           <h1 class="hero__title">
-            <span>Designing for consumer &amp;</span>{' '}
-            <span>enterprise products</span>
+            <span class="hero__line"><span>Designing products people use</span></span>{' '}
+            <span class="hero__line"><span>&amp; businesses rely on</span></span>
           </h1>
 
           <p class="hero__sub">
-            Hi! My name is <b>Bhupesh</b>, with two design degrees and around a
-            year of <b>professional experience</b>.
+            Product designer with two design degrees and a year in the field.
+            I&rsquo;ve designed a coaching app that lets one trainer look after
+            far more than <b>30 clients</b>, a marketplace for 3D-printable
+            files, and an internal 3D tool that cut build time by <b>70%</b>.
           </p>
 
           <div class="hero__acts">
-            <a class="hero__btn" href="/about">
-              See my journey
+            {/* One action, pointed at the work. The old ghost link beside it
+                said "skip to work" while the primary said "see my journey" —
+                two competing routes out of the same screen, and the louder one
+                went to the page nobody lands here for. About is still one tap
+                away in the nav. */}
+            {/* The liquid metal button. The label is the slot, so the
+                component sizes itself to it. */}
+            <LiquidMetalButton href="#work" height={56} fontSize={15}>
+              Explore the work
               <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M5 12h13M12.5 6.5 19 12l-6.5 5.5" fill="none" stroke="currentColor"
+                {/* Points down, because that is where it goes — #work is the
+                    next section, not another page. */}
+                <path d="M12 5v13M6.5 11.5 12 18l5.5-6.5" fill="none" stroke="currentColor"
                   stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
-            </a>
-            <a class="hero__ghost" href="#work">Skip to work</a>
+            </LiquidMetalButton>
           </div>
         </div>
       </div>
@@ -90,8 +105,16 @@ const { name = 'Bhupesh Parmar', avatar = '/assets/avatar.png' } = Astro.props;
 </div>
 
 {/* Runs during parse so the nav starts light over the blue — no flash of dark
-    labels before the module script below boots. */}
-<script is:inline>document.documentElement.dataset.navTone = 'dark';</script>
+    labels before the module script below boots.
+
+    `heroAnim` is set here too, and it is what arms the entrance: the CSS only
+    hides the hero when this attribute exists. With JS off, or if this file
+    fails to parse, the attribute is never set, nothing is hidden, and the hero
+    renders plainly — the reveal cannot leave the page blank. */}
+<script is:inline>
+  document.documentElement.dataset.navTone = 'dark';
+  document.documentElement.dataset.heroAnim = 'armed';
+</script>
 
 <script>
   /* Drives the white panel's expansion as you scroll through the hero runway.
@@ -147,6 +170,30 @@ const { name = 'Bhupesh Parmar', avatar = '/assets/avatar.png' } = Astro.props;
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', update);
     update();
+  }
+
+  /* ---- entrance ----
+     Held until the webfonts are ready. Bebas and Nunito arrive after first
+     paint, and a headline that rises beautifully in a fallback face and then
+     snaps to another one on swap is worse than a beat of stillness. The race
+     is capped, because a font that never loads must not cost the visitor the
+     page. */
+  const hero = document.querySelector<HTMLElement>('.hero');
+  if (hero) {
+    const reveal = () => hero.classList.add('is-in');
+    const ready = (document as any).fonts?.ready;
+    if (ready) {
+      let done = false;
+      const once = () => {
+        if (done) return;
+        done = true;
+        reveal();
+      };
+      ready.then(once);
+      setTimeout(once, 900);
+    } else {
+      reveal();
+    }
   }
 
 </script>

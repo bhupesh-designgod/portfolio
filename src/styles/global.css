@@ -332,6 +332,84 @@ body {
 }
 .hero__title span { display: block; }
 
+/* ---- hero entrance ----
+ * Staged rather than simultaneous: chip, then each headline line, then the
+ * sub, then the button. Reading order is the order it arrives in, so the eye
+ * is led down the stack instead of being handed everything at once.
+ *
+ * Everything below is gated on [data-hero-anim], which the inline script in
+ * Hero.astro sets during parse. No script, no attribute, nothing hidden — the
+ * hero can never be left invisible by a failure here. `.is-in` then lands when
+ * the fonts are ready.
+ *
+ * Only transform and opacity move, so the whole sequence is compositor work
+ * over the gradient field that is already animating behind it.
+ */
+[data-hero-anim] .hero__chip,
+[data-hero-anim] .hero__sub,
+[data-hero-anim] .hero__acts,
+[data-hero-anim] .hero__line > span {
+  opacity: 0;
+  will-change: transform, opacity;
+}
+[data-hero-anim] .hero__line > span { transform: translateY(105%); }
+[data-hero-anim] .hero__chip,
+[data-hero-anim] .hero__sub,
+[data-hero-anim] .hero__acts { transform: translateY(14px); }
+
+/* The mask. Bebas sits high and overshoots its box, so the line is given a
+   little vertical clearance and then pulled back by the same amount — without
+   it, `overflow: hidden` shaves the caps. */
+.hero__line {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
+}
+.hero__line > span { display: block; }
+
+.hero .is-in,
+.hero.is-in .hero__chip,
+.hero.is-in .hero__sub,
+.hero.is-in .hero__acts,
+.hero.is-in .hero__line > span {
+  opacity: 1;
+  transform: none;
+  /* Long and heavily eased out: it should look like the page settling, not
+     like a slide finishing. */
+  transition: opacity 0.7s ease, transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* The stagger. The two headline lines are the closest together — they are one
+   sentence and should read as one movement with a seam, not as two events. */
+.hero.is-in .hero__chip { transition-delay: 0.05s; }
+.hero.is-in .hero__line:nth-of-type(1) > span { transition-delay: 0.16s; }
+.hero.is-in .hero__line:nth-of-type(2) > span { transition-delay: 0.26s; }
+.hero.is-in .hero__sub { transition-delay: 0.42s; }
+.hero.is-in .hero__acts { transition-delay: 0.54s; }
+
+/* The field settles too — a slow, barely-there push-in that ends as the
+   headline lands. It reads as the page arriving rather than as a zoom. */
+[data-hero-anim] .hero__bg { transform: scale(1.05); }
+.hero.is-in .hero__bg {
+  transform: none;
+  transition: transform 1.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Everything is simply present. No stagger, no travel — an entrance is the
+     definition of motion that is not carrying information. */
+  [data-hero-anim] .hero__chip,
+  [data-hero-anim] .hero__sub,
+  [data-hero-anim] .hero__acts,
+  [data-hero-anim] .hero__line > span,
+  [data-hero-anim] .hero__bg {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+
 .hero__sub {
   /* A measure, not a container width — this wants to break into two lines
      under a headline that is much wider than it. */
@@ -349,64 +427,16 @@ body {
 }
 
 /* ---- actions ----
-   Deliberately flat. Both buttons change one property on hover — a fill and a
-   tint — and the arrow moves 3px. No lift, no scale, no shadow. */
+   A row that holds one thing. The button brings its own everything —
+   see LiquidMetalButton.astro — so this only positions it. */
 .hero__acts {
   display: flex;
   align-items: center;
   gap: 6px;
   margin: clamp(24px, 4vh, 40px) 0 0;
-  /* The ghost link's right padding is invisible, so centring the *box* leaves
-     the visible ink half that padding to the left of everyone else's axis.
-     Matching it on the left puts the ink back on centre. */
-  --ghost-pad: 20px;
-  padding-left: var(--ghost-pad);
-}
-.hero__btn,
-.hero__ghost {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  border-radius: 999px;
-  font-family: "Nunito", system-ui, sans-serif;
-  font-weight: 600;
-  font-size: clamp(15px, 1.15vw, 16.5px);
-  text-decoration: none;
-  white-space: nowrap;
-}
-.hero__btn {
-  padding: 13px 24px;
-  background: var(--blue-500);
-  color: #fff;
-  transition: background 0.22s ease;
-}
-.hero__btn svg {
-  width: 17px;
-  height: 17px;
-  transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.25, 1);
-}
-.hero__btn:hover { background: #1466ff; }
-.hero__btn:hover svg { transform: translateX(3px); }
-
-.hero__ghost {
-  padding: 13px var(--ghost-pad, 20px);
-  color: var(--blue-500);
-  background: transparent;
-  transition: background 0.22s ease;
-}
-.hero__ghost:hover { background: rgba(0, 89, 255, 0.08); }
-
-.hero__btn:focus-visible,
-.hero__ghost:focus-visible {
-  outline: 2px solid var(--blue-500);
-  outline-offset: 3px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero__btn,
-  .hero__btn svg,
-  .hero__ghost { transition: none; }
-  .hero__btn:hover svg { transform: none; }
+  /* No padding compensation any more: that existed to offset the ghost link's
+     invisible right padding, and with one solid button the box and the ink are
+     the same thing. */
 }
 
 /* ----------------------- WORK ----------------------- */
@@ -426,6 +456,13 @@ body {
   margin: 0;
   color: #0b0d12;
 }
+.work__lead {
+  max-width: 58ch;
+  margin: 14px 0 0;
+  font-size: 17px;
+  line-height: 1.6;
+  color: #5b6270;
+}
 .work__grid {
   max-width: 1120px;
   margin: 0 auto;
@@ -433,118 +470,6 @@ body {
   gap: 28px;
 }
 
-/* -- Case card: collage panel (left) + summary (right) --
-   Rendered as an <a>, so reset link styling. */
-.case {
-  color: inherit;
-  text-decoration: none;
-  display: grid;
-  grid-template-columns: 52% 1fr;
-  background: #ffffff;
-  border: 1px solid #ebedf2;
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: 0 1px 2px rgba(10, 30, 90, 0.04);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-}
-.case:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 18px 44px rgba(10, 30, 90, 0.1);
-}
-
-.case__media {
-  position: relative;
-  background: var(--tint, #e3ecfd);
-  aspect-ratio: 16 / 10;
-}
-
-.case__body {
-  align-self: center;
-  padding: 40px;
-}
-
-/* Google wordmark, rebuilt from type so no logo asset is needed */
-.case__logo {
-  margin: 0 0 18px;
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-  color: #0b0d12;
-}
-/* Colours cycle every 6 letters so the pattern holds for any client name */
-.logo-google { font-family: "Nunito", sans-serif; }
-.logo-google span:nth-child(6n + 1) { color: #4285f4; }
-.logo-google span:nth-child(6n + 2) { color: #ea4335; }
-.logo-google span:nth-child(6n + 3) { color: #fbbc05; }
-.logo-google span:nth-child(6n + 4) { color: #4285f4; }
-.logo-google span:nth-child(6n + 5) { color: #34a853; }
-.logo-google span:nth-child(6n + 6) { color: #ea4335; }
-
-.case__title {
-  margin: 0 0 14px;
-  font-size: 25px;
-  font-weight: 700;
-  line-height: 1.32;
-  letter-spacing: -0.2px;
-  color: #0b0d12;
-}
-.case__desc {
-  margin: 0 0 22px;
-  font-size: 16px;
-  line-height: 1.6;
-  color: #4b5563;
-}
-
-.case__tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.case__tags li {
-  padding: 6px 12px;
-  border-radius: 7px;
-  background: #f1f2f6;
-  font-size: 13px;
-  color: #3f4451;
-}
-
-/* -- Photo collage inside the media panel -- */
-.collage { position: absolute; inset: 0; }
-
-.shot {
-  position: absolute;
-  border-radius: 3px;
-  background: #fff;
-  box-shadow: 0 6px 18px rgba(10, 30, 90, 0.16);
-  transition: transform 0.35s ease;
-}
-/* The photo itself. Falls back to a neutral placeholder until --img is set. */
-.shot > i {
-  display: block;
-  width: 100%;
-  height: 100%;
-  background:
-    var(--img, none) center / cover no-repeat,
-    linear-gradient(135deg, #c9d8f5 0%, #eaf0fb 100%);
-}
-/* Polaroid: white border with the deeper lip along the bottom */
-.shot--polaroid { padding: 6px 6px 16px; }
-
-.s1 { left: 3%;  top: 16%; width: 30%; height: 34%; transform: rotate(-5deg); z-index: 4; }
-.s2 { left: 7%;  top: 55%; width: 30%; height: 34%; transform: rotate(3deg);  z-index: 5; }
-.s3 { left: 29%; top: 4%;  width: 37%; height: 90%; transform: rotate(-1deg); z-index: 3; }
-.s4 { left: 68%; top: 5%;  width: 17%; height: 27%; transform: rotate(4deg);  z-index: 2; }
-.s5 { left: 70%; top: 35%; width: 17%; height: 26%; transform: rotate(-3deg); z-index: 2; }
-.s6 { left: 67%; top: 63%; width: 17%; height: 29%; transform: rotate(2deg);  z-index: 2; }
-
-/* Gentle spread on hover */
-.case:hover .s1 { transform: rotate(-7deg) translate(-4px, -4px); }
-.case:hover .s2 { transform: rotate(5deg)  translate(-4px, 4px); }
-.case:hover .s4 { transform: rotate(6deg)  translateX(4px); }
-.case:hover .s6 { transform: rotate(4deg)  translateX(4px); }
 
 /* ----------------------- RESUME (experience / education) ----------------------- */
 .resume {
@@ -872,34 +797,28 @@ a.note__name:focus-visible .note__out { opacity: 1; }
   display: block;
 }
 
-/* Each layer roughly triples the blur and shifts its band 25% further down,
-   overlapping its neighbours so they cross-fade instead of banding.
-   Four layers, not seven: every one of these is a separate backdrop read on
-   every scrolled frame, and past four the extra steps cost more than the
-   smoothness they buy. */
+/* Two layers whose bands overlap across the middle half of the strip, so they
+   cross-fade into one ramp rather than reading as two steps. Each layer is a
+   separate backdrop read of an 1800px-wide band on every scrolled frame, which
+   is why there are two of these and not the seven the effect really wants. */
 .pblur > span:nth-child(1) {
-  -webkit-backdrop-filter: blur(0.6px);
-  backdrop-filter: blur(0.6px);
-  -webkit-mask: linear-gradient(to bottom, transparent 0%, #000 25%, #000 50%, transparent 75%);
-  mask: linear-gradient(to bottom, transparent 0%, #000 25%, #000 50%, transparent 75%);
+  -webkit-backdrop-filter: blur(1.5px);
+  backdrop-filter: blur(1.5px);
+  -webkit-mask: linear-gradient(to bottom, transparent 0%, #000 34%, #000 62%, transparent 96%);
+  mask: linear-gradient(to bottom, transparent 0%, #000 34%, #000 62%, transparent 96%);
 }
 .pblur > span:nth-child(2) {
-  -webkit-backdrop-filter: blur(2px);
-  backdrop-filter: blur(2px);
-  -webkit-mask: linear-gradient(to bottom, transparent 25%, #000 50%, #000 75%, transparent 100%);
-  mask: linear-gradient(to bottom, transparent 25%, #000 50%, #000 75%, transparent 100%);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  -webkit-mask: linear-gradient(to bottom, transparent 38%, #000 78%, #000 100%);
+  mask: linear-gradient(to bottom, transparent 38%, #000 78%, #000 100%);
 }
-.pblur > span:nth-child(3) {
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
-  -webkit-mask: linear-gradient(to bottom, transparent 50%, #000 75%, #000 100%);
-  mask: linear-gradient(to bottom, transparent 50%, #000 75%, #000 100%);
-}
-.pblur > span:nth-child(4) {
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  -webkit-mask: linear-gradient(to bottom, transparent 72%, #000 100%);
-  mask: linear-gradient(to bottom, transparent 72%, #000 100%);
+
+/* Off entirely on touch. Phone and tablet GPUs are the ones that drop frames
+   on a live backdrop read, the strip is a flourish rather than an affordance,
+   and nobody has ever missed it on a device that never shows a cursor. */
+@media (pointer: coarse) {
+  .pblur { display: none; }
 }
 
 /* ----------------------- NAV (liquid glass pill) ----------------------- */
@@ -1072,8 +991,6 @@ main { background: #fff; }
 }
 .page__inner { max-width: 760px; margin: 0 auto; }
 
-/* Work index has no hero above it, so it needs top room for the nav */
-.work--standalone { padding-top: 160px; min-height: 0; }
 
 /* ----------------------- CASE STUDY ----------------------- */
 /* Two environments in one page: a blue hero that has to land the hook in one
@@ -1104,13 +1021,19 @@ main { background: #fff; }
   --a-hi: #ffd979;           /* lighter, for glints on dark */
   --a-hi-rgb: 255, 217, 121;
   --a-hero: #f6b41c;         /* accent in the hero foreground */
-  --a-deep: var(--a-deep);         /* an icon sitting on --a-soft */
-  --a-text: var(--a-text);         /* small accent text on white */
-  --a-on: var(--a-on);           /* text and icons ON the solid accent */
+  /* These five were each defined as `var(--a-deep)` and so on — a custom
+     property referring to itself, which CSS throws away. Every rule reading
+     them fell back to nothing on gold, which is both TBS case studies.
+     Gold is the one accent light enough that white on it fails, so `--a-on`
+     is dark here where the other three are white, and `--a-deep`/`--a-text`
+     are the darkened amber that can carry small text on a pale ground. */
+  --a-deep: #8a5a00;         /* an icon sitting on --a-soft */
+  --a-text: #8a5a00;         /* small accent text on white */
+  --a-on: #1c1403;           /* text and icons ON the solid accent */
   --a-soft: #fff8e8;         /* tinted surface */
   --a-line: #f2e2ba;         /* tinted border */
-  --a-dash: var(--a-dash);         /* dashed border */
-  --a-wash: var(--a-wash);         /* barely-there surface tint */
+  --a-dash: #e0b45f;         /* dashed border */
+  --a-wash: #fffdf7;         /* barely-there surface tint */
   --a-rgb: 246, 180, 28;     /* for alpha compositing */
   /* A gym after hours: a neutral black room with one warm lamp in it. The
      previous stops were warm all the way up, which mixed with the accent glow
@@ -1514,6 +1437,139 @@ main { background: #fff; }
   color: var(--a-on);
 }
 .cs-toc__list a.is-active .cs-toc__t { color: #0b0d12; font-weight: 600; }
+
+/* ---- what to read next ----
+   Sits at the full width the graphics use, not the reading measure: this is
+   the point where someone has stopped reading, and holding it to 64ch would
+   make three cards into a narrow column nobody scans. */
+.cs-more {
+  max-width: 1360px;
+  margin: clamp(64px, 9vh, 104px) auto 0;
+  padding-top: clamp(32px, 4vh, 48px);
+  border-top: 1px solid #ebedf2;
+}
+.cs-more__head {
+  margin: 0 0 clamp(20px, 2.6vw, 30px);
+  font-family: "Bebas Neue", sans-serif;
+  font-weight: 400;
+  font-size: clamp(26px, 3vw, 38px);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #08090c;
+}
+.cs-more__grid {
+  display: grid;
+  /* auto-fit rather than a fixed three: this list is however many projects
+     exist minus one, and it should not break the day a fourth is added. */
+  grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
+  gap: clamp(16px, 2vw, 26px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cs-more__card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-radius: 18px;
+  border: 1px solid var(--k-line, #e6e9f0);
+  background: #fff;
+  overflow: hidden;
+  text-decoration: none;
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.32s ease, border-color 0.32s ease;
+}
+.cs-more__card:hover {
+  transform: translateY(-4px);
+  border-color: var(--a-line, #d7dced);
+  box-shadow: 0 18px 40px rgba(12, 20, 45, 0.12);
+}
+.cs-more__card:focus-visible {
+  outline: 2px solid var(--a-500, #0059ff);
+  outline-offset: 3px;
+}
+
+/* Fixed ratio so a 16:9 capture and a 4:3 one make equal cards — the row
+   reads as a set of choices, not a set of mismatched pictures. */
+.cs-more__shot {
+  display: block;
+  aspect-ratio: 16 / 10;
+  background: var(--a-soft, #f1f4fa);
+  overflow: hidden;
+}
+.cs-more__shot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Top-anchored: product screenshots carry their title and chrome up there,
+     and that is what makes one recognisable at card size. */
+  object-fit: cover;
+  object-position: top center;
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cs-more__card:hover .cs-more__shot img { transform: scale(1.04); }
+
+.cs-more__txt {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 6px;
+  padding: 16px 18px 18px;
+}
+.cs-more__client {
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: var(--a-text, #6b7280);
+}
+.cs-more__title {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.32;
+  letter-spacing: -0.2px;
+  color: #0b0d12;
+}
+.cs-more__sum {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #6b7280;
+  /* Two lines, then stop. Summaries differ in length and ragged card bottoms
+     make the row look broken. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.cs-more__go {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  /* Pinned to the bottom so the arrows line up across cards whose summaries
+     wrap differently. */
+  margin-top: auto;
+  padding-top: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--a-500, #0059ff);
+}
+.cs-more__go svg {
+  width: 15px;
+  height: 15px;
+  transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.cs-more__card:hover .cs-more__go svg { transform: translateX(3px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-more__card,
+  .cs-more__shot img,
+  .cs-more__go svg { transition: none; }
+  .cs-more__card:hover { transform: none; }
+  .cs-more__card:hover .cs-more__shot img { transform: none; }
+  .cs-more__card:hover .cs-more__go svg { transform: none; }
+}
 
 .cs-foot {
   max-width: 1360px;
@@ -2473,157 +2529,6 @@ main { background: #fff; }
 }
 .k-compare figcaption b { display: block; margin-bottom: 3px; font-size: 14px; color: var(--k-ink); font-weight: 600; }
 
-/* ---- k-compare, live ----
- * Two 1440px screens at 50/50 land at ~0.35× each, under what this UI needs
- * to be read. Hovering hands the column to whichever one you are looking at:
- * it takes 72% (~0.50×) and the other retreats to 28%.
- *
- * `is-live` is added by script (see [slug].astro), and only where the pointer
- * is fine and there is width to redistribute. Without it — no JS, touch,
- * narrow — the 2-up above stands exactly as it always has.
- *
- * The tracks are real grid columns, so this genuinely relayouts. What makes
- * that safe is the pinned image height below: normally the row height follows
- * the image height, so widening one panel would grow the row and shove every
- * paragraph below it down the page as the cursor crossed the gap. With the
- * height fixed, the widths are free to move and nothing outside the component
- * shifts by a pixel.
- *
- * Both states are written in `fr` on purpose. Mixing a length into one track
- * makes the two lists non-interpolable and the transition falls back to a
- * jump. 50/50 is spelled out for the same reason.
- */
-.k-compare.is-live {
-  grid-template-columns: 50fr 50fr;
-  transition: grid-template-columns 0.42s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.k-compare.is-live:has(> figure:first-of-type:hover) { grid-template-columns: 72fr 28fr; }
-.k-compare.is-live:has(> figure:last-of-type:hover) { grid-template-columns: 28fr 72fr; }
-
-/* Height is pinned inline by script to what the image occupies at rest, so
-   the panel widens without the row growing. `cover` then scales the shot up
-   to the new width and takes the overflow off the bottom — anchored to the
-   top, where the window chrome and the page title are, because that is what
-   makes a screen recognisable while it is moving. */
-.k-compare.is-live img {
-  object-fit: cover;
-  object-position: top center;
-}
-/* The lean is the whole affordance, so the panel that is shrinking gets out
-   of the way visually as well as dimensionally. */
-.k-compare.is-live > figure { transition: opacity 0.42s ease; }
-.k-compare.is-live:has(> figure:hover) > figure:not(:hover) { opacity: 0.72; }
-
-@media (prefers-reduced-motion: reduce) {
-  /* The lean still happens — it just arrives rather than travels. */
-  .k-compare.is-live,
-  .k-compare.is-live > figure { transition: none; }
-}
-
-/* ---- k-gal ----
-   A picker for dense screenshots. Two 1440px dashboards side by side in a
-   k-compare land at ~46% width each, which is where the UI stops being
-   readable — this shows one at full column width and keeps the rest as
-   thumbnails.
-
-   Authoring is identical to k-compare (figures containing a k-mount and a
-   figcaption), so switching between the two is a one-word change. The rail is
-   built by script from those figures; before that runs — and if it never does
-   — the figures simply stack full width, which is still better than the 2-up
-   for this content. So the fallback is not a downgrade. */
-.k-gal { margin: 2.4em 0; }
-.k-gal > figure { margin: 0 0 26px !important; }
-.k-gal > figure:last-of-type { margin-bottom: 0 !important; }
-
-.k-gal.is-ready {
-  display: grid;
-  grid-template-columns: clamp(112px, 12vw, 158px) minmax(0, 1fr);
-  gap: clamp(14px, 1.6vw, 22px);
-  align-items: start;
-}
-/* Every figure occupies the same cell; only the selected one is displayed. */
-.k-gal.is-ready > figure { grid-area: 1 / 2; margin: 0 !important; }
-.k-gal.is-ready > figure[hidden] { display: none; }
-
-.k-gal__rail {
-  grid-area: 1 / 1;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-}
-.k-gal__thumb {
-  display: block;
-  width: 100%;
-  padding: 6px;
-  border-radius: 12px;
-  border: 1px solid var(--k-line);
-  background: #fff;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.18s ease, background 0.18s ease;
-}
-.k-gal__shot {
-  display: block;
-  overflow: hidden;
-  border-radius: 7px;
-  background: #f4f6fa;
-  /* Fixed ratio so a 4:3 and a 16:9 screenshot make equal-sized thumbnails —
-     the rail reads as a list of choices, not as a set of mismatched pictures. */
-  aspect-ratio: 4 / 3;
-}
-.k-gal__shot img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  /* Top-anchored: dashboard chrome and the page title live at the top, and
-     that is what makes a thumbnail identifiable at this size. */
-  object-fit: cover;
-  object-position: top center;
-}
-.k-gal__lab {
-  display: block;
-  margin: 7px 2px 3px;
-  font-size: 11.5px;
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--k-mute);
-}
-.k-gal__thumb:hover { border-color: #d3d9e6; background: #fcfdff; }
-.k-gal__thumb[aria-selected='true'] {
-  border-color: var(--a-line);
-  background: var(--a-soft);
-}
-.k-gal__thumb[aria-selected='true'] .k-gal__lab { color: var(--a-text); }
-.k-gal__thumb:focus-visible { outline: 2px solid var(--a-500); outline-offset: 2px; }
-
-.k-gal figcaption {
-  margin-top: 12px;
-  font-size: 13.5px;
-  line-height: 1.5;
-  color: var(--k-mute);
-}
-.k-gal figcaption b {
-  display: block;
-  margin-bottom: 3px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--k-ink);
-}
-
-@media (max-width: 820px) {
-  /* The rail turns into a strip above the stage — a 112px column next to a
-     full-width screenshot leaves neither of them readable. */
-  .k-gal.is-ready { grid-template-columns: minmax(0, 1fr); }
-  .k-gal.is-ready > figure { grid-area: 2 / 1; }
-  .k-gal__rail {
-    grid-area: 1 / 1;
-    flex-direction: row;
-    overflow-x: auto;
-    padding-bottom: 4px;
-  }
-  .k-gal__thumb { flex: 0 0 132px; }
-}
-
 .k-verdict {
   display: inline-block;
   margin-bottom: 8px;
@@ -2732,17 +2637,9 @@ main { background: #fff; }
   .hero__title span { display: inline; }
   .hero__sub { max-width: 34ch; }
   .hero__title { font-size: clamp(34px, 9.6vw, 56px); }
-  .hero__acts { gap: 4px; --ghost-pad: 14px; }
-  .hero__btn { padding: 12px 20px; }
-  .hero__ghost { padding: 12px var(--ghost-pad); }
   .work { padding: 80px 6% 110px; }
   .work__title { font-size: 44px; }
 
-  .case { grid-template-columns: 1fr; }
-  .case__media { aspect-ratio: 16 / 11; }
-  .case__body { padding: 28px 24px 32px; }
-  .case__title { font-size: 21px; }
-  .case__desc { font-size: 15px; }
 
   .nav { top: 14px; }
   .nav__pill { padding: 12px 16px; }
@@ -2808,4 +2705,1503 @@ main { background: #fff; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+}
+
+/* ===================== CASE STUDY — hero v2, wayfinding, framework blocks =====================
+   Appended after everything above on purpose: these override a handful of the
+   hero rules further up at equal specificity, and win by coming last. */
+
+/* ---- the field ---- */
+.cs-field {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 1.4s ease;
+}
+.cs-field.is-on { opacity: 1; }
+
+/* ---- hero: layout and type ---- */
+.cs-hero {
+  --cs-scroll: 0;
+  padding-top: clamp(112px, 13vh, 150px);
+}
+.cs-hero__inner {
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  /* The type drifts up at half speed and thins out as the white surface
+     rises over it. Transform-only, so it stays on the compositor. */
+  transform: translateY(calc(var(--cs-scroll) * -80px));
+  opacity: calc(1 - var(--cs-scroll) * 1.1);
+}
+.cs-hero__foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+  width: 100%;
+  max-width: 1360px;
+  margin: 0 auto;
+  border-top: 1px solid rgba(var(--a-rgb), 0.24);
+  transform: translateY(calc(var(--cs-scroll) * -40px));
+  opacity: calc(1 - var(--cs-scroll) * 1.4);
+}
+.cs-hero__foot .cs-hero__meta { border-top: 0; margin: 0; flex: 1 1 auto; }
+
+.cs-hero__kicker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-family: "Inter", "Nunito", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+.cs-hero__client { color: var(--a-hero); }
+.cs-hero__dot { width: 4px; height: 4px; border-radius: 50%; background: rgba(255, 255, 255, 0.35); }
+
+.cs-hero__title {
+  font-size: clamp(46px, 7.2vw, 124px);
+  line-height: 0.9;
+}
+/* The point of the sentence, in the product's colour. A gradient rather than
+   a flat fill so the display face catches light the way the field does. */
+.cs-hero__title em {
+  font-style: normal;
+  color: var(--a-hero);
+  background: linear-gradient(100deg, var(--a-hi) 0%, var(--a-hero) 55%, var(--a-500) 130%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  /* Bebas overshoots its box; without this the clip cuts the descender side. */
+  padding-bottom: 0.06em;
+}
+.cs-hero__summary { font-size: clamp(16px, 1.2vw, 20px); max-width: 50ch; }
+
+/* ---- hero: the cover ---- */
+.cs-hero__aside {
+  --rx: 0deg;
+  --ry: 0deg;
+  perspective: 1400px;
+  justify-self: center;
+}
+.cs-hero__shot {
+  position: relative;
+  transform: rotateX(var(--rx)) rotateY(var(--ry));
+  transform-style: preserve-3d;
+  transition: transform 0.12s linear;
+  animation: cs-float 7s ease-in-out infinite;
+}
+/* A flat capture in a window: the chrome gives a white product an edge on a
+   dark field and says "this is a screen", the same way it does in the body. */
+.cs-hero__shot--window {
+  border-radius: 14px;
+  padding-top: 30px;
+  background: #15161b;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 40px 90px -30px rgba(0, 0, 0, 0.8),
+    0 0 120px -30px rgba(var(--a-rgb), 0.45);
+  filter: none;
+  overflow: hidden;
+}
+.cs-hero__shot--window img { max-height: 54vh; border-radius: 0; }
+.cs-hero__bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.cs-hero__bar i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255, 255, 255, 0.18); }
+.cs-hero__bar i:first-child { background: rgba(var(--a-rgb), 0.85); }
+
+/* A phone export: bezel, tall, accent glow under it. */
+.cs-hero__shot--phone {
+  width: min(300px, 62vw);
+  padding: 9px;
+  border-radius: 44px;
+  background: linear-gradient(160deg, #34383f, #101218 45%, #262932);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.16) inset,
+    0 0 0 1px rgba(0, 0, 0, 0.7),
+    0 50px 100px -30px rgba(0, 0, 0, 0.85),
+    0 0 140px -20px rgba(var(--a-rgb), 0.5);
+  filter: none;
+  overflow: hidden;
+}
+.cs-hero__shot--phone img { max-height: 62vh; border-radius: 36px; object-fit: cover; object-position: top; }
+.cs-hero__shot--plain img { max-height: 56vh; }
+
+@keyframes cs-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -10px; }
+}
+
+/* ---- hero: entrance ---- */
+.cs-hero__kicker,
+.cs-hero__title,
+.cs-hero__summary,
+.cs-hero__aside,
+.cs-hero__meta,
+.cs-hero__cue {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.9s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.cs-hero.is-in .cs-hero__kicker,
+.cs-hero.is-in .cs-hero__title,
+.cs-hero.is-in .cs-hero__summary,
+.cs-hero.is-in .cs-hero__aside,
+.cs-hero.is-in .cs-hero__meta,
+.cs-hero.is-in .cs-hero__cue { opacity: 1; transform: none; }
+.cs-hero.is-in .cs-hero__title { transition-delay: 0.08s; }
+.cs-hero.is-in .cs-hero__summary { transition-delay: 0.22s; }
+.cs-hero.is-in .cs-hero__aside { transition-delay: 0.3s; }
+.cs-hero.is-in .cs-hero__meta { transition-delay: 0.44s; }
+.cs-hero.is-in .cs-hero__cue { transition-delay: 0.7s; }
+/* The scroll drift is applied on the same elements as the entrance, so the
+   inline `transform` above and the scroll one below cannot both apply to the
+   same box. The entrance lives on the children; the drift on the container. */
+
+
+/* ---- hero: scroll cue ---- */
+.cs-hero__cue {
+  flex: 0 0 auto;
+  padding-top: clamp(20px, 3vh, 34px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-family: "Inter", "Nunito", sans-serif;
+  font-size: 10.5px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: none;
+}
+.cs-hero__cue i {
+  width: 1px;
+  height: 38px;
+  background: linear-gradient(rgba(var(--a-hi-rgb), 0) 0%, var(--a-hi) 100%);
+  animation: cs-cue 2.2s ease-in-out infinite;
+  transform-origin: 50% 0;
+}
+@keyframes cs-cue {
+  0% { transform: scaleY(0); opacity: 0; }
+  40% { transform: scaleY(1); opacity: 1; }
+  100% { transform: scaleY(1) translateY(14px); opacity: 0; }
+}
+
+/* ---- top hairline progress ---- */
+.cs-progress {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  z-index: 60;
+  pointer-events: none;
+}
+.cs-progress span {
+  display: block;
+  height: 100%;
+  background: var(--a-500, #f6b41c);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  will-change: transform;
+}
+.cs .cs-progress { }
+/* The bar lives outside the article, so the accent comes from the theme on
+   the page's article by way of the body-level fallback above; each accent
+   sets it again here so the bar is never gold on a violet page. */
+body:has([data-accent='violet'].cs) .cs-progress span { background: #5558da; }
+body:has([data-accent='ember'].cs) .cs-progress span { background: #e04a20; }
+body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
+
+/* ---- zoomable images ---- */
+.cs-prose img.is-zoomable { cursor: zoom-in; }
+
+/* ---- lightbox ---- */
+.cs-lb {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(6, 7, 10, 0.94);
+  color: #fff;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.cs-lb::backdrop { background: transparent; }
+.cs-lb[open] { display: grid; place-items: center; }
+.cs-lb__fig {
+  margin: 0;
+  max-width: min(94vw, 1500px);
+  max-height: 100vh;
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+  padding: 56px 0 44px;
+}
+.cs-lb__fig img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100vh - 150px);
+  width: auto;
+  height: auto;
+  border-radius: 10px;
+  box-shadow: 0 40px 100px -30px rgba(0, 0, 0, 0.9);
+}
+.cs-lb__fig figcaption {
+  max-width: 76ch;
+  text-align: center;
+  font-family: "Inter", "Nunito", sans-serif;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.72);
+}
+.cs-lb__btn {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.cs-lb__btn:hover { background: rgba(255, 255, 255, 0.16); transform: scale(1.06); }
+.cs-lb__btn svg { width: 22px; height: 22px; }
+.cs-lb__close { top: 18px; right: 18px; }
+.cs-lb__prev { left: 18px; top: 50%; translate: 0 -50%; }
+.cs-lb__next { right: 18px; top: 50%; translate: 0 -50%; }
+.cs-lb__count {
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  translate: -50% 0;
+  margin: 0;
+  font-family: "Inter", "Nunito", sans-serif;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.55);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- phone section pill + sheet ---- */
+.cs-jump {
+  display: none;
+  position: fixed;
+  left: 14px;
+  bottom: 16px;
+  z-index: 40;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100vw - 110px);
+  padding: 10px 14px 10px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(14, 16, 22, 0.86);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  color: #fff;
+  font-family: "Inter", "Nunito", sans-serif;
+  font-size: 13px;
+  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+}
+.cs-jump__n {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: var(--a-500);
+  color: var(--a-on);
+  font-size: 11px;
+  font-weight: 700;
+}
+.cs-jump__t { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cs-jump svg { width: 18px; height: 18px; flex: 0 0 auto; opacity: 0.7; }
+
+.cs-sheet {
+  position: fixed;
+  inset: auto 0 0 0;
+  width: 100%;
+  max-width: none;
+  max-height: 78vh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 24px 24px 0 0;
+  background: #fff;
+  color: #0b0d12;
+  box-shadow: 0 -30px 80px -30px rgba(0, 0, 0, 0.5);
+  font-family: "Inter", "Nunito", sans-serif;
+}
+.cs-sheet::backdrop { background: rgba(6, 7, 10, 0.55); }
+.cs-sheet[open] { animation: cs-sheet-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes cs-sheet-in { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+.cs-sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 10px;
+}
+.cs-sheet__head p { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: #767d8b; }
+.cs-sheet__close { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; border: 1px solid #e7eaf1; background: #fff; color: #0b0d12; cursor: pointer; }
+.cs-sheet__list { list-style: none; margin: 0; padding: 0 12px 20px; overflow: auto; max-height: calc(78vh - 70px); }
+.cs-sheet__list a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 10px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: #2c313c;
+  font-size: 15px;
+}
+.cs-sheet__list a span {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: #eef1f6;
+  font-size: 11px;
+  font-weight: 700;
+  color: #8a919e;
+}
+.cs-sheet__list a.is-active { background: var(--a-soft); color: #0b0d12; font-weight: 600; }
+.cs-sheet__list a.is-active span { background: var(--a-500); color: var(--a-on); }
+
+/* ---- next case study banner ---- */
+.cs-next {
+  max-width: 1100px;
+  margin: clamp(64px, 9vh, 110px) auto 0;
+  padding: 0 0 8px;
+}
+.cs-next__card {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  align-items: center;
+  gap: clamp(24px, 4vw, 56px);
+  padding: clamp(28px, 4vw, 48px);
+  border-radius: 28px;
+  overflow: hidden;
+  isolation: isolate;
+  color: #fff;
+  text-decoration: none;
+  background: #0b0c10;
+  box-shadow: 0 40px 90px -40px rgba(0, 0, 0, 0.7);
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.5s ease;
+}
+.cs-next__card:hover { transform: translateY(-4px); box-shadow: 0 50px 100px -40px rgba(var(--a-rgb), 0.45); }
+.cs-next__card:focus-visible { outline: 3px solid var(--a-500); outline-offset: 4px; }
+.cs-next__bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(70% 80% at 92% 10%, rgba(var(--a-rgb), 0.42) 0%, rgba(var(--a-rgb), 0) 60%),
+    radial-gradient(60% 60% at 10% 100%, rgba(var(--a-rgb), 0.16) 0%, rgba(var(--a-rgb), 0) 60%),
+    linear-gradient(160deg, #0a0b0f, #101116 60%, #0c0d12);
+  transition: transform 0.9s ease;
+}
+.cs-next__card:hover .cs-next__bg { transform: scale(1.04); }
+.cs-next__txt { display: grid; gap: 10px; }
+.cs-next__label {
+  margin: 0 0 4px;
+  font-family: "Inter", "Nunito", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--a-hi);
+}
+.cs-next__client { margin: 0; font-family: "Inter", "Nunito", sans-serif; font-size: 13px; color: rgba(255, 255, 255, 0.6); }
+.cs-next__title {
+  margin: 0;
+  font-family: "Bebas Neue", "Nunito", sans-serif;
+  font-weight: 400;
+  font-size: clamp(34px, 4.2vw, 60px);
+  line-height: 0.95;
+  letter-spacing: 0.4px;
+  text-wrap: balance;
+}
+.cs-next__sum { margin: 4px 0 0; max-width: 46ch; font-size: 15px; line-height: 1.6; color: rgba(255, 255, 255, 0.7); }
+.cs-next__go {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 11px 18px;
+  border-radius: 999px;
+  width: max-content;
+  background: var(--a-500);
+  color: var(--a-on);
+  font-family: "Inter", "Nunito", sans-serif;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.cs-next__go svg { width: 16px; height: 16px; transition: transform 0.3s ease; }
+.cs-next__card:hover .cs-next__go svg { transform: translateX(3px); }
+.cs-next__shot {
+  display: block;
+  border-radius: 14px;
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  background: #1a1b21;
+  box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.8);
+  transform: rotate(-2deg);
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.cs-next__card:hover .cs-next__shot { transform: rotate(0deg) scale(1.02); }
+.cs-next__shot img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
+
+.cs-foot { display: flex; justify-content: space-between; gap: 20px; }
+.cs-foot__top { color: #767d8b !important; }
+
+/* ---- framework blocks ----
+   Each of these is one of the copywriting frameworks, drawn as a shape so a
+   reader can see the structure before reading the words. */
+
+/* The short version: problem / what I did / where it landed. */
+.k-tldr {
+  margin: 2.2em 0;
+  padding: 22px 24px 24px;
+  border-radius: 18px;
+  background: #131722;
+  color: #fff;
+}
+.k-tldr__label {
+  margin: 0 0 16px !important;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--a-hi);
+}
+.k-tldr__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.k-tldr__grid > div { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: start; }
+.k-tldr__grid .k-tile { grid-row: span 2; border-color: rgba(var(--a-rgb), 0.3); background: rgba(var(--a-rgb), 0.14); color: var(--a-hi); }
+.k-tldr__grid b { font-size: 14px; font-weight: 600; color: #fff; }
+.k-tldr__grid p { margin: 0; font-size: 13.5px; line-height: 1.58; color: rgba(255, 255, 255, 0.68); }
+
+/* My role: context / responsibilities / tools / deliverables. */
+.k-role { margin: 1.6em 0 2.2em; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.k-role > div {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 14px;
+  align-items: start;
+  padding: 20px 22px;
+  border: 1px solid var(--k-line);
+  border-radius: 16px;
+  background: var(--k-surface);
+}
+.k-role .k-tile { grid-row: span 2; }
+.k-role b { font-size: 14.5px; font-weight: 600; color: var(--k-ink); }
+.k-role p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--k-body); }
+
+/* The problem statement: who / need / because, then how-might-we. */
+.k-problem {
+  margin: 2.2em 0;
+  padding: 6px 26px 24px;
+  border: 1px solid var(--a-line);
+  border-radius: 18px;
+  background: var(--a-wash);
+}
+.k-problem > div { display: grid; grid-template-columns: 96px 1fr; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--a-line); }
+.k-problem dt { margin: 0; padding-top: 3px; font-size: 11.5px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--a-text); }
+.k-problem dd { margin: 0; font-size: 16px; line-height: 1.6; color: var(--k-ink); }
+.k-problem__hmw {
+  margin: 20px 0 0 !important;
+  padding-left: 18px;
+  border-left: 3px solid var(--a-500);
+  font-family: "Nunito", system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: -0.2px;
+  color: var(--k-ink);
+  text-wrap: balance;
+}
+
+/* The process strip: goal → what I did → what I found → what it changed. */
+.k-gain {
+  margin: 2em 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  border: 1px solid var(--k-line);
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fff;
+  counter-reset: k-gain;
+}
+.k-gain > div { position: relative; padding: 20px 18px 20px 20px; counter-increment: k-gain; }
+.k-gain > div + div { border-left: 1px solid var(--k-line); }
+.k-gain > div::before {
+  content: counter(k-gain);
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-bottom: 12px;
+  border-radius: 50%;
+  background: #eef1f6;
+  font-size: 11px;
+  font-weight: 700;
+  color: #8a919e;
+}
+.k-gain > div:last-child::before { background: var(--a-500); color: var(--a-on); }
+.k-gain > div:last-child { background: var(--a-wash); }
+.k-gain b { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--k-mute); }
+.k-gain > div:last-child b { color: var(--a-text); }
+.k-gain p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--k-body); }
+.k-gain p b { display: inline; margin: 0; font-size: inherit; letter-spacing: 0; text-transform: none; color: var(--k-ink); font-weight: 600; }
+/* Arrow on the seam, so the four read as one sequence. */
+.k-gain > div + div::after {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 24px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid var(--k-line);
+}
+
+/* Reflection: achievement / lesson / next time / going forward. */
+.k-alif { margin: 1.6em 0 2em; display: grid; gap: 12px; }
+.k-alif > div {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 16px;
+  align-items: start;
+  padding: 20px 22px;
+  border-radius: 16px;
+  border: 1px solid var(--k-line);
+  background: #fff;
+}
+.k-alif .k-tile { grid-row: span 2; }
+.k-alif b { font-size: 15px; font-weight: 600; color: var(--k-ink); }
+.k-alif p { margin: 0; font-size: 15px; line-height: 1.65; color: var(--k-body); }
+.k-alif > div:nth-child(2) { border-color: var(--a-line); background: var(--a-soft); }
+
+/* Conclusion. */
+.k-close {
+  margin: 2.4em 0 1em;
+  padding: 26px 28px;
+  border-radius: 18px;
+  background: #131722;
+  color: #fff;
+}
+.k-close__label {
+  margin: 0 0 10px !important;
+  font-family: "Bebas Neue", "Nunito", sans-serif;
+  font-size: 26px;
+  letter-spacing: 0.5px;
+  color: var(--a-500);
+}
+.k-close p:not(.k-close__label) { margin: 0; font-size: 16px; line-height: 1.65; color: rgba(255, 255, 255, 0.82); }
+
+/* ---- responsive ---- */
+@media (max-width: 1080px) {
+  .k-gain { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .k-gain > div:nth-child(3) { border-left: 0; border-top: 1px solid var(--k-line); }
+  .k-gain > div:nth-child(4) { border-top: 1px solid var(--k-line); }
+  .k-gain > div:nth-child(3)::after { display: none; }
+}
+@media (max-width: 820px) {
+  .cs-hero__title { font-size: clamp(44px, 12vw, 72px); }
+  .cs-hero__inner { transform: none; opacity: 1; }
+  .cs-hero__foot { transform: none; opacity: 1; }
+  .cs-hero__aside { order: 2; }
+  .cs-hero__shot--window img { max-height: 40vh; }
+  .cs-hero__shot--phone { width: min(240px, 60vw); }
+  .cs-hero__shot--phone img { max-height: 46vh; }
+  .cs-hero__cue { display: none; }
+  .cs-jump { display: flex; }
+  .k-tldr__grid { grid-template-columns: 1fr; }
+  .k-role { grid-template-columns: 1fr; }
+  .k-problem > div { grid-template-columns: 1fr; gap: 6px; }
+  .k-problem__hmw { font-size: 18px; }
+  .k-gain { grid-template-columns: 1fr; }
+  .k-gain > div + div { border-left: 0; border-top: 1px solid var(--k-line); }
+  .k-gain > div::after { display: none !important; }
+  .cs-next__card { grid-template-columns: 1fr; }
+  .cs-next__shot { transform: none; }
+  .cs-lb__fig { padding: 70px 0 40px; }
+  .cs-lb__prev, .cs-lb__next { top: auto; bottom: 14px; translate: 0; width: 42px; height: 42px; }
+  .cs-lb__prev { left: calc(50% - 52px); }
+  .cs-lb__next { right: calc(50% - 52px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-hero__shot { animation: none; transform: none; }
+  .cs-hero__cue i { animation: none; }
+  .cs-hero__kicker, .cs-hero__title, .cs-hero__summary, .cs-hero__aside, .cs-hero__meta, .cs-hero__cue { opacity: 1; transform: none; transition: none; }
+  .cs-next__card, .cs-next__bg, .cs-next__shot { transition: none; }
+}
+
+/* ===================== CASE STUDY — readable blocks pass =====================
+   The info blocks were carrying too much running text and too many fills:
+   a tint on a row reads as "selected" even when it only means "important".
+   The rules here: fills mark a state (cut, shipped, before/after); labels and
+   icons mark importance; and every comparison names its columns. */
+
+/* ---- before → after ---- */
+.k-shift { border-top: 0; }
+.k-shift__head {
+  display: grid;
+  grid-template-columns: 40px 120px minmax(0, 1fr) 34px minmax(0, 1fr);
+  gap: 6px 16px;
+  padding: 0 0 10px;
+}
+.k-shift__head span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--k-mute);
+}
+.k-shift__head span:first-child { grid-column: 3; }
+.k-shift__head span:last-child { grid-column: 5; color: var(--a-text); }
+.k-shift__row {
+  grid-template-columns: 40px 120px minmax(0, 1fr) 34px minmax(0, 1fr);
+  gap: 10px 16px;
+  padding: 18px 0;
+  border-top: 1px solid var(--k-line);
+  border-bottom: 0;
+  align-items: start;
+}
+.k-shift__row:last-child { border-bottom: 1px solid var(--k-line); }
+.k-shift__row h4 { align-self: start; padding-top: 10px; }
+.k-shift__row .k-tile { align-self: start; }
+.k-shift__was,
+.k-shift__now {
+  grid-row: 1;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.k-shift__was {
+  grid-column: 3;
+  background: #f3f5f9;
+  color: #6b7280;
+  font-weight: 400;
+}
+.k-shift__now {
+  grid-column: 5;
+  background: var(--a-soft);
+  border: 1px solid var(--a-line);
+  color: var(--k-ink);
+  font-weight: 500;
+}
+/* The arrow sits on its own column between the two, drawn once per row. */
+.k-shift__row::after {
+  content: "";
+  grid-column: 4;
+  grid-row: 1;
+  align-self: start;
+  margin-top: 13px;
+  width: 22px;
+  height: 22px;
+  justify-self: center;
+  background: var(--a-500);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h13M12.5 6.5 19 12l-6.5 5.5'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h13M12.5 6.5 19 12l-6.5 5.5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.k-shift__why {
+  grid-column: 3 / -1;
+  grid-row: 2;
+  margin-top: 2px !important;
+  padding-left: 14px;
+  font-size: 13.5px;
+  color: var(--k-mute);
+}
+.k-shift__why::before {
+  content: "Why";
+  display: inline-block;
+  margin-right: 8px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: #eef1f6;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #8a919e;
+  vertical-align: 1px;
+}
+
+/* ---- decision labels, colour-coded ----
+   `data-k` is set by the page script from the label's own text, so the
+   colour follows the word: decisions in the accent, costs in amber, results
+   in green, alternatives in blue. */
+.k-decision { padding: 22px 26px 14px; background: #fff; }
+.k-decision dl > div { grid-template-columns: 96px 1fr; align-items: start; }
+.k-decision dt {
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  color: #5b6270;
+  background: #eef1f6;
+}
+.k-decision dt[data-k="decision"] { background: var(--a-500); color: var(--a-on); }
+.k-decision dt[data-k="because"] { background: #eef1f6; color: #5b6270; }
+.k-decision dt[data-k="trade-off"] { background: #fff1db; color: #9a5b00; }
+.k-decision dt[data-k="result"] { background: #e3f6ea; color: #1d7a45; }
+.k-decision dt[data-k="instead"] { background: #e6efff; color: #1e56b8; }
+.k-decision--cut { background: var(--a-wash); }
+
+/* ---- "why this matters" lists become cards ---- */
+.k-why {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.k-why > div {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: start;
+  padding: 18px 20px;
+  border: 1px solid var(--k-line) !important;
+  border-radius: 14px;
+  background: #fff;
+}
+.k-why > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.k-why h4 { font-size: 15px; }
+.k-why p { font-size: 14px; }
+
+/* ---- importance without the "selected" look ---- */
+/* The tab that opens first: same chrome as its neighbours, plus a caption. */
+.k-ia__tab { position: relative; padding-bottom: 14px; }
+.k-ia__tab.is-lead { border-color: var(--k-line); background: #fff; }
+.k-ia__tab.is-lead .k-ic { color: var(--a-deep); }
+.k-ia__tab.is-lead::after {
+  content: "opens first";
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--a-500);
+  color: var(--a-on);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.k-ia__tabs { margin-bottom: 8px; }
+/* The rows that carry the promise: an accent edge and a tag, not a dark fill. */
+.k-ia__stack .is-lead {
+  background: #fff;
+  border: 1px solid var(--k-line);
+  border-left: 3px solid var(--a-500);
+  padding-left: 14px;
+}
+.k-ia__stack .is-lead b { color: var(--k-ink); }
+.k-ia__stack .is-lead span { color: var(--k-mute); }
+.k-ia__stack .is-lead::after {
+  content: "leads";
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--a-soft);
+  border: 1px solid var(--a-line);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--a-text);
+}
+/* The key stop on a journey says so. */
+.k-journey .is-key::after {
+  content: "key step";
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--a-soft);
+  border: 1px solid var(--a-line);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--a-text);
+}
+/* The card that holds vs the one that dissolves: an accent edge is enough. */
+.k-card--gold { background: #fff; border-color: var(--k-line); border-top: 3px solid var(--a-500); }
+
+/* ---- reflection: four equal cards ---- */
+.k-alif { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.k-alif > div:nth-child(2) { border-color: var(--k-line); background: #fff; }
+.k-alif p { font-size: 14.5px; }
+
+/* ---- process strip: numbered chevrons, no tinted cell ---- */
+.k-gain > div:last-child { background: #fff; }
+.k-gain > div::before { background: var(--a-500); color: var(--a-on); }
+.k-gain > div:last-child b { color: var(--a-text); }
+.k-gain > div + div::after {
+  left: -9px;
+  top: 22px;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  background: var(--a-500);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 5l7 7-7 7'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 5l7 7-7 7'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* ---- problem statement: icon per row ---- */
+.k-problem { padding: 6px 26px 26px; background: #fff; }
+.k-problem > div { grid-template-columns: 112px 1fr; align-items: start; }
+.k-problem dt { display: flex; align-items: center; gap: 8px; }
+/* Masked glyphs, filled with the accent, so they follow `data-accent`. */
+.k-problem dt::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  background: var(--a-500);
+  -webkit-mask: var(--k-glyph) center / contain no-repeat;
+  mask: var(--k-glyph) center / contain no-repeat;
+}
+.k-problem > div:nth-of-type(1) dt { --k-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='3.6'/%3E%3Cpath d='M5 20a7 7 0 0 1 14 0'/%3E%3C/svg%3E"); }
+.k-problem > div:nth-of-type(2) dt { --k-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='8.5'/%3E%3Ccircle cx='12' cy='12' r='4.5'/%3E%3Ccircle cx='12' cy='12' r='1'/%3E%3C/svg%3E"); }
+.k-problem > div:nth-of-type(3) dt { --k-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 17.5a6 6 0 1 1 6 0V19a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 19z'/%3E%3Cpath d='M10 22h4'/%3E%3C/svg%3E"); }
+.k-problem__hmw {
+  margin-top: 22px !important;
+  padding: 16px 18px 16px 20px;
+  border-left: 0;
+  border-radius: 12px;
+  background: #131722;
+  color: #fff;
+  font-size: 18.5px;
+}
+.k-problem__hmw::before {
+  content: "How might we";
+  display: block;
+  margin-bottom: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--a-hi);
+}
+
+
+/* ---- role cards ---- */
+.k-role > div { background: #fff; }
+
+/* ---- the two-chain loop reads as a verdict, so its columns get names ---- */
+.k-loop__col { position: relative; padding-top: 22px; }
+.k-loop__col--old h4::before,
+.k-loop__col--new h4::before {
+  content: "✕";
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #fde8e8;
+  color: #b42323;
+  font-size: 10px;
+}
+.k-loop__col--new h4::before { content: "✓"; background: #e3f6ea; color: #1d7a45; }
+
+@media (max-width: 820px) {
+  .k-shift__head { display: none; }
+  .k-shift__row { grid-template-columns: 36px 1fr; gap: 8px 12px; }
+  .k-shift__row .k-tile { grid-row: span 4; }
+  .k-shift__row h4 { grid-row: auto; grid-column: 2; padding-top: 6px; }
+  .k-shift__was, .k-shift__now { grid-column: 2; grid-row: auto; }
+  .k-shift__row::after { display: none; }
+  .k-shift__was::before, .k-shift__now::before {
+    content: "Before";
+    display: block;
+    margin-bottom: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #9aa1b0;
+  }
+  .k-shift__now::before { content: "After"; color: var(--a-text); }
+  .k-shift__why { grid-column: 2; grid-row: auto; padding-left: 0; }
+  .k-why { grid-template-columns: 1fr; }
+  .k-why > div:last-child:nth-child(odd) { grid-column: auto; }
+  .k-alif { grid-template-columns: 1fr; }
+  .k-problem > div { grid-template-columns: 1fr; }
+  .k-ia__tab.is-lead::after { bottom: -8px; }
+}
+
+/* Cards in a shared grid row stretch to the tallest one; without this the
+   extra height is shared out between the card's own rows and the paragraph
+   drifts away from its heading. */
+.k-role > div,
+.k-alif > div,
+.k-why > div,
+.k-tldr__grid > div { align-content: start; }
+
+/* The process strip as four narrow columns was a wall of short lines. Two by
+   two gives each step a real measure; the chevron only joins the pair that
+   actually sits side by side. */
+.k-gain { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.k-gain > div { padding: 22px 24px; }
+.k-gain > div:nth-child(3) { border-left: 0; }
+.k-gain > div:nth-child(n + 3) { border-top: 1px solid var(--k-line); }
+.k-gain > div:nth-child(odd)::after { display: none; }
+.k-gain p { font-size: 14.5px; }
+@media (max-width: 820px) {
+  .k-gain > div:nth-child(2) { border-left: 0; }
+}
+
+/* ===================== CASE STUDY — quieter marks, ruled lists =====================
+   The tinted rounded tile with a generic stroke glyph inside, repeated across
+   a grid of bordered cards, is the house style of every generated landing
+   page on the internet. It also does no work: four different icons that all
+   mean "a point about the product" are decoration wearing a uniform.
+
+   What replaces it: the icon stays where it labels something specific (a row,
+   a band), drawn as a bare mark rather than mounted in a chip; and the card
+   grids become ruled editorial lists, indexed and set on the page's own type,
+   which is a thing a person designs rather than a thing a template fills. */
+
+/* ---- the mark ----
+   No fill, no border, no box. Just the glyph, in the project's colour. */
+.k-tile {
+  width: auto;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--a-500);
+}
+.k-tile--plain { background: none; border: 0; color: var(--k-mute); }
+.k-tile .k-ic { width: 19px; height: 19px; stroke-width: 1.6; }
+
+/* Contexts that sized a column for the old 38px chip. */
+.k-shift__row .k-tile { width: auto; height: auto; }
+.k-band .k-tile { border: 0; background: none; color: var(--a-500); }
+.k-band .k-tile .k-ic { width: 22px; height: 22px; }
+
+/* ---- ruled list ----
+   Shared by the four blocks that were grids of icon cards. Each item is an
+   entry in a list, not an object on a shelf: a hairline above it, an index or
+   a label in the accent, and the text set at reading size. Two columns on
+   desktop because the items are short and the page is wide. */
+.k-why,
+.k-role,
+.k-alif {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 clamp(30px, 4vw, 60px);
+  margin: 2em 0;
+}
+.k-why > div,
+.k-role > div,
+.k-alif > div {
+  display: block;
+  padding: 18px 0 24px;
+  border: 0 !important;
+  border-top: 1px solid var(--k-ink) !important;
+  border-radius: 0;
+  background: none;
+}
+/* The rule above the first item in each column is the heavy one; every rule
+   after it is a hairline. That is what makes the set read as one list with a
+   head rather than as a stack of separate things. */
+.k-why > div:nth-child(n + 3),
+.k-role > div:nth-child(n + 3),
+.k-alif > div:nth-child(n + 3) { border-top-color: var(--k-line) !important; }
+/* The glyph earns nothing here — the number and the sentence carry it. */
+.k-why .k-tile,
+.k-role .k-tile,
+.k-alif .k-tile { display: none; }
+.k-why h4,
+.k-role b,
+.k-alif b {
+  display: block;
+  margin: 0 0 7px;
+  font-size: 16.5px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  color: var(--k-ink);
+}
+.k-why p,
+.k-role p,
+.k-alif p {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 15px;
+  line-height: 1.62;
+  color: var(--k-body);
+}
+/* A trailing odd item takes the full measure rather than leaving a gap. */
+.k-why > div:last-child:nth-child(odd),
+.k-role > div:last-child:nth-child(odd),
+.k-alif > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+/* Findings are a ranked set, so they are numbered. */
+.k-why { counter-reset: k-why; }
+.k-why > div { counter-increment: k-why; }
+.k-why h4::before {
+  content: counter(k-why, decimal-leading-zero);
+  display: block;
+  margin-bottom: 9px;
+  font-family: "Bebas Neue", "Nunito", sans-serif;
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 0.9;
+  letter-spacing: 1.4px;
+  color: var(--a-500);
+}
+
+/* ---- ruled-list variants ----
+   Three other ways to set the same items, chosen per block by adding one class
+   beside `.k-why`, `.k-role` or `.k-alif`. The markup never changes: all three
+   already ship an icon in a `.k-tile`, which the plain ruled list hides and
+   these bring back.
+
+   Shared across all three is the badge — a soft tinted disc with the accent
+   glyph in it, ringed by a paler halo of the same hue so it sits on the page
+   rather than being stamped onto it. The tint is the case study's own accent
+   rather than a colour per item: four hues would make four unrelated things,
+   and these are four parts of one argument. `color-mix` keeps the halo tied to
+   whatever `data-accent` is in force. */
+.k-panels .k-tile,
+.k-rail .k-tile,
+.k-steps .k-tile {
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--a-soft);
+  color: var(--a-deep);
+}
+.k-rail .k-tile,
+.k-steps .k-tile {
+  width: 40px;
+  height: 40px;
+  box-shadow: 0 0 0 7px color-mix(in srgb, var(--a-soft) 55%, #fff);
+}
+.k-panels .k-ic,
+.k-rail .k-ic,
+.k-steps .k-ic { width: 19px; height: 19px; stroke-width: 1.8; }
+
+/* The number stops being the loud thing once there is a glyph beside it: a
+   small kicker over the title, not a display figure. */
+.k-panels h4::before,
+.k-rail h4::before,
+.k-steps h4::before {
+  margin-bottom: 5px;
+  font-family: "Inter", "Nunito", system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 1.6px;
+  color: var(--a-text);
+}
+
+/* ---- variant: panels ----
+   A card per item, headed by a large tinted disc and a label.
+
+   No outline and no rule under the heading. A hairline is the cheapest way to
+   say "this is a card" and the least convincing one — four of them stack up as
+   a wireframe on a page whose whole argument is that it is written rather than
+   assembled. The panel is a filled shape instead: the accent's own tint,
+   diluted far enough to read as ground rather than as a highlight, which
+   separates it from white without drawing an edge. The heading is separated by
+   space for the same reason. */
+.k-panels {
+  gap: clamp(14px, 1.6vw, 20px);
+}
+.k-panels > div {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  column-gap: 16px;
+  align-items: start;
+  padding: 24px 26px 28px !important;
+  border: 0 !important;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--a-soft) 58%, #fff);
+}
+/* The disc has to stay legible against a ground made of the same hue, so on a
+   panel it takes the full tint and a white ring to lift it off. */
+.k-panels .k-tile {
+  width: 52px;
+  height: 52px;
+  background: var(--a-soft);
+  box-shadow: 0 0 0 4px #fff;
+}
+.k-panels .k-ic { width: 23px; height: 23px; }
+/* The label sits in the second column of the first row; everything else drops
+   below it in that same column, which is what lines the body up with the
+   heading rather than with the disc. */
+.k-panels h4,
+.k-panels > div > b { margin: 0; }
+.k-panels > div > b {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--k-ink);
+}
+.k-panels h4 { font-size: 16px; letter-spacing: -0.2px; }
+.k-panels h4::before { margin-bottom: 4px; }
+.k-panels > div > p,
+.k-panels > div > div {
+  grid-column: 2;
+  margin-top: 14px;
+  max-width: none;
+}
+/* `.k-why` wraps its title and body in a div, so the space under the heading
+   has to be set on the wrapper's children rather than on the grid cell. */
+.k-panels > div > div > p { margin: 10px 0 0; max-width: none; }
+.k-panels p { font-size: 14.5px; line-height: 1.6; }
+
+/* ---- variant: rail ----
+   One column, read top to bottom, badges strung on a dotted line. The right
+   shape when the items are a sequence or a mounting case rather than peers —
+   the connector is doing the arguing. Costs the most vertical room. */
+.k-rail {
+  grid-template-columns: 1fr;
+  gap: 0;
+  max-width: 62ch;
+}
+.k-rail > div {
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 0 20px;
+  align-items: start;
+  padding: 0 0 30px !important;
+  border: 0 !important;
+}
+.k-rail > div:last-child { padding-bottom: 0 !important; }
+/* Line and dot in one box: a hairline drawn the height of the gap, with a
+   single accent dot at its centre. Painting the dot as a background rather
+   than as a second element is what keeps it centred on items of any height. */
+.k-rail > div:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  top: 54px;
+  bottom: 10px;
+  width: 5px;
+  background:
+    radial-gradient(circle at 50% 50%, var(--a-500) 0 2.5px, transparent 2.5px)
+      center / 5px 5px no-repeat,
+    linear-gradient(var(--k-line), var(--k-line)) center / 1px 100% no-repeat;
+}
+.k-rail > div > div,
+.k-rail > div > b { padding-top: 8px; }
+.k-rail > div > p { grid-column: 2; margin-top: 6px; }
+.k-rail h4 { font-size: 16px; }
+.k-rail p { max-width: none; }
+
+/* ---- variant: steps ----
+   The rail turned on its side: badges across, the dotted line running between
+   them. Keeps the sequence reading of the rail while staying a strip, so it
+   does not cost the page half a screen. */
+.k-steps {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0 clamp(20px, 2.4vw, 34px);
+}
+.k-steps > div {
+  position: relative;
+  padding: 0 !important;
+  border: 0 !important;
+}
+/* Drawn from the right of each badge but the last, across the column gap and
+   on to the next one. The columns are equal width, so reaching the neighbour
+   only needs the gap, which is the same clamp the grid uses. */
+.k-steps > div:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 48px;
+  right: calc(-1 * clamp(20px, 2.4vw, 34px) - 8px);
+  top: 18px;
+  height: 5px;
+  background:
+    radial-gradient(circle at 50% 50%, var(--a-500) 0 2.5px, transparent 2.5px)
+      center / 5px 5px no-repeat,
+    linear-gradient(var(--k-line), var(--k-line)) center / 100% 1px no-repeat;
+}
+.k-steps .k-tile { margin-bottom: 16px; }
+.k-steps h4 { font-size: 15px; }
+.k-steps p { max-width: none; font-size: 14px; line-height: 1.6; }
+/* A trailing odd item spanning the row is a two-column idea; four across has
+   no such case, and letting it through would stretch one step over the rest. */
+.k-steps > div:last-child:nth-child(odd) { grid-column: auto; }
+
+@media (max-width: 980px) {
+  /* Four across stops being a strip and starts being four narrow columns of
+     text. Below this the steps fall back to the rail, which is the same idea
+     at a width that can hold it. */
+  .k-steps { grid-template-columns: 1fr; gap: 0; max-width: 62ch; }
+  .k-steps > div {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 0 20px;
+    padding-bottom: 26px !important;
+  }
+  .k-steps .k-tile { margin-bottom: 0; }
+  .k-steps > div > div,
+  .k-steps > div > b { padding-top: 8px; }
+  .k-steps > div > p { grid-column: 2; margin-top: 6px; }
+  .k-steps > div:not(:last-child)::before {
+    left: 18px;
+    right: auto;
+    top: 54px;
+    bottom: 6px;
+    width: 5px;
+    height: auto;
+    background:
+      radial-gradient(circle at 50% 50%, var(--a-500) 0 2.5px, transparent 2.5px)
+        center / 5px 5px no-repeat,
+      linear-gradient(var(--k-line), var(--k-line)) center / 1px 100% no-repeat;
+  }
+}
+
+@media (max-width: 720px) {
+  .k-panels { grid-template-columns: 1fr; }
+}
+
+/* Role and reflection items are named, not ranked, so the name is the label:
+   a kicker in the accent above the sentence it introduces. */
+.k-role b,
+.k-alif b {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--a-text);
+  margin-bottom: 9px;
+}
+.k-role p,
+.k-alif p { font-size: 15.5px; color: var(--k-ink); }
+
+/* ---- the short version ----
+   Same move on the dark panel: numbered, ruled, no chips. */
+.k-tldr__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 clamp(24px, 3vw, 44px); counter-reset: k-tldr; }
+.k-tldr__grid > div {
+  display: block;
+  counter-increment: k-tldr;
+  padding: 16px 0 2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+}
+.k-tldr__grid .k-tile { display: none; }
+.k-tldr__grid b {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--a-hi);
+}
+.k-tldr__grid b::before {
+  content: counter(k-tldr, decimal-leading-zero) " · ";
+  color: rgba(255, 255, 255, 0.4);
+}
+.k-tldr__grid p { font-size: 14.5px; line-height: 1.6; color: rgba(255, 255, 255, 0.74); }
+
+@media (max-width: 820px) {
+  .k-why,
+  .k-role,
+  .k-alif,
+  .k-tldr__grid { grid-template-columns: 1fr; }
+  .k-why > div:nth-child(n + 2),
+  .k-role > div:nth-child(n + 2),
+  .k-alif > div:nth-child(n + 2) { border-top-color: var(--k-line) !important; }
+  .k-why > div:last-child:nth-child(odd),
+  .k-role > div:last-child:nth-child(odd),
+  .k-alif > div:last-child:nth-child(odd) { grid-column: auto; }
+}
+
+/* ---- information architecture ----
+   This block was drawn as the thing it describes: chips that look like tabs
+   and rows that look like list items, with pill badges on the ones that
+   matter. Every part of it invited a click that does nothing. It is a
+   diagram of a structure, so it is drawn as one — names on a rule, and a
+   numbered running order underneath. Nothing here has a border to press. */
+.k-ia {
+  margin: 2.2em 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.k-ia__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px clamp(22px, 3.4vw, 46px);
+  margin-bottom: 0;
+  padding: 0 0 16px;
+  border-bottom: 1px solid var(--k-ink);
+}
+.k-ia__tab {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 9px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  text-align: left;
+}
+.k-ia__tab b { font-size: 14.5px; font-weight: 600; color: var(--k-mute); }
+.k-ia__tab .k-ic { width: 17px; height: 17px; color: #b6bcc9; }
+/* The one that opens first is the only thing in the row wearing the accent,
+   and it says why in words rather than in a badge. */
+.k-ia__tab.is-lead b { color: var(--k-ink); }
+.k-ia__tab.is-lead .k-ic { color: var(--a-500); }
+.k-ia__tab.is-lead::after {
+  content: "opens first";
+  position: static;
+  transform: none;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--a-text);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: none;
+}
+
+.k-ia__caption { margin: 20px 0 4px !important; }
+
+/* The running order: a numbered list with hairlines, set like a contents
+   page. The rows that carry the product's promise are marked by an accent
+   numeral and a word, not by a fill or a tag. */
+.k-ia__stack li {
+  align-items: baseline;
+  gap: 14px;
+  margin: 0;
+  padding: 13px 0;
+  border: 0;
+  border-top: 1px solid var(--k-line);
+  border-radius: 0;
+  background: none;
+}
+.k-ia__stack li:first-child { border-top: 0; }
+.k-ia__stack li::before {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: none;
+  font-family: "Bebas Neue", "Nunito", sans-serif;
+  font-size: 17px;
+  font-weight: 400;
+  letter-spacing: 0.8px;
+  color: #b6bcc9;
+}
+.k-ia__stack .is-lead {
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--k-line);
+  padding-left: 0;
+}
+.k-ia__stack .is-lead:first-child { border-top: 0; }
+.k-ia__stack .is-lead::before { color: var(--a-500); }
+.k-ia__stack .is-lead b { color: var(--k-ink); }
+.k-ia__stack .is-lead span { color: var(--k-mute); }
+.k-ia__stack .is-lead::after {
+  content: "leads";
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: none;
+  color: var(--a-text);
+  white-space: nowrap;
+}
+
+/* ---- lean ----
+   Point at one screen in a side-by-side set and it takes the room; the rest
+   shrink beside it. Switched on by script (see CaseBlocks.astro).
+
+   The images keep their own proportions the whole way — a screenshot that
+   crops as it resizes reads as broken, and a dashboard sliced down its middle
+   is worse than no effect at all. What holds the page still instead is a
+   reserved slot: the script measures how tall the tallest screen would be at
+   full lean and freezes that much room above every caption, so the captions
+   never move and nothing below the block does either.
+
+   Flex rather than grid on purpose: the figures keep wrapping into the same
+   rows, and each row redistributes on its own. Widening a grid *column* would
+   also widen whatever sits below it in the next row, which reads as a bug. */
+.k-lean-set.is-live {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  /* `flex-basis` is a layout property, so the lean is a real reflow every
+     frame for 440ms — and without this it is a reflow of everything below it,
+     which on a case study is another thousand elements. The slot already pins
+     the row's height, so the set's own box never changes size while a figure
+     grows; containing layout here keeps the work inside the row where it
+     belongs. */
+  contain: layout;
+}
+.k-lean-set.is-live > figure {
+  flex: 0 1 var(--k-rest);
+  min-width: 0;
+  transition:
+    flex-basis 0.44s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.4s ease;
+}
+/* The slot is the reserved room: tall enough for the leaned screen, so the
+   captions below it never move. Screens sit at the top of it, which keeps
+   their title bars on one line across the row — centring them would stagger
+   the tops of two captures that are not the same height. */
+.k-lean-slot { display: contents; }
+.k-lean-set.is-live .k-lean-slot {
+  display: flex;
+  align-items: flex-start;
+  min-height: var(--k-slot);
+}
+.k-lean-set.is-live .k-lean-slot > * { width: 100%; }
+/* Both selectors have to name `> figure` at the end, or the shrink rule —
+   which carries the extra type selector from inside :has() — outranks the
+   grow rule and the panel under the cursor shrinks with its siblings. */
+.k-lean-set.is-live:has(> figure:hover) > figure { flex-basis: var(--k-shrunk); opacity: 0.78; }
+.k-lean-set.is-live:has(> figure:hover) > figure:hover { flex-basis: var(--k-grown); opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .k-lean-set.is-live > figure { transition: none; }
 }

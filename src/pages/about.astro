@@ -2,16 +2,103 @@
 import Base from '../layouts/Base.astro';
 ---
 
-<Base title="About — Bhupesh Parmar" description="Product designer with two design degrees.">
-  <section class="page">
+<Base
+  title="About — Bhupesh Parmar"
+  description="Product designer with two design degrees, a year in the field, and a habit of explaining the reasoning behind every screen."
+>
+  <section class="page about">
     <div class="page__inner">
-      <h1 class="work__title">A little about me</h1>
-      <div class="prose">
+      <p class="about__kicker">About</p>
+      <h1 class="work__title">Hi, I&rsquo;m Bhupesh.</h1>
+      <div class="prose about__prose">
         <p>
-          I&rsquo;m a product designer with around a year of professional experience and two design
-          degrees. Replace this copy with your own story.
+          I&rsquo;m a product designer. I take products that are hard to use,
+          or businesses that are stuck doing things by hand, and turn them into
+          something people can pick up without a manual. I care most about the
+          part before the screens: working out what is actually wrong, and
+          being able to explain every decision afterwards in plain language.
         </p>
+
+        <h2>Where I&rsquo;ve been</h2>
+        <p>
+          I have two design degrees, a B.Des from Chitkara University and an
+          M.Des in Product Design from UPES, and about a year of professional
+          work in between and around them. At <a href="/work/ikarus-configurator">Ikarus 3D</a>{' '}
+          I worked on an internal platform for building 3D product
+          configurators, and on <a href="/work/ikarus-nest">Nest</a>, a
+          marketplace for 3D-printable files where 43 interviews changed what
+          the product was for. Most recently I designed the{' '}
+          <a href="/work/tbs">client app</a> and{' '}
+          <a href="/work/tbs-dashboard">trainer dashboard</a> for TBS, a
+          fitness coaching business that had outgrown WhatsApp.
+        </p>
+        <p>
+          Across those, the same three things keep coming up: research that
+          overturns the brief, information architecture (deciding what goes
+          where, and what goes first), and design systems that let a small team
+          ship a lot of screens consistently.
+        </p>
+
+        <h2>What I&rsquo;m looking for</h2>
+        <p>
+          A product team where I can own a problem end to end, from the
+          conversations that define it to the handoff, and where being able to
+          argue for a decision matters as much as drawing it. Consumer or
+          enterprise, I&rsquo;ve done both and liked both.
+        </p>
+
+        <h2>How I work</h2>
+        <ul>
+          <li><b>Plain language first.</b> If I can&rsquo;t explain a decision to someone outside the team, it isn&rsquo;t finished.</li>
+          <li><b>Show the trade-off.</b> Every decision on this site says what it cost, not just what it won.</li>
+          <li><b>Prototype early.</b> A link people can click settles more in a day than a week of slide reviews.</li>
+          <li><b>No invented numbers.</b> Where a project has no results yet, the case study says so.</li>
+        </ul>
+
+        <div class="about__cta">
+          <a class="about__btn" href="mailto:designs.bhupesh@gmail.com">Say hello</a>
+          <a class="about__btn about__btn--ghost" href="/Bhupesh-Parmar-Resume.pdf" target="_blank" rel="noopener">View my r&eacute;sum&eacute;</a>
+        </div>
       </div>
     </div>
   </section>
 </Base>
+
+<style>
+  .about__kicker {
+    margin: 0 0 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    color: var(--blue-500);
+  }
+  .about__prose { margin-top: 28px; }
+  .about__prose h2 {
+    font-size: 30px;
+    margin-top: 1.6em;
+  }
+  .about__prose li b { color: #0b0d12; }
+  .about__cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 36px; }
+  .about__btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 13px 22px;
+    border-radius: 999px;
+    background: var(--blue-500);
+    color: #fff !important;
+    font-family: 'Inter', sans-serif;
+    font-size: 14.5px;
+    font-weight: 600;
+    text-decoration: none !important;
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+  .about__btn:hover { transform: translateY(-2px); background: var(--blue-700); }
+  .about__btn--ghost {
+    background: #fff;
+    color: #0b0d12 !important;
+    border: 1px solid #dfe3ea;
+  }
+  .about__btn--ghost:hover { background: #f4f6fa; }
+</style>

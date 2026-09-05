@@ -2,10 +2,16 @@
 /* Progressive blur along the bottom edge of the viewport.
  *
  * CSS can't ramp a blur radius across an element, so this stacks layers that
- * each double the previous blur and are masked to an overlapping band. Where
- * the bands cross-fade, the eye reads one continuous gradient from sharp at
- * the top of the strip to heavily blurred at the very bottom — content looks
- * like it surfaces out of a blurred world as it scrolls up.
+ * each step up the blur and are masked to an overlapping band. Where the bands
+ * cross-fade, the eye reads one continuous gradient from sharp at the top of
+ * the strip to heavily blurred at the very bottom — content looks like it
+ * surfaces out of a blurred world as it scrolls up.
+ *
+ * Two layers, not four. Each one is a separate backdrop read of a full-width
+ * band on every scrolled frame, and this strip was by a wide margin the most
+ * expensive thing on the page — more compositing area than every other
+ * blurred surface put together. Two bands with a wider cross-fade carry
+ * essentially the same ramp for half the work.
  *
  * It lifts as you reach the end of the page. There's nothing below the footer
  * for content to surface out of, so all the strip would do down there is blur
@@ -14,8 +20,6 @@
 ---
 
 <div class="pblur" aria-hidden="true">
-  <span></span>
-  <span></span>
   <span></span>
   <span></span>
 </div>
