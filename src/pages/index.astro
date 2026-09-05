@@ -6,6 +6,7 @@ import WorkFolder from '../components/WorkFolder.astro';
 import HoverCue from '../components/HoverCue.astro';
 import ResumeList from '../components/ResumeList.astro';
 import Testimonials from '../components/Testimonials.astro';
+import Guestbook from '../components/Guestbook.astro';
 
 const projects = (await getCollection('work', ({ data }) => !data.draft)).sort(
   (a, b) => a.data.order - b.data.order,
@@ -64,5 +65,9 @@ const testimonials = (await getCollection('testimonials')).sort(byOrder).map((e)
   <HoverCue />
 
   <Testimonials quotes={testimonials} />
+
+  {/* Last thing before the footer. The wall fills itself from
+      /api/guestbook once the page is up — see the component. */}
+  <Guestbook />
 
 </Base>

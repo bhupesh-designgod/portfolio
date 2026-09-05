@@ -1,0 +1,81 @@
+---
+/* The guestbook with the wall already full.
+ *
+ * The live section on the home page starts empty on purpose — inventing five
+ * visitors who never visited is exactly the kind of thing a portfolio should
+ * not do. This page passes the same component a set of obviously-fictional
+ * entries so the filled layout can be judged before anyone has signed: card
+ * rhythm, how a long note wraps, what the overflow card does, and whether the
+ * signatures read as ink at 72px wide.
+ *
+ * Nothing here is wired to the store. Delete this page whenever the real wall
+ * has enough cards on it to review.
+ */
+import Base from '../../layouts/Base.astro';
+import Guestbook from '../../components/Guestbook.astro';
+
+/* Two of the five carry a signature, because in practice most people won't
+   bother — a row where every card has one flatters the design dishonestly. */
+const demo = [
+  {
+    name: 'Riya',
+    reason: 'Hiring',
+    note: 'Super clean and inspiring!',
+    date: '2026-09-05',
+    sign: 'M4 31C8 12 14 7 16 18C18 29 13 34 11 25C9 14 21 9 27 23C31 33 35 29 37 19M43 23C47 10 53 13 51 23C49 32 57 30 61 20M67 31C71 8 75 9 77 22C78 31 83 28 96 15',
+  },
+  {
+    name: 'Karan',
+    reason: 'Collaboration',
+    note: 'Love the minimal vibe.',
+    date: '2026-09-04',
+  },
+  {
+    name: 'Aarav',
+    reason: 'Just exploring',
+    note: 'Such a solid portfolio, genuinely one of the better ones I have seen.',
+    date: '2026-09-03',
+    sign: 'M5 33C9 11 16 5 18 16C20 27 15 33 13 24C11 13 24 7 28 22C31 33 37 28 39 17M45 29C49 12 55 15 57 25M63 31C65 14 73 9 79 18C85 27 78 33 74 26C70 19 84 13 97 21',
+  },
+  {
+    name: 'Tanya',
+    reason: 'Industry buddy',
+    note: 'Keep creating, this is great!',
+    date: '2026-09-02',
+  },
+  {
+    name: 'Mehul',
+    reason: 'Other',
+    note: 'Different thinking. Big fan.',
+    date: '2026-09-01',
+  },
+  /* Six more, unrendered — they exist only to drive the "+ 6 others" card. */
+  ...Array.from({ length: 6 }, (_, i) => ({
+    name: `Visitor ${i + 1}`,
+    reason: 'Just exploring',
+    date: '2026-08-30',
+  })),
+];
+---
+
+<Base title="Lab — guestbook" description="The guestbook section with a full wall.">
+  <p class="lab__note">
+    Lab page. Fictional entries, no store attached &mdash; the live section on the
+    home page starts empty and fills from <code>/api/guestbook</code>.
+  </p>
+
+  <Guestbook entries={demo} />
+</Base>
+
+<style>
+  .lab__note {
+    margin: 0;
+    padding: 96px 8% 0;
+    background: #f1f1f3;
+    font-family: 'Inter', 'Nunito', system-ui, sans-serif;
+    font-size: 12.5px;
+    letter-spacing: 0.4px;
+    color: #8d919c;
+  }
+  .lab__note code { font-size: 12px; color: #5c616e; }
+</style>

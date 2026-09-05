@@ -1,0 +1,709 @@
+---
+/* The guestbook — the last thing before the footer.
+ *
+ * Everything above this section asks the reader to take something in. This one
+ * asks them to leave something behind, which is a different kind of request and
+ * needs a different kind of object: not a form, a visitor badge on a lanyard.
+ * A form at the end of a portfolio reads as a lead-capture widget. A badge you
+ * clip on reads as an invitation, and it costs the reader nothing to ignore.
+ *
+ * Two rules from the design that are load-bearing:
+ *
+ * 1. The badge is BLANK at rest. No plus, no label, no outline that says
+ *    "click me". It's a clean card hanging on a strap, and only when the
+ *    pointer reaches it does it admit what it's for. A permanent CTA competes
+ *    with the headline; a blank card is a question the reader chooses to ask.
+ *
+ * 2. Exactly two pieces of handwriting, and no more. The reference had four
+ *    marginal notes and a vertical keyword list, at which point the marginalia
+ *    stops reading as someone's hand and starts reading as decoration. One cue
+ *    pointing at the badge, one aside off to the side. That's the budget.
+ *
+ * The wall below renders whatever was in the JSON at build time, then replaces
+ * itself with the live list once `/api/guestbook` answers. So the section is
+ * complete and honest with no network at all, and current when there is one.
+ */
+interface Entry {
+  name: string;
+  reason: string;
+  note?: string;
+  /* Normalised SVG path from the signature pad — see the dialog below. */
+  sign?: string;
+  date: string;
+}
+
+interface Props {
+  entries?: Entry[];
+  /* Slots in the row, not cards. Five is the most that fit at 1180px without
+     the handwriting shrinking past legibility. */
+  cols?: number;
+}
+
+const { entries = [], cols = 5 } = Astro.props;
+
+/* The count card occupies a slot, so it only earns one when it would stand for
+   more than the card it displaced. At five entries or fewer every one of them
+   is shown; past that the last slot becomes "+ n others". */
+const shown = entries.length <= cols ? entries : entries.slice(0, cols - 1);
+const rest = entries.length - shown.length;
+
+/* Why someone is here, in the order the answers actually turn up. `Other` is
+   last because it's the shrug, and a shrug should never be the first option. */
+const reasons = ['Hiring', 'Collaboration', 'Just exploring', 'Industry buddy', 'Other'];
+
+/* 05 SEP 2026 — a passport stamp, not a timestamp. Deliberately not relative
+   ("2 days ago"): a guestbook is a record, and a record wants a date on it. */
+const stamp = (iso: string) =>
+  new Date(iso)
+    .toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    .toUpperCase();
+---
+
+<section class="gb" id="guestbook">
+  <div class="gb__wrap">
+    <p class="gb__eyebrow"><span>03</span><i aria-hidden="true"></i>The guestbook</p>
+
+    <div class="gb__top">
+      <div class="gb__intro">
+        <h2 class="gb__title">Leave a<br />little mark.</h2>
+        <p class="gb__lead">A small guestbook for the kind people who made it this far.</p>
+
+        {/* Handwriting 1 of 2 — the cue. It exists to aim the eye at the badge,
+            which is the only reason a marginal note earns its place here. */}
+        <p class="gb__cue" aria-hidden="true">
+          <svg class="gb__arrow" viewBox="0 0 190 90" fill="none">
+            <path
+              d="M4 10c34 4 62 24 82 52"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+            ></path>
+            <path
+              d="M70 58.5 87.5 63.5 84 46"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ></path>
+          </svg>
+          <span class="gb__hand">Your turn now!</span>
+        </p>
+      </div>
+
+      {/* The badge. A button, not a div with a click handler — it has to be
+          reachable on a keyboard, and the hover reveal is mirrored on :focus
+          so a tab lands somewhere that explains itself. */}
+      <div class="gb__hang" data-gb-hang>
+        {/* The strap is drawn, not boxed, because it has to follow the badge
+            when the badge is dragged. Straight line, ribbon width, sheen down
+            the middle — a rope under tension has no curve worth drawing. */}
+        <svg class="gb__strap" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="gbStrap" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#0035a6"></stop>
+              <stop offset="32%" stop-color="#0059ff"></stop>
+              <stop offset="50%" stop-color="#4d8bff"></stop>
+              <stop offset="68%" stop-color="#0059ff"></stop>
+              <stop offset="100%" stop-color="#0035a6"></stop>
+            </linearGradient>
+          </defs>
+          <path data-gb-rope stroke="url(#gbStrap)" stroke-width="40" fill="none"></path>
+        </svg>
+        <span class="gb__snap" data-gb-snap aria-hidden="true"></span>
+
+        <button type="button" class="gb__badge" data-gb-open>
+          <span class="gb__badgeFace">
+            <span class="gb__plus" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M12 6.5v11M6.5 12h11"
+                  stroke="currentColor"
+                  stroke-width="2.6"
+                  stroke-linecap="round"></path>
+              </svg>
+            </span>
+            <span class="gb__badgeLabel">Add yours</span>
+          </span>
+          <svg class="gb__globe gb__globe--badge" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"></circle>
+            <ellipse cx="12" cy="12" rx="4.1" ry="9"></ellipse>
+            <path d="M3.3 9h17.4M3.3 15h17.4"></path>
+          </svg>
+        </button>
+      </div>
+
+      {/* Handwriting 2 of 2 — the aside. Says why a guestbook is here at all,
+          in the one voice a heading can't use. */}
+      <p class="gb__aside gb__hand" aria-hidden="true">
+        Different people.<br />Same good energy.
+      </p>
+
+      {/* Inside the top grid rather than after it, sharing a row with the lower
+          half of the badge. Below the grid it would have to clear the badge's
+          full height, which opens a band of dead space the width of the page. */}
+      <div class="gb__wallHead">
+        <h3 class="gb__wallTitle">Who&rsquo;s been here?</h3>
+        <p class="gb__wallSub" data-gb-sub>
+          {
+            entries.length
+              ? 'Some kind people have already left a mark.'
+              : 'Nobody yet. The first card here is going to age well.'
+          }
+        </p>
+      </div>
+    </div>
+
+    <ul class="gb__wall" data-gb-wall>
+      {
+        shown.map((e, i) => (
+          <li class={`gb__card gb__card--${i % 4}`}>
+            <p class="gb__cardName">{e.name}</p>
+            <p class="gb__cardDate">{stamp(e.date)}</p>
+            <span class="gb__chip">{e.reason}</span>
+            {e.note && <p class="gb__cardNote">{e.note}</p>}
+            <span class="gb__cardFoot">
+              {e.sign && (
+                <svg class="gb__ink" viewBox="0 0 100 40" aria-hidden="true">
+                  <path d={e.sign} />
+                </svg>
+              )}
+              <svg class="gb__globe" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <ellipse cx="12" cy="12" rx="4.1" ry="9" />
+                <path d="M3.3 9h17.4M3.3 15h17.4" />
+              </svg>
+            </span>
+          </li>
+        ))
+      }
+
+      {/* Nothing signed yet. A dashed slot rather than an empty row, so the
+          wall still reads as a wall and the invitation is where the first card
+          will be. Removed the moment a real entry arrives. */}
+      {entries.length === 0 && (
+        <li class="gb__empty" data-gb-empty>
+          <span class="gb__emptyPlus" aria-hidden="true">+</span>
+          <p class="gb__emptyCopy">Yours could be the first one here.</p>
+        </li>
+      )}
+
+      {/* The overflow card. Not a link yet — the wall page doesn't exist, and a
+          card with an arrow that goes nowhere is worse than no card. */}
+      <li class="gb__count" data-gb-count hidden={rest === 0}>
+        <span class="gb__countDots" aria-hidden="true"><i></i><i></i><i></i></span>
+        <p class="gb__countNum" data-gb-count-num>+ {rest} others</p>
+        <p class="gb__countCopy">People from around the world have left a mark too.</p>
+      </li>
+    </ul>
+
+    <p class="gb__foot">
+      <span>Thanks for stopping by</span>
+      <i class="gb__rule" aria-hidden="true"></i>
+      <span>Same curiosity. Different paths.</span>
+    </p>
+  </div>
+</section>
+
+{/* ------------------------------- the note -------------------------------
+    The form is the second half of the reference: a visitor note you fill in
+    by hand. Ruled lines instead of input boxes, Caveat for everything the
+    visitor types, and the labels set in the same small caps as the rest of the
+    section. A native <dialog> so Escape, focus trapping and the backdrop are
+    the browser's problem rather than three more listeners. */}
+<dialog class="gbd" data-gb-dlg aria-labelledby="gbd-title">
+  <form class="gbd__note" method="dialog" data-gb-form>
+    <div class="gbd__head">
+      <span>Portfolio</span>
+      <span>Visitor note</span>
+    </div>
+
+    <h2 class="sr" id="gbd-title">Sign the guestbook</h2>
+
+    <label class="gbd__row">
+      <span class="gbd__label">Your name</span>
+      <input
+        class="gbd__in"
+        name="name"
+        type="text"
+        maxlength="24"
+        required
+        autocomplete="name"
+        placeholder="Alex"
+      />
+    </label>
+
+    <label class="gbd__row">
+      <span class="gbd__label">You&rsquo;re here to</span>
+      <select class="gbd__in gbd__in--sel" name="reason" required>
+        {reasons.map((r) => <option value={r}>{r}</option>)}
+      </select>
+    </label>
+
+    <label class="gbd__row">
+      <span class="gbd__label">A quick note <i>(optional)</i></span>
+      <input
+        class="gbd__in"
+        name="note"
+        type="text"
+        maxlength="90"
+        placeholder="Love your work!"
+      />
+    </label>
+
+    <div class="gbd__row gbd__row--sign">
+      <span class="gbd__label">Sign here</span>
+      <div class="gbd__pad">
+        <canvas class="gbd__canvas" data-gb-pad width="640" height="200"></canvas>
+        <button type="button" class="gbd__clear" data-gb-clear>Clear</button>
+      </div>
+    </div>
+
+    <p class="gbd__err" data-gb-err hidden></p>
+
+    <div class="gbd__foot">
+      <p class="gbd__thanks">Thanks for<br />being here.</p>
+      <div class="gbd__acts">
+        <button type="button" class="gbd__ghost" data-gb-cancel>Cancel</button>
+        <button type="submit" class="gbd__go" data-gb-submit>Leave my mark</button>
+      </div>
+      <svg class="gb__globe" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"></circle>
+        <ellipse cx="12" cy="12" rx="4.1" ry="9"></ellipse>
+        <path d="M3.3 9h17.4M3.3 15h17.4"></path>
+      </svg>
+    </div>
+  </form>
+</dialog>
+
+{/* The card the client-side renderer clones. Keeping the shape here rather
+    than in a JS string means the markup exists once, and every user value
+    lands via textContent — so a name with a `<` in it is a name, not markup. */}
+<template data-gb-tpl>
+  <li class="gb__card">
+    <p class="gb__cardName"></p>
+    <p class="gb__cardDate"></p>
+    <span class="gb__chip"></span>
+    <p class="gb__cardNote"></p>
+    <span class="gb__cardFoot">
+      <svg class="gb__ink" viewBox="0 0 100 40" aria-hidden="true"><path /></svg>
+      <svg class="gb__globe" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" />
+        <ellipse cx="12" cy="12" rx="4.1" ry="9" />
+        <path d="M3.3 9h17.4M3.3 15h17.4" />
+      </svg>
+    </span>
+  </li>
+</template>
+
+<script>
+  /* ------------------------------------------------------------------ *
+   * Guestbook client. Three jobs: reveal the badge, run the signature
+   * pad, and keep the wall in step with the server.
+   * ------------------------------------------------------------------ */
+  /* Slots in the row. Mirrors `cols` in the component frontmatter — the two
+     have to agree or the wall reflows the moment the live list arrives. */
+  const COLS = 5;
+
+  const dlg = document.querySelector<HTMLDialogElement>('[data-gb-dlg]');
+  const form = document.querySelector<HTMLFormElement>('[data-gb-form]');
+  const wall = document.querySelector<HTMLUListElement>('[data-gb-wall]');
+  const tpl = document.querySelector<HTMLTemplateElement>('[data-gb-tpl]');
+  const countCard = document.querySelector<HTMLLIElement>('[data-gb-count]');
+  const countNum = document.querySelector<HTMLElement>('[data-gb-count-num]');
+  const sub = document.querySelector<HTMLElement>('[data-gb-sub]');
+  const err = document.querySelector<HTMLElement>('[data-gb-err]');
+  const pad = document.querySelector<HTMLCanvasElement>('[data-gb-pad]');
+
+  /* ---------------------------- signature pad ---------------------------- *
+   * Strokes are captured in canvas pixels, then normalised to a 100x40 box on
+   * submit so the card can draw them at any size. Points are thinned as they
+   * arrive — a slow signature otherwise produces a few thousand samples, and
+   * the whole charm of this is that it stays a couple of hundred bytes.       */
+  type Pt = { x: number; y: number };
+  let strokes: Pt[][] = [];
+  let drawing = false;
+
+  function padCtx() {
+    const ctx = pad?.getContext('2d');
+    if (!ctx || !pad) return null;
+    ctx.lineWidth = 3.2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#232838';
+    return ctx;
+  }
+
+  function repaint() {
+    const ctx = padCtx();
+    if (!ctx || !pad) return;
+    ctx.clearRect(0, 0, pad.width, pad.height);
+    for (const s of strokes) {
+      if (s.length < 2) continue;
+      ctx.beginPath();
+      ctx.moveTo(s[0].x, s[0].y);
+      for (let i = 1; i < s.length; i++) ctx.lineTo(s[i].x, s[i].y);
+      ctx.stroke();
+    }
+  }
+
+  function at(e: PointerEvent): Pt {
+    const r = pad!.getBoundingClientRect();
+    return {
+      x: ((e.clientX - r.left) / r.width) * pad!.width,
+      y: ((e.clientY - r.top) / r.height) * pad!.height,
+    };
+  }
+
+  if (pad) {
+    pad.addEventListener('pointerdown', (e) => {
+      drawing = true;
+      pad.setPointerCapture(e.pointerId);
+      strokes.push([at(e)]);
+      /* Stops the pen from scrolling the dialog out from under itself. */
+      e.preventDefault();
+    });
+
+    pad.addEventListener('pointermove', (e) => {
+      if (!drawing) return;
+      const s = strokes[strokes.length - 1];
+      const p = at(e);
+      const last = s[s.length - 1];
+      /* 2.5px of travel before a point counts. Below that it's tremor. */
+      if (Math.hypot(p.x - last.x, p.y - last.y) < 2.5) return;
+      s.push(p);
+      repaint();
+    });
+
+    const stop = () => {
+      drawing = false;
+    };
+    pad.addEventListener('pointerup', stop);
+    pad.addEventListener('pointercancel', stop);
+    pad.addEventListener('pointerleave', stop);
+  }
+
+  document.querySelector('[data-gb-clear]')?.addEventListener('click', () => {
+    strokes = [];
+    repaint();
+  });
+
+  /* Normalise to the 100x40 viewBox the cards use. Returns '' for anything too
+     slight to be a signature, so a stray tap doesn't become a scribble. */
+  function signPath(): string {
+    const pts = strokes.flat();
+    if (pts.length < 4 || !pad) return '';
+
+    const xs = pts.map((p) => p.x);
+    const ys = pts.map((p) => p.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const w = Math.max(maxX - minX, 1);
+    const h = Math.max(maxY - minY, 1);
+    /* Fit inside the box on the tighter axis so the signature keeps its own
+       proportions — stretching handwriting to fill a box is instantly wrong. */
+    const k = Math.min(100 / w, 40 / h);
+    const ox = (100 - w * k) / 2;
+    const oy = (40 - h * k) / 2;
+
+    const out = strokes
+      .filter((s) => s.length > 1)
+      .map(
+        (s) =>
+          'M' +
+          s
+            .map(
+              (p) =>
+                `${(ox + (p.x - minX) * k).toFixed(1)} ${(oy + (p.y - minY) * k).toFixed(1)}`,
+            )
+            .join('L'),
+      )
+      .join('');
+
+    return out.length > 1400 ? out.slice(0, out.lastIndexOf('L', 1400)) : out;
+  }
+
+  /* ------------------------------- dialog -------------------------------- */
+  function open() {
+    if (!dlg) return;
+    err && (err.hidden = true);
+    dlg.showModal();
+    /* Canvas has no layout until the dialog is shown, so the backing store is
+       sized here rather than at load — otherwise the first stroke lands at the
+       wrong scale. */
+    if (pad) {
+      const r = pad.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      pad.width = Math.round(r.width * dpr);
+      pad.height = Math.round(r.height * dpr);
+      const ctx = padCtx();
+      ctx?.scale(1, 1);
+      repaint();
+    }
+  }
+
+  document.querySelector('[data-gb-open]')?.addEventListener('click', (e) => {
+    /* A drag that ends on the badge still fires a click. Suppress it, or every
+       throw of the lanyard opens the form. */
+    if (dragged) return;
+    open();
+  });
+  document.querySelector('[data-gb-cancel]')?.addEventListener('click', () => dlg?.close());
+
+  /* Click on the backdrop — the dialog element itself, since the note inside
+     is a child that stops the event reaching here. */
+  dlg?.addEventListener('click', (e) => {
+    if (e.target === dlg) dlg.close();
+  });
+
+  /* ------------------------------ the lanyard -----------------------------
+   * The badge hangs off a rope and can be grabbed and thrown.
+   *
+   * This is a two-point verlet rope: the pivot is pinned, the badge's slot is
+   * the free end, and every frame it integrates velocity, applies gravity and
+   * a little wind, then snaps the end back onto a circle of radius L around the
+   * pivot. That constraint IS the rope — no springs to tune, no drift.
+   *
+   * Deliberately not React Bits' Lanyard: that one is react-three-fiber plus
+   * rapier's WASM physics for a card that hangs on a string, and it would put
+   * React, three and a physics engine on a page that currently ships almost no
+   * JavaScript — to render a badge whose face has to be a 3D texture, which
+   * would cost the crisp type, the hover reveal and the real <button>. Same
+   * gesture, about a hundred lines, no dependencies, and the badge stays HTML.
+   */
+  const hang = document.querySelector<HTMLElement>('[data-gb-hang]');
+  const badge = document.querySelector<HTMLElement>('[data-gb-open]');
+  const rope = document.querySelector<SVGPathElement>('[data-gb-rope]');
+  const snap = document.querySelector<HTMLElement>('[data-gb-snap]');
+
+  let dragged = false;
+
+  /* Mouse only. On a touchscreen the badge is a 246px target in the middle of
+     the scroll path, and claiming its gestures for a toy would cost people the
+     ability to scroll past the section. */
+  const fine = window.matchMedia('(pointer: fine)').matches;
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (hang && badge && rope && snap && fine && !still) {
+    const PIVOT_X = 150;   // stage coordinates, matching the strap viewBox
+    const L = 92;          // rope length; the badge's rest offset from the pivot
+    const GRAVITY = 0.85;
+    const DAMP = 0.978;
+
+    let x = PIVOT_X;
+    let y = L;
+    let px = x;
+    let py = y;
+    let grabbing = false;
+    let grabDX = 0;
+    let grabDY = 0;
+    let t = 0;
+    let running = false;
+
+    const paint = () => {
+      const dx = x - PIVOT_X;
+      const dy = y;
+      const ang = (Math.atan2(dx, dy) * 180) / Math.PI;
+      badge.style.transform = `translate(${dx.toFixed(2)}px, ${dy.toFixed(2)}px) rotate(${ang.toFixed(2)}deg)`;
+      rope.setAttribute('d', `M${PIVOT_X} 0L${x.toFixed(2)} ${y.toFixed(2)}`);
+      snap.style.transform = `translate(${dx.toFixed(2)}px, ${dy.toFixed(2)}px)`;
+    };
+
+    const step = () => {
+      if (!running) return;
+      t += 0.016;
+
+      if (!grabbing) {
+        const vx = (x - px) * DAMP;
+        const vy = (y - py) * DAMP;
+        px = x;
+        py = y;
+        x += vx;
+        y += vy + GRAVITY;
+        /* A breath of wind, so a badge nobody has touched still has a pulse.
+           Two detuned sines so the sway never repeats on an obvious beat. */
+        x += Math.sin(t * 0.7) * 0.05 + Math.sin(t * 1.9) * 0.02;
+      }
+
+      /* The rope: pull the free end back onto the circle of radius L. */
+      const dx = x - PIVOT_X;
+      const dy = y;
+      const d = Math.hypot(dx, dy) || 1;
+      const k = L / d;
+      x = PIVOT_X + dx * k;
+      y = dy * k;
+
+      paint();
+      requestAnimationFrame(step);
+    };
+
+    const start = () => {
+      if (running) return;
+      running = true;
+      requestAnimationFrame(step);
+    };
+    const stop = () => {
+      running = false;
+    };
+
+    badge.addEventListener('pointerdown', (e) => {
+      grabbing = true;
+      dragged = false;
+      badge.setPointerCapture(e.pointerId);
+      const r = hang.getBoundingClientRect();
+      grabDX = e.clientX - r.left - x;
+      grabDY = e.clientY - r.top - y;
+      start();
+    });
+
+    badge.addEventListener('pointermove', (e) => {
+      if (!grabbing) return;
+      const r = hang.getBoundingClientRect();
+      const nx = e.clientX - r.left - grabDX;
+      const ny = e.clientY - r.top - grabDY;
+      /* Six pixels of travel is the line between a click and a throw. */
+      if (!dragged && Math.hypot(nx - x, ny - y) > 6) dragged = true;
+      /* Previous position trails the new one, so releasing mid-swipe hands the
+         rope the velocity the hand actually had. */
+      px = x;
+      py = y;
+      x = nx;
+      y = ny;
+    });
+
+    const release = () => {
+      grabbing = false;
+      /* Cleared after the click event that follows pointerup has been and gone. */
+      setTimeout(() => {
+        dragged = false;
+      }, 0);
+    };
+    badge.addEventListener('pointerup', release);
+    badge.addEventListener('pointercancel', release);
+
+    /* Tells the stylesheet that `transform` is now the script's to set. */
+    hang.classList.add('is-live');
+    paint();
+
+    /* No reason to integrate a rope nobody is looking at. */
+    new IntersectionObserver(
+      ([entry]) => (entry.isIntersecting ? start() : stop()),
+      { rootMargin: '120px' },
+    ).observe(hang);
+  } else if (hang && rope && snap) {
+    /* Reduced motion, or a touchscreen: draw the rope once and leave it. */
+    rope.setAttribute('d', 'M150 0L150 92');
+  }
+
+  /* --------------------------------- wall -------------------------------- */
+  const STAMP: Intl.DateTimeFormatOptions = {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  };
+
+  function card(e: { name: string; reason: string; note?: string; sign?: string; date: string }) {
+    const node = (tpl!.content.cloneNode(true) as DocumentFragment)
+      .firstElementChild as HTMLElement;
+
+    node.querySelector('.gb__cardName')!.textContent = e.name;
+    node.querySelector('.gb__cardDate')!.textContent = new Date(e.date)
+      .toLocaleDateString('en-GB', STAMP)
+      .toUpperCase();
+    node.querySelector('.gb__chip')!.textContent = e.reason;
+
+    const note = node.querySelector<HTMLElement>('.gb__cardNote')!;
+    if (e.note) note.textContent = e.note;
+    else note.remove();
+
+    const ink = node.querySelector<SVGElement>('.gb__ink')!;
+    if (e.sign) ink.querySelector('path')!.setAttribute('d', e.sign);
+    else ink.remove();
+
+    return node;
+  }
+
+  function render(entries: any[], total: number) {
+    if (!wall || !tpl) return;
+    /* An empty answer is not news. The store being unconfigured, empty, or
+       briefly unreachable all look the same from here, and in every one of
+       those cases the cards already on the page are the best available truth —
+       so leave them alone rather than blanking the wall. */
+    if (!entries.length) return;
+
+    document.querySelector('[data-gb-empty]')?.remove();
+    wall.querySelectorAll('.gb__card').forEach((n) => n.remove());
+
+    const show = total <= COLS ? entries.slice(0, COLS) : entries.slice(0, COLS - 1);
+    const frag = document.createDocumentFragment();
+    show.forEach((e, i) => {
+      const n = card(e);
+      n.classList.add(`gb__card--${i % 4}`);
+      frag.appendChild(n);
+    });
+    wall.prepend(frag);
+
+    const rest = Math.max(0, total - show.length);
+    if (countCard) countCard.hidden = rest === 0;
+    if (countNum) countNum.textContent = `+ ${rest} others`;
+    if (sub && total) sub.textContent = 'Some kind people have already left a mark.';
+  }
+
+  /* Pull the live list once the section is worth showing. The build-time cards
+     are already on screen, so a failure here changes nothing visible. */
+  fetch('/api/guestbook')
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => d && render(d.entries ?? [], d.total ?? 0))
+    .catch(() => {});
+
+  /* -------------------------------- submit ------------------------------- */
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.querySelector<HTMLButtonElement>('[data-gb-submit]');
+    const data = new FormData(form);
+
+    const body = {
+      name: String(data.get('name') ?? '').trim(),
+      reason: String(data.get('reason') ?? ''),
+      note: String(data.get('note') ?? '').trim(),
+      sign: signPath(),
+    };
+
+    if (!body.name) return;
+
+    btn && (btn.disabled = true);
+    btn && (btn.textContent = 'Signing…');
+
+    try {
+      const res = await fetch('/api/guestbook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const out = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        if (err) {
+          err.textContent = out.error ?? 'That did not go through. Try again in a moment.';
+          err.hidden = false;
+        }
+        return;
+      }
+
+      render(out.entries ?? [], out.total ?? 0);
+      dlg?.close();
+      form.reset();
+      strokes = [];
+      repaint();
+    } catch {
+      if (err) {
+        err.textContent = 'No connection. Try again in a moment.';
+        err.hidden = false;
+      }
+    } finally {
+      btn && (btn.disabled = false);
+      btn && (btn.textContent = 'Leave my mark');
+    }
+  });
+</script>
