@@ -4211,15 +4211,12 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
    re-renders itself from `/api/guestbook` — cards built in JS never carry
    Astro's scoping attribute, so scoped rules would style the build-time cards
    and skip the live ones.
-
-   The section sits on light grey. Everything above it is white, and the change
-   of ground is what says "the reading is over, this part is yours".
    ========================================================================= */
 .gb {
   position: relative;
   z-index: 3;
-  background: #f1f1f3;
-  padding: 96px 8% 104px;
+  background: #fff;
+  padding: 40px 8% 110px;
   color: #0b0d12;
 }
 .gb__wrap { max-width: 1180px; margin: 0 auto; }
@@ -4229,7 +4226,7 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   display: flex;
   align-items: center;
   gap: 14px;
-  margin: 0 0 34px;
+  margin: 0 0 26px;
   font-family: "Inter", "Nunito", system-ui, sans-serif;
   font-size: 12px;
   font-weight: 500;
@@ -4238,42 +4235,39 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   color: #7b7f8c;
 }
 .gb__eyebrow span { color: #0b0d12; }
-.gb__eyebrow i { width: 26px; height: 1px; background: #b7bac3; }
+.gb__eyebrow i { width: 26px; height: 1px; background: #c8cbd3; }
 
-/* -- top band: intro / badge / aside -- */
-/* Two rows, and the badge spans both: intro and aside on the top row, the wall
+/* -- top band: intro / pass / aside --
+   Two rows, and the pass spans both: intro and aside on the top row, the wall
    heading tucked under the intro on the second. That's what lets the heading
-   sit level with the badge's lower half instead of below its shadow. */
+   sit level with the pass's lower half instead of below its shadow. */
 .gb__top {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(140px, 0.42fr);
+  grid-template-columns: minmax(0, 1fr) auto minmax(130px, 0.34fr);
   grid-template-rows: auto auto;
   align-items: start;
-  gap: 40px;
-  /* The strap hangs from the top edge of the band, so the badge column needs
-     room above it that the text columns don't. */
-  padding-top: 4px;
+  gap: 36px;
 }
 .gb__intro { grid-column: 1; grid-row: 1; }
-.gb__hang  { grid-column: 2; grid-row: 1 / span 2; }
+.gb__passWrap { grid-column: 2; grid-row: 1 / span 2; }
 .gb__aside { grid-column: 3; grid-row: 1; }
 .gb__wallHead { grid-column: 1; grid-row: 2; align-self: end; }
 
+/* Same size and setting as `.work__title` and the testimonials heading. This is
+   a section like any other on the page, and a display size of its own would
+   make it read as a different site. */
 .gb__title {
   margin: 0;
   font-family: "Bebas Neue", "Nunito", sans-serif;
   font-weight: 400;
-  /* Written in sentence case in the markup and uppercased here — Bebas has no
-     lowercase, and typing it in caps would shout in every fallback font. */
-  text-transform: uppercase;
-  font-size: clamp(56px, 7.4vw, 104px);
-  line-height: 0.87;
-  letter-spacing: 0.5px;
+  font-size: 64px;
+  line-height: 1;
+  letter-spacing: 1px;
   color: #0b0d12;
 }
 .gb__lead {
-  max-width: 30ch;
-  margin: 22px 0 0;
+  max-width: 34ch;
+  margin: 16px 0 0;
   font-size: 17px;
   line-height: 1.6;
   color: #4a4f5c;
@@ -4291,218 +4285,217 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   display: flex;
   align-items: flex-end;
   gap: 4px;
-  margin: 26px 0 0;
+  margin: 22px 0 0;
 }
 .gb__arrow {
-  width: 116px;
-  height: 56px;
+  width: 104px;
+  height: 50px;
   flex: 0 0 auto;
   color: #2a2f3a;
-  /* The arrow is drawn pointing down-right; the section reads left to right, so
-     it leans back a touch to aim at the badge rather than at the floor. */
+  /* Drawn pointing down-right; the section reads left to right, so it leans
+     back a touch to aim at the pass rather than at the floor. */
   transform: rotate(-4deg);
 }
-.gb__cue .gb__hand {
-  font-size: 26px;
-  line-height: 1.1;
-  padding-bottom: 16px;
-  rotate: -5deg;
-}
+.gb__cue .gb__hand { font-size: 25px; line-height: 1.1; padding-bottom: 14px; rotate: -5deg; }
 
 .gb__aside {
-  margin: 12px 0 0;
-  font-size: 27px;
+  margin: 6px 0 0;
+  font-size: 25px;
   line-height: 1.22;
   rotate: -4deg;
   justify-self: start;
 }
 
-/* -- the lanyard --
-   A stage, not a stack. The strap, the snap and the badge are all positioned
-   against the same origin — the pivot at (150, 0) — because the swing script
-   moves all three together and a flex column has nothing to move. */
-.gb__hang {
+/* ------------------------------- the pass --------------------------------
+   Blank at rest: no plus, no label, just the card and the star field printed on
+   it. The plus and the label live at opacity 0 and only arrive on hover or
+   keyboard focus. Nothing about the resting state says "button", which is the
+   point — the reader finds it rather than being sold it. */
+.gb__passWrap {
+  /* The perspective belongs to the parent, not the card: on the card itself it
+     is applied after the rotation and the lean flattens out. */
+  perspective: 900px;
+  width: 380px;
+}
+
+.gb__pass {
   position: relative;
-  width: 300px;
-  /* rope (92) + badge (314). */
-  height: 406px;
-  /* Pulled up so the strap crosses the top of the section, the way a lanyard
-     disappears behind whoever is wearing it. Deliberately less overhang than it
-     wants: any further and it reaches the fixed nav pill, and a strap emerging
-     from behind the navigation reads as a z-index accident rather than depth. */
-  margin-top: -54px;
-}
-
-.gb__strap {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 300px;
-  height: 200px;
-  /* 1:1 with the viewBox, so stroke-width is literal pixels and the ribbon
-     keeps its width whatever angle it is thrown to. */
-  overflow: visible;
-  filter: drop-shadow(0 8px 16px rgba(0, 41, 122, 0.24));
-  pointer-events: none;
-}
-
-/* The snap fastener where the strap meets the badge. Centred on the rope's free
-   end, so half of it sits proud of the badge's top edge and half disappears
-   behind it — which is what makes the strap read as threaded through rather
-   than stuck on. */
-.gb__snap {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  width: 15px;
-  height: 15px;
-  margin: -7px auto 0;
-  border-radius: 50%;
-  background: radial-gradient(circle at 34% 30%, #ffffff, #c3cbd8 58%, #8e98aa);
-  box-shadow: 0 1px 3px rgba(10, 20, 50, 0.4);
-  pointer-events: none;
-  /* Rest position, overwritten every frame once the swing script is live. */
-  transform: translate(0, 92px);
-}
-
-/* -- the badge --
-   Blank at rest. The plus and the label live at opacity 0 and only arrive on
-   hover or keyboard focus. Nothing about the resting state says "button",
-   which is the point: the reader finds it rather than being sold it. */
-.gb__badge {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
   display: block;
-  width: 246px;
-  height: 314px;
-  /* left/right 0 with a width and auto side margins centres it on the pivot, so
-     the badge stays centred when its width changes at the breakpoint without
-     the script needing to know. */
-  margin: 0 auto;
+  width: 380px;
+  height: 238px;
   padding: 0;
-  border: 0;
+  border: 1px solid #dcdfe6;
+  border-radius: 18px;
   cursor: pointer;
-  /* Every rotation is about the slot the strap threads through — the one point
-     on the badge that doesn't move when it swings. */
-  transform-origin: 50% 0;
-  border-radius: 16px;
-  background: linear-gradient(168deg, #ffffff 0%, #f7f8fa 60%, #eef0f4 100%);
+  overflow: hidden;
+  /* Grey, where the signed cards below are white. On a white section a white
+     card with a hairline reads as a hole in the page; and the tonal split says
+     the thing before you fill it in is not the same object as the ones people
+     have already filled in. */
+  background: linear-gradient(158deg, #f7f8fa 0%, #f3f5f8 60%, #eceff4 100%);
   box-shadow:
-    0 2px 4px rgba(20, 28, 56, 0.07),
-    0 22px 48px rgba(20, 28, 56, 0.16);
-  transition: box-shadow 0.5s ease;
-  /* Rest pose, and the only pose on a touchscreen or under reduced motion. A
-     card on a strap is never quite straight. */
-  transform: translate(0, 92px) rotate(1.4deg);
+    0 2px 4px rgba(20, 28, 56, 0.05),
+    0 20px 44px rgba(20, 28, 56, 0.10);
+  /* The tilt script owns `transform`; this is the rest pose and the only pose
+     on a touchscreen or under reduced motion. */
+  transform: rotateX(0deg) rotateY(0deg) scale(1);
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition: box-shadow 0.4s ease;
 }
+.gb__pass:hover,
+.gb__pass:focus-visible {
+  box-shadow:
+    0 2px 4px rgba(20, 28, 56, 0.05),
+    0 30px 64px rgba(20, 28, 56, 0.17);
+}
+.gb__pass:focus-visible { outline: 2px solid var(--blue-500); outline-offset: 6px; }
 
-/* While the rope is being integrated, `transform` belongs to the script — so
-   the hover lift is scoped to the static case, where nothing else claims it.
-   The reveal of the plus and the label is the hover response either way. */
-.gb__hang.is-live .gb__badge { cursor: grab; transition: box-shadow 0.5s ease; }
-.gb__hang.is-live .gb__badge:active { cursor: grabbing; }
-.gb__hang:not(.is-live) .gb__badge {
-  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.5s ease;
-}
-.gb__hang:not(.is-live) .gb__badge:hover,
-.gb__hang:not(.is-live) .gb__badge:focus-visible {
-  transform: translate(0, 86px) rotate(0deg);
-}
-/* The punched slot the strap threads through. */
-.gb__badge::before {
-  content: '';
+/* -- the unfilled pass -- */
+.gb__ghost {
   position: absolute;
-  top: 16px;
-  left: 50%;
-  width: 62px;
-  height: 11px;
-  translate: -50% 0;
-  border-radius: 6px;
-  background: #e2e5ec;
-  box-shadow: inset 0 1px 2px rgba(20, 28, 56, 0.22);
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 22px 18px;
+  text-align: left;
+  color: #9aa0ad;
+  transition: opacity 0.32s ease;
 }
-
-.gb__badge:hover,
-.gb__badge:focus-visible {
-  box-shadow:
-    0 2px 4px rgba(20, 28, 56, 0.06),
-    0 30px 64px rgba(20, 28, 56, 0.2);
+.gb__ghostTop { display: flex; align-items: baseline; justify-content: space-between; }
+.gb__ghostMark {
+  font-family: "Bebas Neue", "Nunito", sans-serif;
+  font-size: 17px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #868d9b;
 }
-.gb__badge:focus-visible { outline: 2px solid var(--blue-500); outline-offset: 6px; }
+.gb__ghostNo,
+.gb__ghostRow i,
+.gb__ghostSign i {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 9.5px;
+  font-style: normal;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+/* Label over an empty rule — the shape of a field waiting for an answer. */
+.gb__ghostRow {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 18px;
+  max-width: 168px;
+}
+.gb__ghostRow em { height: 1px; background: currentColor; opacity: 0.4; }
+.gb__ghostSign {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  margin-top: auto;
+  max-width: 168px;
+}
+.gb__ghostSign em { flex: 1; height: 1px; background: currentColor; opacity: 0.4; }
 
-.gb__badgeFace {
+/* Hover hands the middle of the card to the call to action. */
+.gb__pass:hover .gb__ghost,
+.gb__pass:focus-visible .gb__ghost { opacity: 0.3; }
+
+.gb__passFace {
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  gap: 16px;
   opacity: 0;
   /* Rises as it arrives, so the reveal reads as the card answering rather than
      as a tooltip appearing. */
   translate: 0 8px;
-  transition: opacity 0.34s ease, translate 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 0.32s ease, translate 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.gb__badge:hover .gb__badgeFace,
-.gb__badge:focus-visible .gb__badgeFace { opacity: 1; translate: 0 0; }
+.gb__pass:hover .gb__passFace,
+.gb__pass:focus-visible .gb__passFace { opacity: 1; translate: 0 0; }
 
 .gb__plus {
   display: grid;
   place-items: center;
-  width: 62px;
-  height: 62px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   color: #fff;
   background: var(--blue-500);
-  box-shadow: 0 8px 20px rgba(0, 89, 255, 0.34);
+  box-shadow: 0 8px 20px rgba(0, 89, 255, 0.32);
 }
-.gb__plus svg { width: 26px; height: 26px; }
+.gb__plus svg { width: 24px; height: 24px; }
 
-.gb__badgeLabel {
+.gb__passLabel {
   font-family: "Inter", "Nunito", system-ui, sans-serif;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
   letter-spacing: 2.6px;
   text-transform: uppercase;
   color: var(--blue-500);
 }
 
-/* -- globe mark, shared by badge, cards and the note -- */
+/* ------------------------------ the ASCII --------------------------------
+   The constellation printed on the card. Set in a mono stack because the
+   rasteriser assumes a fixed advance width — in a proportional face the figure
+   shears. Low contrast on purpose: it is the paper's pattern, not content, and
+   it sits under everything the card actually says. */
+.gb__ascii {
+  position: absolute;
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  white-space: pre;
+  pointer-events: none;
+  user-select: none;
+  color: #0b0d12;
+  opacity: 0.16;
+}
+.gb__ascii--blank {
+  right: -14px;
+  top: 50%;
+  translate: 0 -50%;
+  font-size: 10px;
+  line-height: 1.14;
+  opacity: 0.34;
+  color: #79808f;
+}
+
+/* -- globe mark, shared by the pass and the cards -- */
 .gb__globe {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   fill: none;
   stroke: #0b0d12;
   stroke-width: 1.5;
   flex: 0 0 auto;
 }
-.gb__globe--badge { position: absolute; right: 20px; bottom: 18px; opacity: 0.75; }
+.gb__globe--pass { position: absolute; right: 18px; bottom: 16px; opacity: 0.6; }
 
-/* -- wall heading -- */
-.gb__wallHead { margin: 0 0 30px; }
+/* -- wall heading --
+   A step below the section title, not a peer of it. */
+.gb__wallHead { margin: 0 0 28px; }
 .gb__wallTitle {
   margin: 0;
   font-family: "Bebas Neue", "Nunito", sans-serif;
   font-weight: 400;
-  text-transform: uppercase;
-  font-size: 42px;
+  font-size: 30px;
   line-height: 1;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.8px;
 }
 .gb__wallSub {
-  margin: 10px 0 0;
+  margin: 9px 0 0;
   font-family: "Inter", "Nunito", system-ui, sans-serif;
   font-size: 12.5px;
   letter-spacing: 1.1px;
   text-transform: uppercase;
-  color: #7b7f8c;
+  color: #8d919c;
 }
 
-/* -- the wall -- */
+/* -------------------------------- the wall ------------------------------- */
 .gb__wall {
   list-style: none;
   margin: 0;
@@ -4514,21 +4507,36 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
      minmax(0,1fr) rather than 1fr so a long unbroken note can't widen a track. */
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: stretch;
-  gap: 20px;
+  gap: 18px;
 }
 
 .gb__card {
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 244px;
-  padding: 20px 20px 16px;
+  min-height: 248px;
+  padding: 18px 18px 15px;
+  overflow: hidden;
   background: #fff;
-  border-radius: 12px;
-  box-shadow:
-    0 1px 2px rgba(20, 28, 56, 0.06),
-    0 10px 26px rgba(20, 28, 56, 0.09);
+  /* On a white ground a shadow alone leaves the card edgeless in the top half,
+     where the shadow has nothing to fall on. The hairline draws the card; the
+     shadow lifts it. */
+  border: 1px solid #e4e6ec;
+  border-radius: 14px;
+  box-shadow: 0 8px 22px rgba(20, 28, 56, 0.07);
   transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease;
+}
+/* Centred, filling most of the card, with no dust — the figure's own lines are
+   sparse enough to sit under handwriting without fighting it, which a field of
+   specks is not. */
+.gb__card .gb__ascii {
+  inset: 30px 8px 34px;
+  display: grid;
+  place-content: center;
+  font-size: 8.5px;
+  line-height: 1.16;
+  opacity: 0.26;
+  color: #5f6675;
 }
 /* Same trick as the notes board: a fixed tilt per index, so the row reads as
    cards someone laid down rather than as a grid. Small enough here that the
@@ -4540,13 +4548,23 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
 .gb__card:hover {
   rotate: 0deg;
   transform: translateY(-5px);
-  box-shadow:
-    0 1px 2px rgba(20, 28, 56, 0.05),
-    0 18px 40px rgba(20, 28, 56, 0.14);
+  box-shadow: 0 18px 38px rgba(20, 28, 56, 0.13);
+}
+
+/* The pass serial. Top-right, mono, quiet — a number on a card is furniture. */
+.gb__no {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.4px;
+  color: #b3b6bf;
 }
 
 .gb__cardName {
   margin: 0;
+  padding-right: 52px;   /* clears the serial */
   font-family: "Bebas Neue", "Nunito", sans-serif;
   font-weight: 400;
   font-size: 24px;
@@ -4559,98 +4577,79 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
 }
 .gb__cardDate {
   margin: 6px 0 0;
-  font-family: "Inter", "Nunito", system-ui, sans-serif;
-  font-size: 11px;
-  letter-spacing: 1.2px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.6px;
   color: #9498a4;
 }
 
 .gb__chip {
   align-self: flex-start;
-  margin-top: 12px;
-  padding: 4px 11px;
-  border: 1px solid rgba(0, 89, 255, 0.35);
+  margin-top: 11px;
+  padding: 3px 10px;
+  border: 1px solid rgba(0, 89, 255, 0.32);
   border-radius: 999px;
   font-family: "Inter", "Nunito", system-ui, sans-serif;
-  font-size: 11.5px;
+  font-size: 11px;
   line-height: 1.5;
   color: var(--blue-500);
-  background: rgba(0, 89, 255, 0.05);
+  background: rgba(0, 89, 255, 0.045);
 }
 
 .gb__cardNote {
-  margin: 18px 0 0;
+  position: relative;   /* over the ASCII, not under it */
+  margin: 16px 0 0;
   font-family: "Caveat", "Segoe Script", cursive;
   font-weight: 500;
-  font-size: 21px;
+  font-size: 20px;
   line-height: 1.4;
   color: #232838;
   overflow-wrap: anywhere;
 }
 
 .gb__cardFoot {
+  position: relative;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   /* Pins the foot to the bottom whatever the note's length. */
   margin-top: auto;
-  padding-top: 18px;
+  padding-top: 16px;
+}
+/* X ______ — the ruled line you sign over on a real pass. Drawn even when
+   there is no signature, because the empty line is what makes the card read as
+   a document rather than as a quote card. */
+.gb__sig {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+  border-bottom: 1px solid #dcdee4;
+  padding-bottom: 2px;
+}
+.gb__sig i {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  font-style: normal;
+  color: #b3b6bf;
+  padding-bottom: 1px;
 }
 .gb__ink {
-  width: 72px;
-  height: 29px;
+  width: 66px;
+  height: 26px;
   fill: none;
   stroke: #232838;
   stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
   opacity: 0.85;
+  /* Sits on the rule rather than above it, the way ink does. */
+  margin-bottom: -5px;
 }
-.gb__cardFoot .gb__globe { margin-left: auto; opacity: 0.7; }
-
-/* -- overflow card -- */
-/* `hidden` is a presentation hint and loses to any display declaration, which
-   is exactly what this rule is — so it has to be turned off explicitly. */
-.gb__count[hidden] { display: none; }
-.gb__count {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  min-height: 244px;
-  padding: 20px;
-  border: 1.5px dashed #c2c5cd;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.4);
-}
-.gb__countDots { display: flex; }
-.gb__countDots i {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--blue-300);
-  opacity: 0.55;
-}
-.gb__countDots i + i { margin-left: -9px; }
-.gb__countNum {
-  margin: 16px 0 0;
-  font-family: "Bebas Neue", "Nunito", sans-serif;
-  font-weight: 400;
-  font-size: 26px;
-  letter-spacing: 0.6px;
-}
-.gb__countCopy {
-  max-width: 22ch;
-  margin: 8px 0 0;
-  font-family: "Inter", "Nunito", system-ui, sans-serif;
-  font-size: 11.5px;
-  line-height: 1.55;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  color: #8d919c;
-}
+.gb__cardFoot .gb__globe { opacity: 0.6; }
 
 /* -- empty state -- */
 .gb__empty {
@@ -4659,11 +4658,10 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   align-items: center;
   justify-content: center;
   gap: 12px;
-  min-height: 244px;
+  min-height: 248px;
   padding: 20px;
-  border: 1.5px dashed #c9ccd4;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.4);
+  border: 1.5px dashed #d5d7de;
+  border-radius: 14px;
 }
 .gb__emptyPlus {
   display: grid;
@@ -4671,7 +4669,7 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  border: 1.5px dashed #b9bcc6;
+  border: 1.5px dashed #c4c7d0;
   font-family: "Inter", "Nunito", system-ui, sans-serif;
   font-size: 17px;
   line-height: 1;
@@ -4688,19 +4686,61 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   color: #9498a4;
 }
 
+/* -- overflow card --
+   `hidden` is a presentation hint and loses to any display declaration, which
+   is exactly what this rule is — so it has to be turned off explicitly. */
+.gb__count[hidden] { display: none; }
+.gb__count {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  min-height: 248px;
+  padding: 20px;
+  border: 1.5px dashed #d5d7de;
+  border-radius: 14px;
+}
+.gb__countDots { display: flex; }
+.gb__countDots i {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--blue-300);
+  opacity: 0.5;
+}
+.gb__countDots i + i { margin-left: -8px; }
+.gb__countNum {
+  margin: 15px 0 0;
+  font-family: "Bebas Neue", "Nunito", sans-serif;
+  font-weight: 400;
+  font-size: 25px;
+  letter-spacing: 0.6px;
+}
+.gb__countCopy {
+  max-width: 22ch;
+  margin: 8px 0 0;
+  font-family: "Inter", "Nunito", system-ui, sans-serif;
+  font-size: 11px;
+  line-height: 1.55;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #a0a4ad;
+}
+
 /* -- closing rule -- */
 .gb__foot {
   display: flex;
   align-items: center;
   gap: 22px;
-  margin: 72px 0 0;
+  margin: 64px 0 0;
   font-family: "Inter", "Nunito", system-ui, sans-serif;
   font-size: 11.5px;
   letter-spacing: 1.3px;
   text-transform: uppercase;
-  color: #8d919c;
+  color: #a0a4ad;
 }
-.gb__rule { flex: 1; height: 1px; background: #cfd2d9; }
+.gb__rule { flex: 1; height: 1px; background: #e4e6eb; }
 
 /* =============================== the note ================================ */
 .gbd {
@@ -4714,8 +4754,8 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
 
 .gbd__note {
   position: relative;
-  padding: 30px 34px 26px;
-  border-radius: 14px;
+  padding: 28px 32px 24px;
+  border-radius: 16px;
   background: #fdfdfc;
   box-shadow: 0 32px 80px rgba(10, 16, 38, 0.34);
   /* The taped-up note from the reference, minus the tape: a slight lean is
@@ -4739,7 +4779,7 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   grid-template-columns: 118px minmax(0, 1fr);
   align-items: baseline;
   gap: 16px;
-  margin-top: 24px;
+  margin-top: 20px;
 }
 .gbd__label {
   font-family: "Inter", "Nunito", system-ui, sans-serif;
@@ -4783,7 +4823,7 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
 .gbd__canvas {
   display: block;
   width: 100%;
-  height: 96px;
+  height: 88px;
   border-bottom: 1.5px solid #d7dae1;
   cursor: crosshair;
   /* Without this the pen drags the page on a touchscreen instead of drawing. */
@@ -4806,18 +4846,13 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
 .gbd__clear:hover { color: var(--blue-500); }
 
 .gbd__err {
-  margin: 18px 0 0;
+  margin: 16px 0 0;
   font-family: "Inter", "Nunito", system-ui, sans-serif;
   font-size: 13px;
   color: #c0392b;
 }
 
-.gbd__foot {
-  display: flex;
-  align-items: flex-end;
-  gap: 18px;
-  margin-top: 30px;
-}
+.gbd__foot { display: flex; align-items: flex-end; gap: 18px; margin-top: 26px; }
 .gbd__thanks {
   margin: 0;
   font-family: "Inter", "Nunito", system-ui, sans-serif;
@@ -4836,15 +4871,9 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   font-family: "Inter", "Nunito", system-ui, sans-serif;
   font-size: 13px;
   font-weight: 500;
-  letter-spacing: 0.2px;
   transition: background 0.2s ease, color 0.2s ease, opacity 0.2s ease;
 }
-.gbd__ghost {
-  padding: 10px 14px;
-  border: 0;
-  background: none;
-  color: #7b7f8c;
-}
+.gbd__ghost { padding: 10px 14px; border: 0; background: none; color: #7b7f8c; }
 .gbd__ghost:hover { color: #0b0d12; }
 .gbd__go {
   padding: 11px 20px;
@@ -4856,9 +4885,9 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
 .gbd__go:hover { background: var(--blue-700); }
 .gbd__go:disabled { opacity: 0.6; cursor: default; }
 
-@media (max-width: 1080px) {
+@media (max-width: 1120px) {
   /* The aside is the first thing to go — at this width it either overlaps the
-     badge or squeezes to two words a line. */
+     pass or squeezes to two words a line. */
   .gb__top { grid-template-columns: minmax(0, 1fr) auto; }
   .gb__aside { display: none; }
   /* Five fixed slots stop fitting here; let the cards find their own count and
@@ -4866,36 +4895,39 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   .gb__wall { grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); }
 }
 
-@media (max-width: 860px) {
-  .gb { padding: 72px 6% 84px; }
-  /* Stacked: headline, then the badge centred under it. The strap no longer
-     runs off the top because there is nothing above it to run behind. */
-  .gb__top { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  .gb__intro, .gb__hang, .gb__wallHead { grid-column: 1; grid-row: auto; }
-  .gb__hang { margin-top: 34px; width: 300px; height: 378px; margin-inline: auto; }
-  .gb__badge { width: 224px; height: 286px; transform: translate(0, 92px); }
-  .gb__hang:not(.is-live) .gb__badge:hover,
-  .gb__hang:not(.is-live) .gb__badge:focus-visible { transform: translate(0, 86px); }
-  /* The cue points at a badge that is now below it, not beside it. */
+@media (max-width: 900px) {
+  .gb__passWrap, .gb__pass { width: 320px; }
+  .gb__pass { height: 200px; }
+}
+
+@media (max-width: 780px) {
+  .gb { padding: 24px 6% 84px; }
+  /* Stacked: heading, then the pass under it. */
+  .gb__top { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .gb__intro, .gb__passWrap, .gb__wallHead { grid-column: 1; grid-row: auto; }
+  .gb__passWrap {
+    width: min(100%, 380px);
+    margin: 28px auto 0;
+  }
+  .gb__pass { width: 100%; height: auto; aspect-ratio: 1.6 / 1; }
+  /* The cue points at a pass that is now below it, not beside it. */
   .gb__cue { display: none; }
-  /* Stacked, so the heading is back to following the badge in flow. */
-  .gb__wallHead { grid-column: 1; grid-row: auto; margin-top: 56px; }
-  .gb__wallTitle { font-size: 34px; }
-  .gb__wall { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
-  .gb__card { rotate: 0deg !important; min-height: 214px; }
+  .gb__title { font-size: 44px; }
+  .gb__wallHead { margin-top: 46px; }
+  .gb__wallTitle { font-size: 26px; }
+  .gb__wall { grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 14px; }
+  .gb__card { rotate: 0deg !important; min-height: 218px; }
   .gb__foot { flex-direction: column; align-items: flex-start; gap: 12px; }
   .gb__rule { display: none; }
 
-  .gbd__note { rotate: 0deg; padding: 24px 22px 22px; }
+  .gbd__note { rotate: 0deg; padding: 22px 20px 20px; }
   /* Labels above the rules — 118px of label plus a signature pad does not fit
      on a phone, and a two-word label wrapping to three lines looks broken. */
-  .gbd__row { grid-template-columns: minmax(0, 1fr); gap: 6px; margin-top: 20px; }
+  .gbd__row { grid-template-columns: minmax(0, 1fr); gap: 6px; margin-top: 18px; }
   .gbd__foot { flex-wrap: wrap; }
   .gbd__acts { width: 100%; justify-content: flex-end; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gb__badge,
-  .gb__badgeFace,
-  .gb__card { transition: none; }
+  .gb__pass, .gb__passFace, .gb__card { transition: none; }
 }

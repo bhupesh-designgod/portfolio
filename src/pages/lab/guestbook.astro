@@ -15,10 +15,13 @@ import Base from '../../layouts/Base.astro';
 import Guestbook from '../../components/Guestbook.astro';
 
 /* Two of the five carry a signature, because in practice most people won't
-   bother — a row where every card has one flatters the design dishonestly. */
+   bother — a row where every card has one flatters the design dishonestly.
+   The star signs are spread across the zodiac so the row shows five different
+   constellations rather than five variations of one. */
 const demo = [
   {
     name: 'Riya',
+    star: 'leo' as const,
     reason: 'Hiring',
     note: 'Super clean and inspiring!',
     date: '2026-09-05',
@@ -26,12 +29,14 @@ const demo = [
   },
   {
     name: 'Karan',
+    star: 'libra' as const,
     reason: 'Collaboration',
     note: 'Love the minimal vibe.',
     date: '2026-09-04',
   },
   {
     name: 'Aarav',
+    star: 'scorpio' as const,
     reason: 'Just exploring',
     note: 'Such a solid portfolio, genuinely one of the better ones I have seen.',
     date: '2026-09-03',
@@ -39,12 +44,14 @@ const demo = [
   },
   {
     name: 'Tanya',
+    star: 'pisces' as const,
     reason: 'Industry buddy',
     note: 'Keep creating, this is great!',
     date: '2026-09-02',
   },
   {
     name: 'Mehul',
+    star: 'taurus' as const,
     reason: 'Other',
     note: 'Different thinking. Big fan.',
     date: '2026-09-01',

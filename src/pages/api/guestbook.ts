@@ -15,6 +15,7 @@
  * and a word list, and every IP gets three signatures an hour.
  */
 import type { APIRoute } from 'astro';
+import { SIGN_KEYS } from '../../lib/constellations';
 
 export const prerender = false;
 
@@ -43,7 +44,10 @@ type Entry = {
   name: string;
   reason: string;
   note?: string;
+  /* Signature path. */
   sign?: string;
+  /* Star sign key, which picks the constellation printed on the card. */
+  star?: string;
   date: string;
 };
 
@@ -197,12 +201,16 @@ export const POST: APIRoute = async ({ request }) => {
     return json({ error: 'You’ve signed already — thank you twice over.' }, 429);
   }
 
+  /* Absent or unrecognised both mean "no figure" — the card then prints the
+     star field on its own, which is a fine card. Nothing to reject over. */
+  const star = String(body?.star ?? '');
   const entry: Entry = {
     id: crypto.randomUUID(),
     name,
     reason,
     date: new Date().toISOString(),
     ...(note ? { note } : {}),
+    ...(SIGN_KEYS.includes(star as never) ? { star } : {}),
     ...(cleanSign(body?.sign) ? { sign: cleanSign(body?.sign) } : {}),
   };
 
