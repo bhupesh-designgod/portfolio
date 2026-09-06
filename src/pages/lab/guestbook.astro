@@ -4,63 +4,65 @@
  * The live section on the home page starts empty on purpose — inventing five
  * visitors who never visited is exactly the kind of thing a portfolio should
  * not do. This page passes the same component a set of obviously-fictional
- * entries so the filled layout can be judged before anyone has signed: card
- * rhythm, how a long note wraps, what the overflow card does, and whether the
- * signatures read as ink at 72px wide.
+ * entries so the filled wall can be judged before anyone has signed: how the
+ * four finishes sit next to each other, whether the art still reads at card
+ * size, and what a long note does to the layout.
  *
  * Nothing here is wired to the store. Delete this page whenever the real wall
  * has enough cards on it to review.
  */
 import Base from '../../layouts/Base.astro';
 import Guestbook from '../../components/Guestbook.astro';
+import type { CardEntry } from '../../lib/guestbook-card';
 
-/* Two of the five carry a signature, because in practice most people won't
-   bother — a row where every card has one flatters the design dishonestly.
-   The star signs are spread across the zodiac so the row shows five different
-   constellations rather than five variations of one. */
-const demo = [
+/* Every theme and every finish appears at least once — the point of the page is
+   to see them together, where clashes show up. Two of the five carry a
+   signature, because in practice most people won't bother, and a wall where
+   every card has one flatters the design dishonestly. */
+const demo: CardEntry[] = [
   {
     name: 'Riya',
-    star: 'leo' as const,
     reason: 'Hiring',
     note: 'Super clean and inspiring!',
     date: '2026-09-05',
+    art: { theme: 'waves', seed: 12, finish: 'paper' },
     sign: 'M4 31C8 12 14 7 16 18C18 29 13 34 11 25C9 14 21 9 27 23C31 33 35 29 37 19M43 23C47 10 53 13 51 23C49 32 57 30 61 20M67 31C71 8 75 9 77 22C78 31 83 28 96 15',
   },
   {
     name: 'Karan',
-    star: 'libra' as const,
     reason: 'Collaboration',
     note: 'Love the minimal vibe.',
     date: '2026-09-04',
+    art: { theme: 'orbit', seed: 41, finish: 'ink' },
   },
   {
     name: 'Aarav',
-    star: 'scorpio' as const,
     reason: 'Just exploring',
     note: 'Such a solid portfolio, genuinely one of the better ones I have seen.',
     date: '2026-09-03',
+    art: { theme: 'bloom', seed: 5, finish: 'blue' },
     sign: 'M5 33C9 11 16 5 18 16C20 27 15 33 13 24C11 13 24 7 28 22C31 33 37 28 39 17M45 29C49 12 55 15 57 25M63 31C65 14 73 9 79 18C85 27 78 33 74 26C70 19 84 13 97 21',
   },
   {
-    name: 'Tanya',
-    star: 'pisces' as const,
-    reason: 'Industry buddy',
-    note: 'Keep creating, this is great!',
+    name: 'Parchment Inkwell',
+    reason: 'Other',
+    note: 'Borrowed a name on the way in.',
     date: '2026-09-02',
+    art: { theme: 'weave', seed: 88, finish: 'sky' },
   },
   {
-    name: 'Mehul',
-    star: 'taurus' as const,
-    reason: 'Other',
-    note: 'Different thinking. Big fan.',
+    name: 'Tanya',
+    reason: 'Industry buddy',
+    note: 'Keep creating, this is great!',
     date: '2026-09-01',
+    art: { theme: 'contour', seed: 23, finish: 'paper' },
   },
   /* Six more, unrendered — they exist only to drive the "+ 6 others" card. */
-  ...Array.from({ length: 6 }, (_, i) => ({
+  ...Array.from({ length: 6 }, (_, i): CardEntry => ({
     name: `Visitor ${i + 1}`,
     reason: 'Just exploring',
     date: '2026-08-30',
+    art: { theme: 'stars', seed: i * 7, finish: 'paper' },
   })),
 ];
 ---
@@ -77,8 +79,8 @@ const demo = [
 <style>
   .lab__note {
     margin: 0;
-    padding: 96px 8% 0;
-    background: #f1f1f3;
+    padding: 92px 8% 0;
+    background: #fff;
     font-family: 'Inter', 'Nunito', system-ui, sans-serif;
     font-size: 12.5px;
     letter-spacing: 0.4px;

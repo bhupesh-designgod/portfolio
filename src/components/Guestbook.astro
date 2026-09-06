@@ -2,97 +2,55 @@
 /* The guestbook — the last thing before the footer.
  *
  * Everything above this section asks the reader to take something in. This one
- * asks them to leave something behind, which is a different kind of request and
- * needs a different kind of object: a visitor pass, blank, waiting for a name.
+ * asks them to leave something behind, and the exchange only works if what they
+ * leave is worth making: so the thing they leave is a pass they designed. Pick a
+ * pattern, pick a finish, reshuffle until it's yours, sign it — and then find it
+ * on the wall. Make a thing, see the thing. That round trip is the section.
  *
- * Three rules from the design that are load-bearing:
+ * Two rules that are load-bearing:
  *
- * 1. The pass is BLANK at rest. No plus, no label, no outline that says
- *    "click me" — just the card and the faint star field printed on it. Only
- *    when the pointer reaches it does it admit what it's for. A permanent CTA
- *    competes with the headline; a blank card is a question the reader chooses
- *    to ask.
+ * 1. The pass is BLANK at rest — an unfilled form, no call to action. Only when
+ *    the pointer reaches it does it say what it's for. A permanent CTA competes
+ *    with the headline; a blank card is a question the reader chooses to ask.
  *
- * 2. Exactly two pieces of handwriting. The reference had four marginal notes
- *    and a vertical keyword list, at which point the marginalia stops reading
- *    as someone's hand and starts reading as decoration. One cue pointing at
- *    the pass, one aside off to the side. That's the budget.
+ * 2. The art is generated from a theme and a seed, never uploaded. Two numbers
+ *    and a name reproduce the card exactly, on any card size, forever.
  *
- * 3. Every card carries a constellation, in characters, of whatever star sign
- *    the signer picked. It's the one personal thing on a card that costs nobody
- *    any personal data — see lib/constellations.ts.
- *
- * The wall below renders whatever was passed in at build time, then replaces
- * itself with the live list once `/api/guestbook` answers. So the section is
- * complete and honest with no network at all, and current when there is one.
+ * The wall renders whatever was passed in at build time, then replaces itself
+ * with the live list once `/api/guestbook` answers. So the section is complete
+ * and honest with no network at all, and current when there is one.
  */
-import { asciiSign, SIGN_LABELS, type SignKey } from '../lib/constellations';
-
-interface Entry {
-  name: string;
-  reason: string;
-  note?: string;
-  /* Normalised SVG path from the signature pad — see the dialog below. */
-  sign?: string;
-  /* Star sign key, or absent: the card then prints the field with no figure. */
-  star?: SignKey;
-  date: string;
-}
+import { asciiArt, THEMES } from '../lib/ascii-art';
+import { cardHtml, FINISHES, type CardEntry } from '../lib/guestbook-card';
 
 interface Props {
-  entries?: Entry[];
-  /* Slots in the row, not cards. Five is the most that fit at 1180px without
-     the handwriting shrinking past legibility. */
-  cols?: number;
+  entries?: CardEntry[];
+  /* Slots on the wall: three across, two down. The pass is a landscape card, so
+     three to a row is what keeps it big enough for the art to be worth looking
+     at — which is the entire reason someone made one. */
+  slots?: number;
 }
 
-const { entries = [], cols = 5 } = Astro.props;
+const { entries = [], slots = 6 } = Astro.props;
 
 /* The count card occupies a slot, so it only earns one when it would stand for
-   more than the card it displaced. At five entries or fewer every one of them
-   is shown; past that the last slot becomes "+ n others". */
-const shown = entries.length <= cols ? entries : entries.slice(0, cols - 1);
+   more than the card it displaced. */
+const shown = entries.length <= slots ? entries : entries.slice(0, slots - 1);
 const rest = entries.length - shown.length;
 
 /* Why someone is here, in the order the answers actually turn up. `Other` is
    last because it's the shrug, and a shrug should never be the first option. */
 const reasons = ['Hiring', 'Collaboration', 'Just exploring', 'Industry buddy', 'Other'];
-
-/* 05 SEP 2026 — a passport stamp, not a timestamp. Deliberately not relative
-   ("2 days ago"): a guestbook is a record, and a record wants a date on it. */
-const stamp = (iso: string) =>
-  new Date(iso)
-    .toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-    .toUpperCase();
-
-/* The serial on a pass. Derived from the name and date rather than a counter,
-   so it survives entries being trimmed and never needs to be stored. */
-const serial = (e: Entry) => {
-  let h = 7;
-  for (const ch of e.name + e.date) h = (h * 31 + ch.charCodeAt(0)) % 9973;
-  return String(1000 + (h % 8999));
-};
 ---
 
 <section class="gb" id="guestbook">
   <div class="gb__wrap">
-    <p class="gb__eyebrow"><span>03</span><i aria-hidden="true"></i>The guestbook</p>
-
     <div class="gb__top">
       <div class="gb__intro">
         <h2 class="gb__title">Leave a little mark.</h2>
-        <p class="gb__lead">A small guestbook for the kind people who made it this far.</p>
-
-        {/* Handwriting 1 of 2 — the cue. It exists to aim the eye at the pass,
-            which is the only reason a marginal note earns its place here. */}
-        <p class="gb__cue" aria-hidden="true">
-          <svg class="gb__arrow" viewBox="0 0 190 90" fill="none">
-            <path d="M4 10c34 4 62 24 82 52" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round"></path>
-            <path d="M70 58.5 87.5 63.5 84 46" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round"></path>
-          </svg>
-          <span class="gb__hand">Your turn now!</span>
+        <p class="gb__lead">
+          A small guestbook for the kind people who made it this far. Make
+          yourself a pass &mdash; then go and find it on the wall.
         </p>
       </div>
 
@@ -101,19 +59,16 @@ const serial = (e: Entry) => {
           a tab lands somewhere that explains itself. The wrapper carries the
           perspective; the tilt script transforms the button inside it. */}
       <div class="gb__passWrap" data-gb-tilt>
-        <button type="button" class="gb__pass" data-gb-open>
-          <pre class="gb__ascii gb__ascii--blank" aria-hidden="true">{asciiSign(null, 44, 22, 9, 0.16)}</pre>
+        <button type="button" class="gb__pass gbc gbc--paper" data-gb-open>
+          <pre class="gbc__art" aria-hidden="true">{asciiArt('waves', 22, 15, 7)}</pre>
 
-          {/* The pass with nothing written on it yet. A plain grey rectangle
-              says nothing; an empty form says what is about to happen, and it
-              still counts as blank because none of the fields have answers.
-              It fades back as the call to action comes forward, so the two are
-              never both competing for the same middle of the card. */}
+          {/* The pass with nothing written on it yet. A plain rectangle says
+              nothing; an empty form says what is about to happen, and it still
+              counts as blank because none of the fields have answers. It fades
+              back as the call to action comes forward, so the two are never
+              both competing for the same middle of the card. */}
           <span class="gb__ghost" aria-hidden="true">
-            <span class="gb__ghostTop">
-              <span class="gb__ghostMark">The guestbook</span>
-              <span class="gb__ghostNo">No. &mdash;&mdash;&mdash;&mdash;</span>
-            </span>
+            <span class="gbc__mark">The guestbook</span>
             <span class="gb__ghostRow"><i>Visitor</i><em></em></span>
             <span class="gb__ghostRow"><i>Issued on</i><em></em></span>
             <span class="gb__ghostSign"><i>X</i><em></em></span>
@@ -128,19 +83,12 @@ const serial = (e: Entry) => {
             </span>
             <span class="gb__passLabel">Add yours</span>
           </span>
-          <svg class="gb__globe gb__globe--pass" viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="12" cy="12" r="9"></circle>
-            <ellipse cx="12" cy="12" rx="4.1" ry="9"></ellipse>
-            <path d="M3.3 9h17.4M3.3 15h17.4"></path>
-          </svg>
         </button>
       </div>
 
-      {/* Handwriting 2 of 2 — the aside. Says why a guestbook is here at all,
-          in the one voice a heading can't use. */}
-      <p class="gb__aside gb__hand" aria-hidden="true">
-        Different people.<br />Same good energy.
-      </p>
+      {/* The one piece of handwriting in the section. Says why a guestbook is
+          here at all, in the one voice a heading can't use. */}
+      <p class="gb__aside" aria-hidden="true">Different people.<br />Same good energy.</p>
 
       {/* Inside the top grid rather than after it, sharing a row with the lower
           half of the pass. Below the grid it would have to clear the pass's full
@@ -158,33 +106,7 @@ const serial = (e: Entry) => {
     </div>
 
     <ul class="gb__wall" data-gb-wall>
-      {
-        shown.map((e, i) => (
-          <li class={`gb__card gb__card--${i % 4}`}>
-            <pre class="gb__ascii" aria-hidden="true">{asciiSign(e.star ?? null, 26, 15, i + 2, 0)}</pre>
-            <span class="gb__no">No. {serial(e)}</span>
-            <p class="gb__cardName">{e.name}</p>
-            <p class="gb__cardDate">{stamp(e.date)}</p>
-            <span class="gb__chip">{e.reason}</span>
-            {e.note && <p class="gb__cardNote">{e.note}</p>}
-            <span class="gb__cardFoot">
-              <span class="gb__sig">
-                <i aria-hidden="true">X</i>
-                {e.sign && (
-                  <svg class="gb__ink" viewBox="0 0 100 40" aria-hidden="true">
-                    <path d={e.sign} />
-                  </svg>
-                )}
-              </span>
-              <svg class="gb__globe" viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="12" r="9" />
-                <ellipse cx="12" cy="12" rx="4.1" ry="9" />
-                <path d="M3.3 9h17.4M3.3 15h17.4" />
-              </svg>
-            </span>
-          </li>
-        ))
-      }
+      {shown.map((e) => <li class="gb__slot" set:html={cardHtml(e)} />)}
 
       {/* Nothing signed yet. A dashed slot rather than an empty row, so the wall
           still reads as a wall and the invitation is where the first card will
@@ -204,120 +126,133 @@ const serial = (e: Entry) => {
         <p class="gb__countCopy">People from around the world have left a mark too.</p>
       </li>
     </ul>
-
-    <p class="gb__foot">
-      <span>Thanks for stopping by</span>
-      <i class="gb__rule" aria-hidden="true"></i>
-      <span>Same curiosity. Different paths.</span>
-    </p>
   </div>
 </section>
 
-{/* ------------------------------- the note -------------------------------
-    A visitor note you fill in by hand: ruled lines instead of input boxes,
-    Caveat for everything the visitor types, and the labels set in the same
-    small caps as the rest of the section. A native <dialog>, so Escape, the
-    focus trap and the backdrop are the browser's problem rather than three
-    more listeners. */}
+{/* ------------------------------ the studio ------------------------------
+    Not a form with a preview bolted on — the card is the subject and the
+    controls sit under it, so every change is watched rather than described.
+    A native <dialog>, so Escape, the focus trap and the backdrop are the
+    browser's problem rather than three more listeners. */}
 <dialog class="gbd" data-gb-dlg aria-labelledby="gbd-title">
   <form class="gbd__note" method="dialog" data-gb-form>
     <div class="gbd__head">
-      <span>Portfolio</span>
-      <span>Visitor note</span>
+      <h2 class="gbd__title" id="gbd-title">Welcome, visitor.</h2>
+      <p class="gbd__sub">Make yourself a pass. It goes straight on the wall.</p>
     </div>
 
-    <h2 class="sr" id="gbd-title">Sign the guestbook</h2>
+    <div class="gbd__nameRow">
+      <label class="gbd__nameLab" for="gbd-name">Name</label>
+      <input class="gbd__in" id="gbd-name" name="name" type="text" maxlength="24" required
+        autocomplete="name" placeholder="Your name" data-gb-name />
+      {/* Borrow one instead. Not everyone wants their real name on a stranger's
+          site, and the alternative to a made-up name is no signature at all. */}
+      <button type="button" class="gbd__icon" data-gb-dice title="Borrow a name"
+        aria-label="Borrow a name">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5M20 12a8 8 0 0 1-13.7 5.6L4 15.5"
+            stroke="currentColor" stroke-width="1.9" stroke-linecap="round"
+            stroke-linejoin="round"></path>
+          <path d="M20 4.5v4h-4M4 19.5v-4h4" stroke="currentColor" stroke-width="1.9"
+            stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+      </button>
+    </div>
 
-    <label class="gbd__row">
-      <span class="gbd__label">Your name</span>
-      <input class="gbd__in" name="name" type="text" maxlength="24" required
-        autocomplete="name" placeholder="Alex" />
-    </label>
+    {/* The live card. Re-rendered on every keystroke and every control change. */}
+    <div class="gbd__stage" data-gb-preview aria-live="polite"></div>
 
-    <label class="gbd__row">
-      <span class="gbd__label">You&rsquo;re here to</span>
-      <select class="gbd__in gbd__in--sel" name="reason" required>
-        {reasons.map((r) => <option value={r}>{r}</option>)}
-      </select>
-    </label>
+    <div class="gbd__controls">
+      <div class="gbd__ctl">
+        <span class="gbd__ctlLab">Pattern</span>
+        <div class="gbd__chips" role="radiogroup" aria-label="Pattern">
+          {
+            THEMES.map((t, i) => (
+              <button type="button" class="gbd__chip" role="radio" data-gb-theme={t.key}
+                aria-checked={i === 0 ? 'true' : 'false'}>{t.label}</button>
+            ))
+          }
+        </div>
+        <button type="button" class="gbd__icon gbd__icon--sm" data-gb-shuffle
+          title="Shuffle the pattern" aria-label="Shuffle the pattern">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5M20 12a8 8 0 0 1-13.7 5.6L4 15.5"
+              stroke="currentColor" stroke-width="1.9" stroke-linecap="round"
+              stroke-linejoin="round"></path>
+            <path d="M20 4.5v4h-4M4 19.5v-4h4" stroke="currentColor" stroke-width="1.9"
+              stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </button>
+      </div>
 
-    {/* The only decorative question on the form, and the reason every card on
-        the wall looks different. Optional, because a guestbook that interrogates
-        you is not a guestbook. */}
-    <label class="gbd__row">
-      <span class="gbd__label">Your sign</span>
-      <select class="gbd__in gbd__in--sel" name="star" data-gb-star>
-        <option value="">Rather not say</option>
-        {SIGN_LABELS.map((s) => <option value={s.key}>{s.label}</option>)}
-      </select>
-    </label>
+      <div class="gbd__ctl">
+        <span class="gbd__ctlLab">Finish</span>
+        <div class="gbd__sw" role="radiogroup" aria-label="Finish">
+          {
+            FINISHES.map((f, i) => (
+              <button type="button" class={`gbd__swatch gbd__swatch--${f.key}`} role="radio"
+                data-gb-finish={f.key} aria-checked={i === 0 ? 'true' : 'false'}
+                title={f.label} aria-label={f.label}></button>
+            ))
+          }
+        </div>
+      </div>
+    </div>
 
-    <label class="gbd__row">
-      <span class="gbd__label">A quick note <i>(optional)</i></span>
-      <input class="gbd__in" name="note" type="text" maxlength="90" placeholder="Love your work!" />
-    </label>
+    <div class="gbd__fields">
+      <label class="gbd__row">
+        <span class="gbd__label">You&rsquo;re here to</span>
+        <select class="gbd__in gbd__in--sel" name="reason" required data-gb-reason>
+          {reasons.map((r) => <option value={r}>{r}</option>)}
+        </select>
+      </label>
 
-    <div class="gbd__row gbd__row--sign">
-      <span class="gbd__label">Sign here</span>
-      <div class="gbd__pad">
-        <canvas class="gbd__canvas" data-gb-pad width="640" height="200"></canvas>
-        <button type="button" class="gbd__clear" data-gb-clear>Clear</button>
+      <label class="gbd__row">
+        <span class="gbd__label">A quick note <i>(optional)</i></span>
+        <input class="gbd__in" name="note" type="text" maxlength="90"
+          placeholder="Love your work!" data-gb-note />
+      </label>
+
+      <div class="gbd__row gbd__row--sign">
+        <span class="gbd__label">Sign here</span>
+        <div class="gbd__pad">
+          <canvas class="gbd__canvas" data-gb-pad width="640" height="200"></canvas>
+          <button type="button" class="gbd__clear" data-gb-clear>Clear</button>
+        </div>
       </div>
     </div>
 
     <p class="gbd__err" data-gb-err hidden></p>
 
     <div class="gbd__foot">
-      <p class="gbd__thanks">Thanks for<br />being here.</p>
+      <p class="gbd__thanks">Thanks for being here.</p>
       <div class="gbd__acts">
-        <button type="button" class="gbd__ghost" data-gb-cancel>Cancel</button>
+        <button type="button" class="gbd__ghostBtn" data-gb-cancel>Cancel</button>
         <button type="submit" class="gbd__go" data-gb-submit>Leave my mark</button>
       </div>
     </div>
   </form>
 </dialog>
 
-{/* The card the client-side renderer clones. Keeping the shape here rather than
-    in a JS string means the markup exists once, and every user value lands via
-    textContent — so a name with a `<` in it is a name, not markup. */}
-<template data-gb-tpl>
-  <li class="gb__card">
-    <pre class="gb__ascii" aria-hidden="true"></pre>
-    <span class="gb__no"></span>
-    <p class="gb__cardName"></p>
-    <p class="gb__cardDate"></p>
-    <span class="gb__chip"></span>
-    <p class="gb__cardNote"></p>
-    <span class="gb__cardFoot">
-      <span class="gb__sig">
-        <i aria-hidden="true">X</i>
-        <svg class="gb__ink" viewBox="0 0 100 40" aria-hidden="true"><path /></svg>
-      </span>
-      <svg class="gb__globe" viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="12" cy="12" r="9" />
-        <ellipse cx="12" cy="12" rx="4.1" ry="9" />
-        <path d="M3.3 9h17.4M3.3 15h17.4" />
-      </svg>
-    </span>
-  </li>
-</template>
-
 <script>
-  import { asciiSign } from '../lib/constellations';
+  import { cardHtml, borrowedName, type Art } from '../lib/guestbook-card';
 
-  /* Slots in the row. Mirrors `cols` in the component frontmatter — the two
+  /* Slots on the wall. Mirrors `slots` in the component frontmatter — the two
      have to agree or the wall reflows the moment the live list arrives. */
-  const COLS = 5;
+  const SLOTS = 6;
 
   const dlg = document.querySelector<HTMLDialogElement>('[data-gb-dlg]');
   const form = document.querySelector<HTMLFormElement>('[data-gb-form]');
   const wall = document.querySelector<HTMLUListElement>('[data-gb-wall]');
-  const tpl = document.querySelector<HTMLTemplateElement>('[data-gb-tpl]');
   const countCard = document.querySelector<HTMLLIElement>('[data-gb-count]');
   const countNum = document.querySelector<HTMLElement>('[data-gb-count-num]');
   const sub = document.querySelector<HTMLElement>('[data-gb-sub]');
   const err = document.querySelector<HTMLElement>('[data-gb-err]');
   const pad = document.querySelector<HTMLCanvasElement>('[data-gb-pad]');
+  const stage = document.querySelector<HTMLElement>('[data-gb-preview]');
+  const nameIn = document.querySelector<HTMLInputElement>('[data-gb-name]');
+  const noteIn = document.querySelector<HTMLInputElement>('[data-gb-note]');
+  const reasonIn = document.querySelector<HTMLSelectElement>('[data-gb-reason]');
 
   /* ------------------------------- the tilt -------------------------------
    * The pass leans toward the pointer, the way a card does when you pick it up
@@ -326,33 +261,30 @@ const serial = (e: Entry) => {
    *
    * Deliberately not React Bits' TiltedCard — the effect is a transform driven
    * by pointer position, and importing React to set one would put a framework
-   * on a page that currently ships almost no JavaScript. Same interaction,
-   * about forty lines, and the pass stays a real <button>.
+   * on a page that currently ships almost no JavaScript.
    */
   const tiltWrap = document.querySelector<HTMLElement>('[data-gb-tilt]');
   const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   if (tiltWrap && window.matchMedia('(pointer: fine)').matches && !still) {
-    const card = tiltWrap.querySelector<HTMLElement>('.gb__pass')!;
+    const cardEl = tiltWrap.querySelector<HTMLElement>('.gb__pass')!;
     const MAX = 11;      // degrees
     const EASE = 0.13;   // per frame; low enough that the card lags the hand
 
-    let tx = 0, ty = 0, ts = 1;   // targets
-    let cx = 0, cy = 0, cs = 1;   // current
+    let tx = 0, ty = 0, ts = 1;
+    let cx = 0, cy = 0, cs = 1;
     let raf = 0;
 
     const frame = () => {
       cx += (tx - cx) * EASE;
       cy += (ty - cy) * EASE;
       cs += (ts - cs) * EASE;
-      card.style.transform =
+      cardEl.style.transform =
         `rotateX(${cy.toFixed(3)}deg) rotateY(${cx.toFixed(3)}deg) scale(${cs.toFixed(4)})`;
-
       /* Park the loop once it has effectively arrived, rather than burning a
          frame a tick forever on a card nobody is touching. */
       if (Math.abs(tx - cx) + Math.abs(ty - cy) + Math.abs(ts - cs) * 60 < 0.01) {
-        card.style.transform =
-          `rotateX(${ty}deg) rotateY(${tx}deg) scale(${ts})`;
+        cardEl.style.transform = `rotateX(${ty}deg) rotateY(${tx}deg) scale(${ts})`;
         raf = 0;
         return;
       }
@@ -364,36 +296,74 @@ const serial = (e: Entry) => {
 
     tiltWrap.addEventListener('pointermove', (e) => {
       const r = tiltWrap.getBoundingClientRect();
-      /* -1..1 from the centre of the card. */
-      const px = (e.clientX - r.left) / r.width - 0.5;
-      const py = (e.clientY - r.top) / r.height - 0.5;
-      tx = px * 2 * MAX;
-      ty = -py * 2 * MAX;
+      tx = ((e.clientX - r.left) / r.width - 0.5) * 2 * MAX;
+      ty = -((e.clientY - r.top) / r.height - 0.5) * 2 * MAX;
       ts = 1.035;
       run();
     });
-
-    const rest = () => {
-      tx = 0;
-      ty = 0;
-      ts = 1;
-      run();
-    };
+    const rest = () => { tx = 0; ty = 0; ts = 1; run(); };
     tiltWrap.addEventListener('pointerleave', rest);
     /* Keyboard focus gets the scale but no lean — there is no pointer to lean
        toward, and a card tilted at random would just look broken. */
-    card.addEventListener('focus', () => {
-      ts = 1.035;
-      run();
-    });
-    card.addEventListener('blur', rest);
+    cardEl.addEventListener('focus', () => { ts = 1.035; run(); });
+    cardEl.addEventListener('blur', rest);
   }
 
+  /* ------------------------------ the draft ------------------------------ */
+  const draft: { art: Art } = { art: { theme: 'waves', seed: 7, finish: 'paper' } };
+  const today = new Date().toISOString();
+
+  function paintPreview() {
+    if (!stage) return;
+    stage.innerHTML = cardHtml({
+      name: nameIn?.value.trim() || '',
+      reason: reasonIn?.value ?? '',
+      note: noteIn?.value.trim() || undefined,
+      sign: signPath() || undefined,
+      art: draft.art,
+      date: today,
+    });
+  }
+
+  const mark = (nodes: NodeListOf<Element>, active: Element) =>
+    nodes.forEach((n) => n.setAttribute('aria-checked', String(n === active)));
+
+  const themeBtns = document.querySelectorAll('[data-gb-theme]');
+  themeBtns.forEach((b) =>
+    b.addEventListener('click', () => {
+      draft.art.theme = b.getAttribute('data-gb-theme') as Art['theme'];
+      mark(themeBtns, b);
+      paintPreview();
+    }),
+  );
+
+  const finishBtns = document.querySelectorAll('[data-gb-finish]');
+  finishBtns.forEach((b) =>
+    b.addEventListener('click', () => {
+      draft.art.finish = b.getAttribute('data-gb-finish') as Art['finish'];
+      mark(finishBtns, b);
+      paintPreview();
+    }),
+  );
+
+  document.querySelector('[data-gb-shuffle]')?.addEventListener('click', () => {
+    draft.art.seed = Math.floor(Math.random() * 997);
+    paintPreview();
+  });
+
+  document.querySelector('[data-gb-dice]')?.addEventListener('click', () => {
+    if (nameIn) nameIn.value = borrowedName();
+    paintPreview();
+  });
+
+  [nameIn, noteIn].forEach((el) => el?.addEventListener('input', paintPreview));
+  reasonIn?.addEventListener('change', paintPreview);
+
   /* ---------------------------- signature pad ----------------------------
-   * Strokes are captured in canvas pixels, then normalised to a 100x40 box on
-   * submit so the card can draw them at any size. Points are thinned as they
-   * arrive — a slow signature otherwise produces a few thousand samples, and
-   * the whole charm of this is that it stays a couple of hundred bytes.       */
+   * Strokes are captured in canvas pixels, then normalised to a 100x40 box so
+   * the card can draw them at any size. Points are thinned as they arrive — a
+   * slow signature otherwise produces a few thousand samples, and the whole
+   * charm of this is that it stays a couple of hundred bytes.                */
   type Pt = { x: number; y: number };
   let strokes: Pt[][] = [];
   let drawing = false;
@@ -437,7 +407,6 @@ const serial = (e: Entry) => {
       /* Stops the pen from scrolling the dialog out from under itself. */
       e.preventDefault();
     });
-
     pad.addEventListener('pointermove', (e) => {
       if (!drawing) return;
       const s = strokes[strokes.length - 1];
@@ -448,9 +417,12 @@ const serial = (e: Entry) => {
       s.push(p);
       repaint();
     });
-
     const stopDraw = () => {
+      if (!drawing) return;
       drawing = false;
+      /* The card only catches up when the pen lifts. Re-rendering the preview
+         on every sampled point would rebuild it a hundred times a stroke. */
+      paintPreview();
     };
     pad.addEventListener('pointerup', stopDraw);
     pad.addEventListener('pointercancel', stopDraw);
@@ -460,6 +432,7 @@ const serial = (e: Entry) => {
   document.querySelector('[data-gb-clear]')?.addEventListener('click', () => {
     strokes = [];
     repaint();
+    paintPreview();
   });
 
   /* Normalise to the 100x40 viewBox the cards use. Returns '' for anything too
@@ -467,7 +440,6 @@ const serial = (e: Entry) => {
   function signPath(): string {
     const pts = strokes.flat();
     if (pts.length < 4 || !pad) return '';
-
     const xs = pts.map((p) => p.x);
     const ys = pts.map((p) => p.y);
     const minX = Math.min(...xs);
@@ -476,8 +448,8 @@ const serial = (e: Entry) => {
     const maxY = Math.max(...ys);
     const w = Math.max(maxX - minX, 1);
     const h = Math.max(maxY - minY, 1);
-    /* Fit inside the box on the tighter axis so the signature keeps its own
-       proportions — stretching handwriting to fill a box is instantly wrong. */
+    /* Fit on the tighter axis so the signature keeps its own proportions —
+       stretching handwriting to fill a box is instantly wrong. */
     const k = Math.min(100 / w, 40 / h);
     const ox = (100 - w * k) / 2;
     const oy = (40 - h * k) / 2;
@@ -492,7 +464,6 @@ const serial = (e: Entry) => {
             .join('L'),
       )
       .join('');
-
     return out.length > 1400 ? out.slice(0, out.lastIndexOf('L', 1400)) : out;
   }
 
@@ -511,53 +482,20 @@ const serial = (e: Entry) => {
       pad.height = Math.round(r.height * dpr);
       repaint();
     }
+    paintPreview();
   }
 
   document.querySelector('[data-gb-open]')?.addEventListener('click', open);
   document.querySelector('[data-gb-cancel]')?.addEventListener('click', () => dlg?.close());
-
-  /* Click on the backdrop — the dialog element itself, since the note inside is
+  /* Click on the backdrop — the dialog element itself, since the card inside is
      a child that stops the event reaching here. */
   dlg?.addEventListener('click', (e) => {
     if (e.target === dlg) dlg.close();
   });
 
   /* --------------------------------- wall -------------------------------- */
-  const STAMP: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric' };
-
-  function serial(name: string, date: string) {
-    let h = 7;
-    for (const ch of name + date) h = (h * 31 + ch.charCodeAt(0)) % 9973;
-    return String(1000 + (h % 8999));
-  }
-
-  function card(
-    e: { name: string; reason: string; note?: string; sign?: string; star?: any; date: string },
-    i: number,
-  ) {
-    const node = (tpl!.content.cloneNode(true) as DocumentFragment).firstElementChild as HTMLElement;
-
-    node.querySelector('.gb__ascii')!.textContent = asciiSign(e.star ?? null, 26, 15, i + 2, 0);
-    node.querySelector('.gb__no')!.textContent = `No. ${serial(e.name, e.date)}`;
-    node.querySelector('.gb__cardName')!.textContent = e.name;
-    node.querySelector('.gb__cardDate')!.textContent = new Date(e.date)
-      .toLocaleDateString('en-GB', STAMP)
-      .toUpperCase();
-    node.querySelector('.gb__chip')!.textContent = e.reason;
-
-    const note = node.querySelector<HTMLElement>('.gb__cardNote')!;
-    if (e.note) note.textContent = e.note;
-    else note.remove();
-
-    const ink = node.querySelector<SVGElement>('.gb__ink')!;
-    if (e.sign) ink.querySelector('path')!.setAttribute('d', e.sign);
-    else ink.remove();
-
-    return node;
-  }
-
   function render(entries: any[], total: number) {
-    if (!wall || !tpl) return;
+    if (!wall) return;
     /* An empty answer is not news. The store being unconfigured, empty, or
        briefly unreachable all look the same from here, and in every one of
        those cases the cards already on the page are the best available truth —
@@ -565,14 +503,15 @@ const serial = (e: Entry) => {
     if (!entries.length) return;
 
     document.querySelector('[data-gb-empty]')?.remove();
-    wall.querySelectorAll('.gb__card').forEach((n) => n.remove());
+    wall.querySelectorAll('.gb__slot').forEach((n) => n.remove());
 
-    const show = total <= COLS ? entries.slice(0, COLS) : entries.slice(0, COLS - 1);
+    const show = total <= SLOTS ? entries.slice(0, SLOTS) : entries.slice(0, SLOTS - 1);
     const frag = document.createDocumentFragment();
-    show.forEach((e, i) => {
-      const n = card(e, i);
-      n.classList.add(`gb__card--${i % 4}`);
-      frag.appendChild(n);
+    show.forEach((e) => {
+      const li = document.createElement('li');
+      li.className = 'gb__slot';
+      li.innerHTML = cardHtml(e);
+      frag.appendChild(li);
     });
     wall.prepend(frag);
 
@@ -593,16 +532,13 @@ const serial = (e: Entry) => {
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.querySelector<HTMLButtonElement>('[data-gb-submit]');
-    const data = new FormData(form);
-
     const body = {
-      name: String(data.get('name') ?? '').trim(),
-      reason: String(data.get('reason') ?? ''),
-      star: String(data.get('star') ?? ''),
-      note: String(data.get('note') ?? '').trim(),
+      name: nameIn?.value.trim() ?? '',
+      reason: reasonIn?.value ?? '',
+      note: noteIn?.value.trim() ?? '',
       sign: signPath(),
+      art: draft.art,
     };
-
     if (!body.name) return;
 
     btn && (btn.disabled = true);
@@ -629,6 +565,11 @@ const serial = (e: Entry) => {
       form.reset();
       strokes = [];
       repaint();
+      /* The point of the whole section: the card you just made is on the wall,
+         so put it in front of the person who made it. */
+      document
+        .querySelector('.gb__wall .gb__slot')
+        ?.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'center' });
     } catch {
       if (err) {
         err.textContent = 'No connection. Try again in a moment.';

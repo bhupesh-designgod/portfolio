@@ -15,7 +15,7 @@
  * and a word list, and every IP gets three signatures an hour.
  */
 import type { APIRoute } from 'astro';
-import { SIGN_KEYS } from '../../lib/constellations';
+import { cleanArt, type Art } from '../../lib/guestbook-card';
 
 export const prerender = false;
 
@@ -46,8 +46,10 @@ type Entry = {
   note?: string;
   /* Signature path. */
   sign?: string;
-  /* Star sign key, which picks the constellation printed on the card. */
-  star?: string;
+  /* Theme, seed and finish — the two numbers and a name that reproduce the
+     card exactly. Never an image: the wall re-renders the art at whatever size
+     it needs, and nothing has to be stored or served but this. */
+  art: Art;
   date: string;
 };
 
@@ -201,16 +203,15 @@ export const POST: APIRoute = async ({ request }) => {
     return json({ error: 'You’ve signed already — thank you twice over.' }, 429);
   }
 
-  /* Absent or unrecognised both mean "no figure" — the card then prints the
-     star field on its own, which is a fine card. Nothing to reject over. */
-  const star = String(body?.star ?? '');
   const entry: Entry = {
     id: crypto.randomUUID(),
     name,
     reason,
+    /* Anything off the menu falls back to the default rather than failing —
+       a card with an unknown finish should still be a card. */
+    art: cleanArt(body?.art),
     date: new Date().toISOString(),
     ...(note ? { note } : {}),
-    ...(SIGN_KEYS.includes(star as never) ? { star } : {}),
     ...(cleanSign(body?.sign) ? { sign: cleanSign(body?.sign) } : {}),
   };
 

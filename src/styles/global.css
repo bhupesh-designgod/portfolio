@@ -4207,10 +4207,10 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
 }
 
 /* ============================ GUESTBOOK ==================================
-   Lives in global.css rather than scoped to the component because the wall
-   re-renders itself from `/api/guestbook` — cards built in JS never carry
-   Astro's scoping attribute, so scoped rules would style the build-time cards
-   and skip the live ones.
+   Lives in global.css rather than scoped to the component because the wall and
+   the studio preview both build cards from a string at runtime — markup created
+   that way never carries Astro's scoping attribute, so scoped rules would style
+   the build-time cards and skip every other one.
    ========================================================================= */
 .gb {
   position: relative;
@@ -4221,29 +4221,13 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
 }
 .gb__wrap { max-width: 1180px; margin: 0 auto; }
 
-/* -- eyebrow -- */
-.gb__eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin: 0 0 26px;
-  font-family: "Inter", "Nunito", system-ui, sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
-  color: #7b7f8c;
-}
-.gb__eyebrow span { color: #0b0d12; }
-.gb__eyebrow i { width: 26px; height: 1px; background: #c8cbd3; }
-
 /* -- top band: intro / pass / aside --
    Two rows, and the pass spans both: intro and aside on the top row, the wall
    heading tucked under the intro on the second. That's what lets the heading
    sit level with the pass's lower half instead of below its shadow. */
 .gb__top {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(130px, 0.34fr);
+  grid-template-columns: minmax(0, 1fr) auto minmax(120px, 0.3fr);
   grid-template-rows: auto auto;
   align-items: start;
   gap: 36px;
@@ -4266,76 +4250,204 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   color: #0b0d12;
 }
 .gb__lead {
-  max-width: 34ch;
+  max-width: 38ch;
   margin: 16px 0 0;
   font-size: 17px;
   line-height: 1.6;
   color: #4a4f5c;
 }
 
-/* -- handwriting (there are exactly two of these on the page) -- */
-.gb__hand {
-  font-family: "Caveat", "Segoe Script", cursive;
-  font-weight: 600;
-  color: var(--blue-500);
-  letter-spacing: 0.2px;
-}
-
-.gb__cue {
-  display: flex;
-  align-items: flex-end;
-  gap: 4px;
-  margin: 22px 0 0;
-}
-.gb__arrow {
-  width: 104px;
-  height: 50px;
-  flex: 0 0 auto;
-  color: #2a2f3a;
-  /* Drawn pointing down-right; the section reads left to right, so it leans
-     back a touch to aim at the pass rather than at the floor. */
-  transform: rotate(-4deg);
-}
-.gb__cue .gb__hand { font-size: 25px; line-height: 1.1; padding-bottom: 14px; rotate: -5deg; }
-
+/* The one piece of handwriting left in the section. */
 .gb__aside {
   margin: 6px 0 0;
+  font-family: "Caveat", "Segoe Script", cursive;
+  font-weight: 600;
   font-size: 25px;
   line-height: 1.22;
+  letter-spacing: 0.2px;
+  color: var(--blue-500);
   rotate: -4deg;
   justify-self: start;
 }
 
 /* ------------------------------- the pass --------------------------------
-   Blank at rest: no plus, no label, just the card and the star field printed on
-   it. The plus and the label live at opacity 0 and only arrive on hover or
-   keyboard focus. Nothing about the resting state says "button", which is the
-   point — the reader finds it rather than being sold it. */
+   A visitor pass. Same object everywhere it appears: on the wall, in the studio
+   preview, and blank in the fold above — so it is one set of rules and four
+   finishes, and `cardHtml` in lib/guestbook-card.ts writes the markup. */
+.gbc {
+  position: relative;
+  aspect-ratio: 1.58 / 1;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--c-bg);
+  color: var(--c-fg);
+  border: 1px solid var(--c-edge);
+  box-shadow: 0 8px 22px rgba(20, 28, 56, 0.09);
+}
+/* Four finishes, all drawn from the site's own palette — white, near-black and
+   the two blues. A fifth hue would be the only colour on the page that isn't
+   one of these, which is how a guestbook starts looking like a widget. */
+.gbc--paper {
+  --c-bg: #fff; --c-fg: #0b0d12; --c-dim: #9aa0ad;
+  --c-art: #5f6675; --c-art-op: 0.32; --c-edge: #e4e6ec; --c-line: #d7dae1;
+}
+.gbc--ink {
+  --c-bg: #14161c; --c-fg: #f2f4f8; --c-dim: #7b8494;
+  --c-art: #ffffff; --c-art-op: 0.24; --c-edge: #14161c; --c-line: #3a4050;
+}
+.gbc--blue {
+  --c-bg: #0047e0; --c-fg: #ffffff; --c-dim: #a9c4ff;
+  --c-art: #ffffff; --c-art-op: 0.28; --c-edge: #0047e0; --c-line: #4f86ff;
+}
+.gbc--sky {
+  --c-bg: #dbe6ff; --c-fg: #0a2a7a; --c-dim: #6b88d2;
+  --c-art: #2f5bc4; --c-art-op: 0.36; --c-edge: #cbd9f8; --c-line: #a8c0ee;
+}
+
+/* The artwork. Mono because the generator assumes a fixed advance width — in a
+   proportional face every figure shears. */
+.gbc__art {
+  position: absolute;
+  right: 4%;
+  top: 50%;
+  translate: 0 -50%;
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: clamp(7px, 2.6cqw, 11px);
+  line-height: 1.16;
+  white-space: pre;
+  pointer-events: none;
+  user-select: none;
+  color: var(--c-art);
+  opacity: var(--c-art-op);
+}
+
+.gbc__body {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 6.2% 7%;
+  /* Clears the artwork. A percentage, so the split holds at every card size the
+     component is used at. */
+  padding-right: 40%;
+  text-align: left;
+}
+
+.gbc__mark {
+  margin: 0;
+  font-family: "Bebas Neue", "Nunito", sans-serif;
+  font-weight: 400;
+  font-size: clamp(13px, 4.4cqw, 19px);
+  line-height: 1;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: var(--c-fg);
+}
+
+.gbc__lab,
+.gbc__no,
+.gbc__meta,
+.gbc__sig i {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: clamp(7.5px, 2.3cqw, 10px);
+  font-style: normal;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  color: var(--c-dim);
+}
+.gbc__lab { margin: auto 0 0; }
+
+.gbc__name {
+  margin: 3px 0 0;
+  font-family: "Bebas Neue", "Nunito", sans-serif;
+  font-weight: 400;
+  font-size: clamp(18px, 6.6cqw, 30px);
+  line-height: 1;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--c-fg);
+  /* A long single-token name would otherwise push the card wider than its
+     track and break the row. */
+  overflow-wrap: anywhere;
+}
+
+.gbc__meta { display: flex; align-items: center; gap: 8px; margin: 7px 0 0; }
+.gbc__meta i {
+  padding: 2px 7px;
+  border: 1px solid var(--c-line);
+  border-radius: 999px;
+  font-style: normal;
+  color: var(--c-fg);
+  opacity: 0.85;
+}
+
+.gbc__note {
+  margin: 9px 0 0;
+  font-family: "Caveat", "Segoe Script", cursive;
+  font-weight: 500;
+  font-size: clamp(13px, 4.4cqw, 19px);
+  line-height: 1.34;
+  color: var(--c-fg);
+  overflow-wrap: anywhere;
+  /* Two lines, then it stops. The note is a nicety on a pass, not the content —
+     and a five-line note would push the signature off the card. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.gbc__foot {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin: auto 0 0;
+  padding-top: 10px;
+}
+.gbc__no { flex: 0 0 auto; }
+/* X ______ — the ruled line you sign over on a real pass. Drawn even when there
+   is no signature: the empty line is what makes the card read as a document. */
+.gbc__sig {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+  border-bottom: 1px solid var(--c-line);
+  padding-bottom: 2px;
+}
+.gbc__ink {
+  width: 62%;
+  max-width: 74px;
+  height: 26px;
+  fill: none;
+  stroke: var(--c-fg);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.9;
+  /* Sits on the rule rather than above it, the way ink does. */
+  margin-bottom: -5px;
+}
+
+/* --------------------------- the blank pass ------------------------------ */
 .gb__passWrap {
   /* The perspective belongs to the parent, not the card: on the card itself it
      is applied after the rotation and the lean flattens out. */
   perspective: 900px;
-  width: 380px;
+  width: 392px;
 }
-
 .gb__pass {
-  position: relative;
   display: block;
-  width: 380px;
-  height: 238px;
+  width: 100%;
   padding: 0;
-  border: 1px solid #dcdfe6;
-  border-radius: 18px;
   cursor: pointer;
-  overflow: hidden;
-  /* Grey, where the signed cards below are white. On a white section a white
-     card with a hairline reads as a hole in the page; and the tonal split says
-     the thing before you fill it in is not the same object as the ones people
-     have already filled in. */
-  background: linear-gradient(158deg, #f7f8fa 0%, #f3f5f8 60%, #eceff4 100%);
+  container-type: inline-size;
   box-shadow:
     0 2px 4px rgba(20, 28, 56, 0.05),
-    0 20px 44px rgba(20, 28, 56, 0.10);
+    0 20px 44px rgba(20, 28, 56, 0.11);
   /* The tilt script owns `transform`; this is the rest pose and the only pose
      on a touchscreen or under reduced motion. */
   transform: rotateX(0deg) rotateY(0deg) scale(1);
@@ -4343,36 +4455,26 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   will-change: transform;
   transition: box-shadow 0.4s ease;
 }
-.gb__pass:hover,
-.gb__pass:focus-visible {
+.gb__pass:hover, .gb__pass:focus-visible {
   box-shadow:
     0 2px 4px rgba(20, 28, 56, 0.05),
     0 30px 64px rgba(20, 28, 56, 0.17);
 }
 .gb__pass:focus-visible { outline: 2px solid var(--blue-500); outline-offset: 6px; }
 
-/* -- the unfilled pass -- */
+/* The pass with nothing written on it yet. */
 .gb__ghost {
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
-  padding: 20px 22px 18px;
+  padding: 6.2% 7%;
   text-align: left;
-  color: #9aa0ad;
+  color: var(--c-dim);
   transition: opacity 0.32s ease;
 }
-.gb__ghostTop { display: flex; align-items: baseline; justify-content: space-between; }
-.gb__ghostMark {
-  font-family: "Bebas Neue", "Nunito", sans-serif;
-  font-size: 17px;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  color: #868d9b;
-}
-.gb__ghostNo,
-.gb__ghostRow i,
-.gb__ghostSign i {
+.gb__ghost .gbc__mark { color: #868d9b; }
+.gb__ghostRow i, .gb__ghostSign i {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 9.5px;
   font-style: normal;
@@ -4384,22 +4486,16 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   display: flex;
   flex-direction: column;
   gap: 5px;
-  margin-top: 18px;
-  max-width: 168px;
+  margin-top: 16px;
+  max-width: 150px;
 }
 .gb__ghostRow em { height: 1px; background: currentColor; opacity: 0.4; }
-.gb__ghostSign {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  margin-top: auto;
-  max-width: 168px;
-}
+.gb__ghostSign { display: flex; align-items: flex-end; gap: 6px; margin-top: auto; max-width: 150px; }
 .gb__ghostSign em { flex: 1; height: 1px; background: currentColor; opacity: 0.4; }
 
 /* Hover hands the middle of the card to the call to action. */
 .gb__pass:hover .gb__ghost,
-.gb__pass:focus-visible .gb__ghost { opacity: 0.3; }
+.gb__pass:focus-visible .gb__ghost { opacity: 0.28; }
 
 .gb__passFace {
   position: absolute;
@@ -4408,7 +4504,7 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 14px;
   opacity: 0;
   /* Rises as it arrives, so the reveal reads as the card answering rather than
      as a tooltip appearing. */
@@ -4421,15 +4517,14 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
 .gb__plus {
   display: grid;
   place-items: center;
-  width: 56px;
-  height: 56px;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
   color: #fff;
   background: var(--blue-500);
   box-shadow: 0 8px 20px rgba(0, 89, 255, 0.32);
 }
-.gb__plus svg { width: 24px; height: 24px; }
-
+.gb__plus svg { width: 23px; height: 23px; }
 .gb__passLabel {
   font-family: "Inter", "Nunito", system-ui, sans-serif;
   font-size: 12.5px;
@@ -4439,45 +4534,8 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   color: var(--blue-500);
 }
 
-/* ------------------------------ the ASCII --------------------------------
-   The constellation printed on the card. Set in a mono stack because the
-   rasteriser assumes a fixed advance width — in a proportional face the figure
-   shears. Low contrast on purpose: it is the paper's pattern, not content, and
-   it sits under everything the card actually says. */
-.gb__ascii {
-  position: absolute;
-  margin: 0;
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  white-space: pre;
-  pointer-events: none;
-  user-select: none;
-  color: #0b0d12;
-  opacity: 0.16;
-}
-.gb__ascii--blank {
-  right: -14px;
-  top: 50%;
-  translate: 0 -50%;
-  font-size: 10px;
-  line-height: 1.14;
-  opacity: 0.34;
-  color: #79808f;
-}
-
-/* -- globe mark, shared by the pass and the cards -- */
-.gb__globe {
-  width: 20px;
-  height: 20px;
-  fill: none;
-  stroke: #0b0d12;
-  stroke-width: 1.5;
-  flex: 0 0 auto;
-}
-.gb__globe--pass { position: absolute; right: 18px; bottom: 16px; opacity: 0.6; }
-
-/* -- wall heading --
-   A step below the section title, not a peer of it. */
-.gb__wallHead { margin: 0 0 28px; }
+/* -- wall heading -- a step below the section title, not a peer of it. */
+.gb__wallHead { margin: 0 0 26px; }
 .gb__wallTitle {
   margin: 0;
   font-family: "Bebas Neue", "Nunito", sans-serif;
@@ -4501,168 +4559,40 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   margin: 0;
   padding: 0;
   display: grid;
-  /* Five explicit slots, matching `cols` in the component. Track sizing by
-     auto-fill instead would fit only five items at this width and wrap the
-     sixth — the count card — onto a row by itself, which reads as a mistake.
-     minmax(0,1fr) rather than 1fr so a long unbroken note can't widen a track. */
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  align-items: stretch;
-  gap: 18px;
+  /* Three across. The pass is landscape, and any more per row shrinks the art
+     past the point where it is worth having made one. */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
 }
+.gb__slot {
+  /* Container queries drive the card's own type scale, so one set of rules
+     covers the 392px pass, the ~373px wall card and the studio preview. */
+  container-type: inline-size;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.gb__slot:nth-child(3n + 1) { rotate: -0.5deg; }
+.gb__slot:nth-child(3n + 2) { rotate: 0.4deg; }
+.gb__slot:nth-child(3n + 3) { rotate: -0.25deg; }
+.gb__slot:hover { rotate: 0deg; transform: translateY(-5px); }
+.gb__slot:hover .gbc { box-shadow: 0 18px 40px rgba(20, 28, 56, 0.15); }
 
-.gb__card {
-  position: relative;
+/* -- empty state and overflow card -- */
+.gb__empty, .gb__count {
   display: flex;
   flex-direction: column;
-  min-height: 248px;
-  padding: 18px 18px 15px;
-  overflow: hidden;
-  background: #fff;
-  /* On a white ground a shadow alone leaves the card edgeless in the top half,
-     where the shadow has nothing to fall on. The hairline draws the card; the
-     shadow lifts it. */
-  border: 1px solid #e4e6ec;
-  border-radius: 14px;
-  box-shadow: 0 8px 22px rgba(20, 28, 56, 0.07);
-  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease;
-}
-/* Centred, filling most of the card, with no dust — the figure's own lines are
-   sparse enough to sit under handwriting without fighting it, which a field of
-   specks is not. */
-.gb__card .gb__ascii {
-  inset: 30px 8px 34px;
-  display: grid;
-  place-content: center;
-  font-size: 8.5px;
-  line-height: 1.16;
-  opacity: 0.26;
-  color: #5f6675;
-}
-/* Same trick as the notes board: a fixed tilt per index, so the row reads as
-   cards someone laid down rather than as a grid. Small enough here that the
-   baselines still line up across the row. */
-.gb__card--0 { rotate: -0.7deg; }
-.gb__card--1 { rotate: 0.5deg; }
-.gb__card--2 { rotate: -0.3deg; }
-.gb__card--3 { rotate: 0.8deg; }
-.gb__card:hover {
-  rotate: 0deg;
-  transform: translateY(-5px);
-  box-shadow: 0 18px 38px rgba(20, 28, 56, 0.13);
-}
-
-/* The pass serial. Top-right, mono, quiet — a number on a card is furniture. */
-.gb__no {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 9.5px;
-  letter-spacing: 0.4px;
-  color: #b3b6bf;
-}
-
-.gb__cardName {
-  margin: 0;
-  padding-right: 52px;   /* clears the serial */
-  font-family: "Bebas Neue", "Nunito", sans-serif;
-  font-weight: 400;
-  font-size: 24px;
-  line-height: 1;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  /* A long single-token name would otherwise push the card wider than its
-     track and break the row. */
-  overflow-wrap: anywhere;
-}
-.gb__cardDate {
-  margin: 6px 0 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 10px;
-  letter-spacing: 0.6px;
-  color: #9498a4;
-}
-
-.gb__chip {
-  align-self: flex-start;
-  margin-top: 11px;
-  padding: 3px 10px;
-  border: 1px solid rgba(0, 89, 255, 0.32);
-  border-radius: 999px;
-  font-family: "Inter", "Nunito", system-ui, sans-serif;
-  font-size: 11px;
-  line-height: 1.5;
-  color: var(--blue-500);
-  background: rgba(0, 89, 255, 0.045);
-}
-
-.gb__cardNote {
-  position: relative;   /* over the ASCII, not under it */
-  margin: 16px 0 0;
-  font-family: "Caveat", "Segoe Script", cursive;
-  font-weight: 500;
-  font-size: 20px;
-  line-height: 1.4;
-  color: #232838;
-  overflow-wrap: anywhere;
-}
-
-.gb__cardFoot {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 8px;
-  /* Pins the foot to the bottom whatever the note's length. */
-  margin-top: auto;
-  padding-top: 16px;
-}
-/* X ______ — the ruled line you sign over on a real pass. Drawn even when
-   there is no signature, because the empty line is what makes the card read as
-   a document rather than as a quote card. */
-.gb__sig {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  gap: 5px;
-  flex: 1;
-  min-width: 0;
-  border-bottom: 1px solid #dcdee4;
-  padding-bottom: 2px;
-}
-.gb__sig i {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 10px;
-  font-style: normal;
-  color: #b3b6bf;
-  padding-bottom: 1px;
-}
-.gb__ink {
-  width: 66px;
-  height: 26px;
-  fill: none;
-  stroke: #232838;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  opacity: 0.85;
-  /* Sits on the rule rather than above it, the way ink does. */
-  margin-bottom: -5px;
-}
-.gb__cardFoot .gb__globe { opacity: 0.6; }
-
-/* -- empty state -- */
-.gb__empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
+  align-items: center;
+  text-align: center;
   gap: 12px;
-  min-height: 248px;
+  aspect-ratio: 1.58 / 1;
   padding: 20px;
   border: 1.5px dashed #d5d7de;
   border-radius: 14px;
 }
+/* `hidden` is a presentation hint and loses to any display declaration, which
+   is exactly what this rule is — so it has to be turned off explicitly. */
+.gb__count[hidden] { display: none; }
+
 .gb__emptyPlus {
   display: grid;
   place-items: center;
@@ -4676,50 +4606,27 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   color: #a4a8b2;
 }
 .gb__emptyCopy {
-  max-width: 17ch;
+  max-width: 20ch;
   margin: 0;
-  text-align: center;
   font-family: "Caveat", "Segoe Script", cursive;
   font-weight: 500;
-  font-size: 19px;
+  font-size: 20px;
   line-height: 1.35;
   color: #9498a4;
 }
-
-/* -- overflow card --
-   `hidden` is a presentation hint and loses to any display declaration, which
-   is exactly what this rule is — so it has to be turned off explicitly. */
-.gb__count[hidden] { display: none; }
-.gb__count {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  min-height: 248px;
-  padding: 20px;
-  border: 1.5px dashed #d5d7de;
-  border-radius: 14px;
-}
 .gb__countDots { display: flex; }
-.gb__countDots i {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--blue-300);
-  opacity: 0.5;
-}
+.gb__countDots i { width: 24px; height: 24px; border-radius: 50%; background: var(--blue-300); opacity: 0.5; }
 .gb__countDots i + i { margin-left: -8px; }
 .gb__countNum {
-  margin: 15px 0 0;
+  margin: 0;
   font-family: "Bebas Neue", "Nunito", sans-serif;
   font-weight: 400;
   font-size: 25px;
   letter-spacing: 0.6px;
 }
 .gb__countCopy {
-  max-width: 22ch;
-  margin: 8px 0 0;
+  max-width: 24ch;
+  margin: 0;
   font-family: "Inter", "Nunito", system-ui, sans-serif;
   font-size: 11px;
   line-height: 1.55;
@@ -4728,68 +4635,61 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   color: #a0a4ad;
 }
 
-/* -- closing rule -- */
-.gb__foot {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  margin: 64px 0 0;
-  font-family: "Inter", "Nunito", system-ui, sans-serif;
-  font-size: 11.5px;
-  letter-spacing: 1.3px;
-  text-transform: uppercase;
-  color: #a0a4ad;
-}
-.gb__rule { flex: 1; height: 1px; background: #e4e6eb; }
-
-/* =============================== the note ================================ */
+/* ============================== the studio ===============================
+   The card is the subject and the controls sit under it, so every change is
+   watched rather than described. */
 .gbd {
-  width: min(560px, calc(100vw - 32px));
+  width: min(620px, calc(100vw - 28px));
+  max-height: 92vh;
   padding: 0;
   border: 0;
+  border-radius: 18px;
   background: transparent;
   overflow: visible;
 }
-.gbd::backdrop { background: rgba(10, 16, 38, 0.5); backdrop-filter: blur(3px); }
+.gbd::backdrop { background: rgba(10, 16, 38, 0.52); backdrop-filter: blur(3px); }
 
 .gbd__note {
   position: relative;
-  padding: 28px 32px 24px;
-  border-radius: 16px;
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 28px 30px 24px;
+  border-radius: 18px;
   background: #fdfdfc;
   box-shadow: 0 32px 80px rgba(10, 16, 38, 0.34);
-  /* The taped-up note from the reference, minus the tape: a slight lean is
-     enough, and a paper texture behind a form makes the labels harder to read
-     for no gain. */
-  rotate: -0.6deg;
 }
 
-.gbd__head {
-  display: flex;
-  justify-content: space-between;
+.gbd__head { text-align: center; }
+.gbd__title {
+  margin: 0;
+  font-family: "Bebas Neue", "Nunito", sans-serif;
+  font-weight: 400;
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: 0.8px;
+  color: #0b0d12;
+}
+.gbd__sub {
+  margin: 8px 0 0;
   font-family: "Inter", "Nunito", system-ui, sans-serif;
-  font-size: 10.5px;
-  letter-spacing: 1.6px;
-  text-transform: uppercase;
-  color: #9498a4;
+  font-size: 13px;
+  color: #7b7f8c;
 }
 
-.gbd__row {
+.gbd__nameRow {
   display: grid;
-  grid-template-columns: 118px minmax(0, 1fr);
-  align-items: baseline;
-  gap: 16px;
-  margin-top: 20px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-top: 22px;
 }
-.gbd__label {
-  font-family: "Inter", "Nunito", system-ui, sans-serif;
+.gbd__nameLab {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 10.5px;
-  line-height: 1.5;
-  letter-spacing: 1.5px;
+  letter-spacing: 1.4px;
   text-transform: uppercase;
   color: #5c616e;
 }
-.gbd__label i { display: block; font-style: normal; color: #9498a4; }
 
 /* Ruled lines, not boxes. The visitor is filling in a card, not a CRM. */
 .gbd__in {
@@ -4818,12 +4718,108 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   padding-right: 24px;
 }
 
+.gbd__icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #e2e4ea;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  color: #6b7180;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+.gbd__icon svg { width: 17px; height: 17px; }
+.gbd__icon:hover { color: var(--blue-500); border-color: var(--blue-300); }
+.gbd__icon--sm { width: 30px; height: 30px; border-radius: 9px; }
+.gbd__icon--sm svg { width: 15px; height: 15px; }
+
+/* The live card. */
+.gbd__stage {
+  container-type: inline-size;
+  width: min(100%, 400px);
+  margin: 22px auto 0;
+}
+.gbd__stage .gbc { box-shadow: 0 14px 34px rgba(20, 28, 56, 0.16); }
+
+.gbd__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 22px;
+}
+.gbd__ctl { display: flex; align-items: center; gap: 12px; }
+.gbd__ctlLab {
+  flex: 0 0 62px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: #5c616e;
+}
+.gbd__chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+.gbd__chip {
+  padding: 6px 12px;
+  border: 1px solid #e2e4ea;
+  border-radius: 999px;
+  background: #fff;
+  cursor: pointer;
+  font-family: "Inter", "Nunito", system-ui, sans-serif;
+  font-size: 12px;
+  color: #5c616e;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+.gbd__chip:hover { border-color: var(--blue-300); color: var(--blue-500); }
+.gbd__chip[aria-checked="true"] {
+  background: var(--blue-500);
+  border-color: var(--blue-500);
+  color: #fff;
+}
+
+.gbd__sw { display: flex; gap: 8px; }
+.gbd__swatch {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(20, 28, 56, 0.16);
+  cursor: pointer;
+  /* The ring reads as selection without moving anything — a border swap would
+     shift the swatch by a pixel and make the row jitter as you click along it. */
+  box-shadow: 0 0 0 0 var(--blue-500);
+  transition: box-shadow 0.18s ease;
+}
+.gbd__swatch--paper { background: #fff; }
+.gbd__swatch--ink { background: #14161c; }
+.gbd__swatch--blue { background: #0047e0; }
+.gbd__swatch--sky { background: #dbe6ff; }
+.gbd__swatch[aria-checked="true"] { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--blue-500); }
+
+.gbd__fields { margin-top: 24px; }
+.gbd__row {
+  display: grid;
+  grid-template-columns: 118px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 16px;
+  margin-top: 18px;
+}
+.gbd__label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  line-height: 1.5;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: #5c616e;
+}
+.gbd__label i { display: block; font-style: normal; color: #9498a4; }
+
 .gbd__row--sign { align-items: start; }
 .gbd__pad { position: relative; }
 .gbd__canvas {
   display: block;
   width: 100%;
-  height: 88px;
+  height: 84px;
   border-bottom: 1.5px solid #d7dae1;
   cursor: crosshair;
   /* Without this the pen drags the page on a touchscreen instead of drawing. */
@@ -4837,9 +4833,9 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   border: 0;
   background: none;
   cursor: pointer;
-  font-family: "Inter", "Nunito", system-ui, sans-serif;
-  font-size: 10.5px;
-  letter-spacing: 1.2px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 1.1px;
   text-transform: uppercase;
   color: #9498a4;
 }
@@ -4852,20 +4848,17 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   color: #c0392b;
 }
 
-.gbd__foot { display: flex; align-items: flex-end; gap: 18px; margin-top: 26px; }
+.gbd__foot { display: flex; align-items: center; gap: 18px; margin-top: 26px; }
 .gbd__thanks {
   margin: 0;
-  font-family: "Inter", "Nunito", system-ui, sans-serif;
-  font-size: 10.5px;
-  line-height: 1.5;
-  letter-spacing: 1.5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 1.3px;
   text-transform: uppercase;
   color: #9498a4;
 }
 .gbd__acts { display: flex; align-items: center; gap: 10px; margin-left: auto; }
-
-.gbd__ghost,
-.gbd__go {
+.gbd__ghostBtn, .gbd__go {
   border-radius: 999px;
   cursor: pointer;
   font-family: "Inter", "Nunito", system-ui, sans-serif;
@@ -4873,8 +4866,8 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   font-weight: 500;
   transition: background 0.2s ease, color 0.2s ease, opacity 0.2s ease;
 }
-.gbd__ghost { padding: 10px 14px; border: 0; background: none; color: #7b7f8c; }
-.gbd__ghost:hover { color: #0b0d12; }
+.gbd__ghostBtn { padding: 10px 14px; border: 0; background: none; color: #7b7f8c; }
+.gbd__ghostBtn:hover { color: #0b0d12; }
 .gbd__go {
   padding: 11px 20px;
   border: 0;
@@ -4890,14 +4883,9 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
      pass or squeezes to two words a line. */
   .gb__top { grid-template-columns: minmax(0, 1fr) auto; }
   .gb__aside { display: none; }
-  /* Five fixed slots stop fitting here; let the cards find their own count and
-     accept that the last row may be short. */
-  .gb__wall { grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); }
-}
-
-@media (max-width: 900px) {
-  .gb__passWrap, .gb__pass { width: 320px; }
-  .gb__pass { height: 200px; }
+  .gb__passWrap { width: 340px; }
+  .gb__wall { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gb__slot:nth-child(n) { rotate: 0deg; }
 }
 
 @media (max-width: 780px) {
@@ -4905,29 +4893,21 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   /* Stacked: heading, then the pass under it. */
   .gb__top { grid-template-columns: minmax(0, 1fr); gap: 6px; }
   .gb__intro, .gb__passWrap, .gb__wallHead { grid-column: 1; grid-row: auto; }
-  .gb__passWrap {
-    width: min(100%, 380px);
-    margin: 28px auto 0;
-  }
-  .gb__pass { width: 100%; height: auto; aspect-ratio: 1.6 / 1; }
-  /* The cue points at a pass that is now below it, not beside it. */
-  .gb__cue { display: none; }
+  .gb__passWrap { width: min(100%, 392px); margin: 26px auto 0; }
   .gb__title { font-size: 44px; }
-  .gb__wallHead { margin-top: 46px; }
+  .gb__wallHead { margin-top: 44px; }
   .gb__wallTitle { font-size: 26px; }
-  .gb__wall { grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 14px; }
-  .gb__card { rotate: 0deg !important; min-height: 218px; }
-  .gb__foot { flex-direction: column; align-items: flex-start; gap: 12px; }
-  .gb__rule { display: none; }
+  .gb__wall { grid-template-columns: minmax(0, 1fr); gap: 16px; }
 
-  .gbd__note { rotate: 0deg; padding: 22px 20px 20px; }
+  .gbd__note { padding: 22px 18px 20px; }
+  .gbd__ctl { flex-wrap: wrap; }
   /* Labels above the rules — 118px of label plus a signature pad does not fit
      on a phone, and a two-word label wrapping to three lines looks broken. */
-  .gbd__row { grid-template-columns: minmax(0, 1fr); gap: 6px; margin-top: 18px; }
+  .gbd__row { grid-template-columns: minmax(0, 1fr); gap: 6px; margin-top: 16px; }
   .gbd__foot { flex-wrap: wrap; }
   .gbd__acts { width: 100%; justify-content: flex-end; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gb__pass, .gb__passFace, .gb__card { transition: none; }
+  .gb__pass, .gb__passFace, .gb__slot { transition: none; }
 }
