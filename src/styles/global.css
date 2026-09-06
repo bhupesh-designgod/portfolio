@@ -4911,3 +4911,58 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
 @media (prefers-reduced-motion: reduce) {
   .gb__pass, .gb__passFace, .gb__slot { transition: none; }
 }
+
+/* ========================= WALKTHROUGH SPOTLIGHT =========================
+   These style the case study article, which is outside Walkthrough.astro, so
+   they cannot be scoped to it. Everything is gated behind a class the player
+   puts on <body>, so nothing here costs a page that never starts a tour.
+   ========================================================================= */
+
+/* The panel is positioned against the article, so the article has to be the
+   containing block. Only while a tour is running — permanently changing the
+   position of a scroll container is not a thing to do for a feature almost
+   nobody opens. */
+body.wt-on #csProse { position: relative; }
+
+/* One panel behind the section being narrated.
+   z-index -1 rather than reordering the children: the spot is absolutely
+   positioned and would otherwise paint over the text it is meant to sit
+   behind, and giving every sibling a z-index risks breaking whatever the case
+   study blocks already rely on. */
+.wt-spot {
+  position: absolute;
+  z-index: -1;
+  left: -24px;
+  right: -24px;
+  border-radius: 20px;
+  background: rgba(var(--a-rgb), 0.07);
+  box-shadow:
+    0 0 0 1px rgba(var(--a-rgb), 0.14),
+    0 0 44px rgba(var(--a-rgb), 0.10);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    top 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    height 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.4s ease;
+}
+
+/* Everything that is not the section being talked about steps back. Not far
+   enough to be unreadable — someone who wants to read ahead still can, and
+   fighting them would defeat the point of the mode being interruptible. */
+body.wt-focus #csProse > *:not(.wt-lit):not(.wt-spot) {
+  opacity: 0.34;
+}
+body.wt-on #csProse > * {
+  transition: opacity 0.5s ease;
+}
+
+/* The contents rail already tracks the reading position; while the tour is
+   driving, it is tracking the narration instead, which is the same signal from
+   a different source. Nothing to change but the emphasis. */
+body.wt-on .cs-toc__list a[aria-current='true'] { font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wt-spot,
+  body.wt-on #csProse > * { transition: none; }
+}

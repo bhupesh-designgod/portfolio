@@ -27,12 +27,16 @@ interface Props {
   slug: string;
   /** Shown on the lock screen. */
   title: string;
+  /** The case study's accent. Repeated here because the `--a-*` tokens are
+      defined on `[data-accent]`, and this component is a sibling of the article
+      rather than a child, so nothing would cascade to it otherwise. */
+  accent?: string;
 }
 
-const { slug, title } = Astro.props;
+const { slug, title, accent = 'gold' } = Astro.props;
 ---
 
-<div class="wt" data-wt data-wt-slug={slug} data-wt-title={title}>
+<div class="wt" data-wt data-wt-slug={slug} data-wt-title={title} data-accent={accent}>
   {/* The resting state. Deliberately not a floating circle: this needs to say
       what it does, because nothing else on the page suggests the case study can
       talk. */}
@@ -89,6 +93,20 @@ const { slug, title } = Astro.props;
           stroke-linecap="round"></path>
       </svg>
     </button>
+  </div>
+
+  {/* The handover frame.
+      Borrowed from the thing everyone already understands: when something else
+      is driving your screen — a shared tab, a remote session, an agent — the
+      edge of the screen says so, continuously, and you can take it back. That
+      is exactly the contract here, so it wears the same clothes. It also solves
+      the quieter problem, which is that a page scrolling on its own with no
+      explanation reads as a bug. */}
+  <div class="wt-frame" data-wt-frame aria-hidden="true">
+    <span class="wt-frame__chip">
+      <span class="wt-frame__dot"></span>
+      <span data-wt-chip>Walking you through &mdash; scroll any time to take over</span>
+    </span>
   </div>
 
   {/* preload="none" until it is wanted: this sits on every case study page and
@@ -220,12 +238,88 @@ const { slug, title } = Astro.props;
       }
     }
 
+    /* ------------------------------ spotlight ------------------------------
+     * Markdown renders flat: an h2 followed by its paragraphs and figures as
+     * siblings, with nothing wrapping a "section". So the section being talked
+     * about is computed as a range — the heading plus everything after it until
+     * the next heading — and one absolutely positioned panel is moved behind
+     * that range. One panel rather than a background on each element, which on
+     * flat siblings comes out as a stack of patches rather than a block.
+     */
+    const prose = document.getElementById('csProse');
+    let spot: HTMLElement | null = null;
+    let lit: Element[] = [];
+
+    function rangeFor(id: string): Element[] | null {
+      const el = document.getElementById(id);
+      if (!el || !prose || !prose.contains(el)) return null;
+      /* The anchor is the heading itself, but it need not be a direct child. */
+      let node: Element = el;
+      while (node.parentElement && node.parentElement !== prose) node = node.parentElement;
+      const out = [node];
+      let n = node.nextElementSibling;
+      while (n && n.tagName !== 'H2') {
+        out.push(n);
+        n = n.nextElementSibling;
+      }
+      return out;
+    }
+
+    function highlight(id: string) {
+      if (!prose) return;
+      const range = rangeFor(id);
+
+      for (const el of lit) el.classList.remove('wt-lit');
+      lit = range ?? [];
+      for (const el of lit) el.classList.add('wt-lit');
+
+      /* No range means the beat is pointing at something outside the article —
+         the hero, say. Nothing to spotlight, and nothing should be dimmed
+         either, or the whole page greys out for no reason. */
+      document.body.classList.toggle('wt-focus', lit.length > 0);
+      if (!range || !range.length) {
+        if (spot) spot.style.opacity = '0';
+        return;
+      }
+
+      if (!spot) {
+        spot = document.createElement('div');
+        spot.className = 'wt-spot';
+        spot.setAttribute('aria-hidden', 'true');
+        prose.prepend(spot);
+      }
+      const pr = prose.getBoundingClientRect();
+      const a = range[0].getBoundingClientRect();
+      const b = range[range.length - 1].getBoundingClientRect();
+      spot.style.opacity = '1';
+      spot.style.top = `${a.top - pr.top - 18}px`;
+      spot.style.height = `${Math.max(0, b.bottom - a.top) + 36}px`;
+    }
+
+    /* Images settle late and the article reflows under the panel, so the range
+       is measured again once things stop moving. */
+    let reflow = 0;
+    window.addEventListener('resize', () => {
+      if (!live) return;
+      window.clearTimeout(reflow);
+      reflow = window.setTimeout(() => beats[i] && highlight(beats[i].at), 180);
+    });
+
+    function clearHighlight() {
+      for (const el of lit) el.classList.remove('wt-lit');
+      lit = [];
+      document.body.classList.remove('wt-focus');
+      spot?.remove();
+      spot = null;
+    }
+
     /* -------------------------------- beats -------------------------------- */
     function playBeat(n: number) {
       i = n;
       const beat = beats[i];
       if (!beat) return finish();
 
+      highlight(beat.at);
       buildCaption(beat);
       audio.src = beat.src;
       audio.currentTime = 0;
@@ -297,18 +391,25 @@ const { slug, title } = Astro.props;
       set('nexttrack', () => playBeat(i + 1));
     }
 
+    const chip = root.querySelector<HTMLElement>('[data-wt-chip]')!;
+
     function pause() {
       audio.pause();
       window.clearTimeout(holdTimer);
       killScroll();
       root.dataset.state = 'paused';
       toggleBtn.setAttribute('aria-label', 'Resume walkthrough');
+      /* The frame stays up while paused, quietly. It is the thing saying the
+         mode is still on; taking it away the moment someone scrolls would make
+         the tour look like it had crashed rather than stepped aside. */
+      chip.textContent = 'You have control — press play to carry on';
     }
 
     function resume() {
       audio.play().catch(() => {});
       root.dataset.state = 'playing';
       toggleBtn.setAttribute('aria-label', 'Pause walkthrough');
+      chip.textContent = 'Walking you through — scroll any time to take over';
     }
 
     function finish() {
@@ -320,6 +421,9 @@ const { slug, title } = Astro.props;
       ask.hidden = true;
       openBtn.hidden = false;
       cap.textContent = '';
+      clearHighlight();
+      document.body.classList.remove('wt-on');
+      window.dispatchEvent(new CustomEvent('walkthrough:end'));
     }
 
     /* --------------------------- user takes over --------------------------- */
@@ -377,6 +481,13 @@ const { slug, title } = Astro.props;
       openBtn.hidden = true;
       player.hidden = false;
       root.dataset.state = 'playing';
+      /* On the body rather than the component, because the spotlight and the
+         dimming apply to the article, which is not inside this component. */
+      document.body.classList.add('wt-on');
+      /* Scout reads this to stand down: two voices narrating the same page,
+         one of them interrupting the other, is worse than either alone. */
+      window.dispatchEvent(new CustomEvent('walkthrough:start'));
+      chip.textContent = 'Walking you through — scroll any time to take over';
       playBeat(from);
     }
 
@@ -590,6 +701,112 @@ const { slug, title } = Astro.props;
   }
   .wt__cap span[data-on='true'] {
     color: #0b0d12;
+  }
+
+  /* ---------------------------- handover frame ----------------------------
+     Only up while the tour is running. Two inset shadows: a hairline that draws
+     the edge, and a wide soft one that reads as light coming from it. Both in
+     the case study's own accent, so the frame belongs to this page rather than
+     looking like a system notification landing on top of it. */
+  .wt-frame {
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    box-shadow:
+      inset 0 0 0 2px rgba(var(--a-rgb), 0.5),
+      inset 0 0 46px rgba(var(--a-rgb), 0.16);
+    transition: opacity 0.5s ease, visibility 0.5s;
+  }
+  .wt[data-state='playing'] .wt-frame,
+  .wt[data-state='paused'] .wt-frame {
+    opacity: 1;
+    visibility: visible;
+  }
+  .wt[data-state='playing'] .wt-frame {
+    animation: wt-breathe 3.4s ease-in-out infinite;
+  }
+  /* Paused is a real state change, not a dimmer setting: the breathing stops
+     and the colour drains, so "it is still on but not driving" is legible at a
+     glance without reading anything. */
+  .wt[data-state='paused'] .wt-frame {
+    box-shadow:
+      inset 0 0 0 1.5px rgba(20, 28, 56, 0.14),
+      inset 0 0 34px rgba(20, 28, 56, 0.05);
+  }
+  @keyframes wt-breathe {
+    0%,
+    100% {
+      box-shadow:
+        inset 0 0 0 2px rgba(var(--a-rgb), 0.42),
+        inset 0 0 40px rgba(var(--a-rgb), 0.12);
+    }
+    50% {
+      box-shadow:
+        inset 0 0 0 2px rgba(var(--a-rgb), 0.62),
+        inset 0 0 62px rgba(var(--a-rgb), 0.2);
+    }
+  }
+
+  /* Top-left, not top-centre: the nav pill is centred at the same offset and
+     the two collided. This corner is empty until the contents rail starts
+     further down, and it is where a screen-share indicator lives anyway. */
+  .wt-frame__chip {
+    position: absolute;
+    top: 16px;
+    left: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: calc(100vw - 32px);
+    padding: 7px 14px 7px 11px;
+    border-radius: 999px;
+    background: rgba(11, 13, 18, 0.88);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: #fff;
+    font-size: 12px;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .wt-frame__dot {
+    flex: 0 0 auto;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--a-500);
+    box-shadow: 0 0 0 0 rgba(var(--a-rgb), 0.6);
+    animation: wt-pip 1.9s ease-out infinite;
+  }
+  .wt[data-state='paused'] .wt-frame__dot {
+    background: #9aa0ad;
+    animation: none;
+    box-shadow: none;
+  }
+  @keyframes wt-pip {
+    0% {
+      box-shadow: 0 0 0 0 rgba(var(--a-rgb), 0.55);
+    }
+    70%,
+    100% {
+      box-shadow: 0 0 0 7px rgba(var(--a-rgb), 0);
+    }
+  }
+
+  /* On a phone the nav spans the width, so the chip moves out of the top
+     entirely and sits above the player. */
+  @media (max-width: 780px) {
+    .wt-frame__chip {
+      top: auto;
+      left: 12px;
+      bottom: 92px;
+      font-size: 11.5px;
+      max-width: calc(100vw - 24px);
+    }
   }
 
   /* A one-off nudge after the reader takes the page back, so the tour having

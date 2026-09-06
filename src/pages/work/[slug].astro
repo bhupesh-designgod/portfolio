@@ -266,7 +266,7 @@ const hasWalkthrough = existsSync(
     </div>
   </article>
 
-  {hasWalkthrough && <Walkthrough slug={entry.id} title={`${d.client} — ${d.title}`} />}
+  {hasWalkthrough && <Walkthrough slug={entry.id} title={`${d.client} — ${d.title}`} accent={d.accent} />}
 
   {/* Lightbox. One dialog for every image on the page; the script fills it
       from whichever figure was clicked and walks prev/next through the rest. */}

@@ -386,6 +386,10 @@ import { ASSISTANT } from '../lib/portfolio-context';
     let hideTimer = 0;
     function say(fold: string) {
       if (engaged || bubble.hidden === false || !panel.hidden) return;
+      /* A walkthrough is already narrating this page. Offering "the short
+         version of this one" over the top of it is the assistant talking across
+         the tour — two voices for the same page, one of them interrupting. */
+      if (document.body.classList.contains('wt-on')) return;
       if (seen(fold) || count() >= CAP) return;
       const lines = LINES[fold];
       if (!lines) return;
@@ -410,6 +414,10 @@ import { ASSISTANT } from '../lib/portfolio-context';
       engaged = true;
       hush();
     });
+
+    /* A nudge already on screen when a walkthrough starts has to go too — the
+       gate above only stops new ones. */
+    window.addEventListener('walkthrough:start', hush);
 
     /* ---------------- fold awareness ---------------- */
 
