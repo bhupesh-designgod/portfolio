@@ -72,12 +72,27 @@ export const serial = (name: string, date: string) => {
   return String(1000 + (h % 8999));
 };
 
+type CardOpts = {
+  cols?: number;
+  rows?: number;
+  /* The studio preview. Two differences, both so the card can be signed in
+     place rather than through a separate pad:
+       - the note element is always emitted, even empty, so typing can update it
+         in place instead of re-rendering the card and destroying the canvas
+         somebody is mid-signature on;
+       - the ink SVG is left out, because in the studio the canvas over the
+         signature line is what draws the strokes. */
+  live?: boolean;
+};
+
 /** The pass itself. `cols`/`rows` size the art grid for the card's width. */
-export function cardHtml(e: CardEntry, cols = 22, rows = 15): string {
+export function cardHtml(e: CardEntry, opts: CardOpts = {}): string {
+  const { cols = 22, rows = 15, live = false } = opts;
   const art = cleanArt(e.art);
   /* Only ever empty in the studio preview — the API refuses a nameless entry.
      Not "Visitor", which under the VISITOR label reads as a stuck placeholder. */
   const name = e.name?.trim() || 'Your name';
+  const note = e.note ?? '';
 
   return (
     `<article class="gbc gbc--${art.finish}">` +
@@ -89,11 +104,11 @@ export function cardHtml(e: CardEntry, cols = 22, rows = 15): string {
         `<p class="gbc__meta"><span>${esc(stamp(e.date))}</span>` +
           (e.reason ? `<i>${esc(e.reason)}</i>` : '') +
         `</p>` +
-        (e.note ? `<p class="gbc__note">${esc(e.note)}</p>` : '') +
+        (live || note ? `<p class="gbc__note"${note ? '' : ' hidden'}>${esc(note)}</p>` : '') +
         `<p class="gbc__foot">` +
           `<span class="gbc__no">No. ${esc(serial(name, e.date))}</span>` +
-          `<span class="gbc__sig"><i>X</i>` +
-            (e.sign
+          `<span class="gbc__sig"${live ? ' data-gb-sig' : ''}><i>X</i>` +
+            (!live && e.sign
               ? `<svg class="gbc__ink" viewBox="0 0 100 40" aria-hidden="true"><path d="${esc(e.sign)}"/></svg>`
               : '') +
           `</span>` +

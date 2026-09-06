@@ -159,8 +159,15 @@ const reasons = ['Hiring', 'Collaboration', 'Just exploring', 'Industry buddy', 
       </button>
     </div>
 
-    {/* The live card. Re-rendered on every keystroke and every control change. */}
-    <div class="gbd__stage" data-gb-preview aria-live="polite"></div>
+    {/* The live card, and the thing you sign. The signature line on the card is
+        the pad — a separate box below it asked people to sign in one place and
+        then showed them the result in another, which is not how signing
+        anything works. */}
+    <div class="gbd__stage" data-gb-preview></div>
+    <p class="gbd__sigHint" data-gb-sig-hint>
+      <span>Sign on the line &mdash; it&rsquo;s your card</span>
+      <button type="button" class="gbd__clear" data-gb-clear hidden>Clear</button>
+    </p>
 
     <div class="gbd__controls">
       <div class="gbd__ctl">
@@ -212,14 +219,6 @@ const reasons = ['Hiring', 'Collaboration', 'Just exploring', 'Industry buddy', 
         <input class="gbd__in" name="note" type="text" maxlength="90"
           placeholder="Love your work!" data-gb-note />
       </label>
-
-      <div class="gbd__row gbd__row--sign">
-        <span class="gbd__label">Sign here</span>
-        <div class="gbd__pad">
-          <canvas class="gbd__canvas" data-gb-pad width="640" height="200"></canvas>
-          <button type="button" class="gbd__clear" data-gb-clear>Clear</button>
-        </div>
-      </div>
     </div>
 
     <p class="gbd__err" data-gb-err hidden></p>
@@ -235,7 +234,7 @@ const reasons = ['Hiring', 'Collaboration', 'Just exploring', 'Industry buddy', 
 </dialog>
 
 <script>
-  import { cardHtml, borrowedName, type Art } from '../lib/guestbook-card';
+  import { cardHtml, borrowedName, serial, type Art } from '../lib/guestbook-card';
 
   /* Slots on the wall. Mirrors `slots` in the component frontmatter — the two
      have to agree or the wall reflows the moment the live list arrives. */
@@ -248,7 +247,6 @@ const reasons = ['Hiring', 'Collaboration', 'Just exploring', 'Industry buddy', 
   const countNum = document.querySelector<HTMLElement>('[data-gb-count-num]');
   const sub = document.querySelector<HTMLElement>('[data-gb-sub]');
   const err = document.querySelector<HTMLElement>('[data-gb-err]');
-  const pad = document.querySelector<HTMLCanvasElement>('[data-gb-pad]');
   const stage = document.querySelector<HTMLElement>('[data-gb-preview]');
   const nameIn = document.querySelector<HTMLInputElement>('[data-gb-name]');
   const noteIn = document.querySelector<HTMLInputElement>('[data-gb-note]');
@@ -313,16 +311,44 @@ const reasons = ['Hiring', 'Collaboration', 'Just exploring', 'Industry buddy', 
   const draft: { art: Art } = { art: { theme: 'waves', seed: 7, finish: 'paper' } };
   const today = new Date().toISOString();
 
-  function paintPreview() {
+  const hint = document.querySelector<HTMLElement>('[data-gb-sig-hint]');
+  const clearBtn = document.querySelector<HTMLButtonElement>('[data-gb-clear]');
+
+  /* Full re-render. Only for things that change the card's structure or its
+     artwork — never for typing, because it destroys the canvas the visitor may
+     be mid-signature on. */
+  function renderCard() {
     if (!stage) return;
-    stage.innerHTML = cardHtml({
-      name: nameIn?.value.trim() || '',
-      reason: reasonIn?.value ?? '',
-      note: noteIn?.value.trim() || undefined,
-      sign: signPath() || undefined,
-      art: draft.art,
-      date: today,
-    });
+    stage.innerHTML = cardHtml(
+      {
+        name: nameIn?.value.trim() || '',
+        reason: reasonIn?.value ?? '',
+        note: noteIn?.value.trim() || undefined,
+        art: draft.art,
+        date: today,
+      },
+      { live: true },
+    );
+    mountPad();
+  }
+
+  /* Typing path. Writes into the nodes that are already there, so the signature
+     canvas survives and the card does not flash on every keystroke. */
+  function syncText() {
+    if (!stage) return;
+    const name = nameIn?.value.trim() || '';
+    const nameEl = stage.querySelector('.gbc__name');
+    const noEl = stage.querySelector('.gbc__no');
+    const noteEl = stage.querySelector<HTMLElement>('.gbc__note');
+    const chip = stage.querySelector('.gbc__meta i');
+    if (nameEl) nameEl.textContent = name || 'Your name';
+    if (noEl) noEl.textContent = `No. ${serial(name || 'Your name', today)}`;
+    if (chip) chip.textContent = reasonIn?.value ?? '';
+    if (noteEl) {
+      const v = noteIn?.value.trim() ?? '';
+      noteEl.textContent = v;
+      noteEl.hidden = !v;
+    }
   }
 
   const mark = (nodes: NodeListOf<Element>, active: Element) =>
@@ -333,7 +359,7 @@ const reasons = ['Hiring', 'Collaboration', 'Just exploring', 'Industry buddy', 
     b.addEventListener('click', () => {
       draft.art.theme = b.getAttribute('data-gb-theme') as Art['theme'];
       mark(themeBtns, b);
-      paintPreview();
+      renderCard();
     }),
   );
 
@@ -342,39 +368,96 @@ const reasons = ['Hiring', 'Collaboration', 'Just exploring', 'Industry buddy', 
     b.addEventListener('click', () => {
       draft.art.finish = b.getAttribute('data-gb-finish') as Art['finish'];
       mark(finishBtns, b);
-      paintPreview();
+      renderCard();
     }),
   );
 
   document.querySelector('[data-gb-shuffle]')?.addEventListener('click', () => {
     draft.art.seed = Math.floor(Math.random() * 997);
-    paintPreview();
+    renderCard();
   });
 
   document.querySelector('[data-gb-dice]')?.addEventListener('click', () => {
     if (nameIn) nameIn.value = borrowedName();
-    paintPreview();
+    syncText();
   });
 
-  [nameIn, noteIn].forEach((el) => el?.addEventListener('input', paintPreview));
-  reasonIn?.addEventListener('change', paintPreview);
+  [nameIn, noteIn].forEach((el) => el?.addEventListener('input', syncText));
+  reasonIn?.addEventListener('change', syncText);
 
-  /* ---------------------------- signature pad ----------------------------
-   * Strokes are captured in canvas pixels, then normalised to a 100x40 box so
-   * the card can draw them at any size. Points are thinned as they arrive — a
-   * slow signature otherwise produces a few thousand samples, and the whole
-   * charm of this is that it stays a couple of hundred bytes.                */
+  /* -------------------------- signing, on the card -------------------------
+   * The canvas is mounted over the card's own signature line, so the pen lands
+   * where the ink ends up. Strokes are captured in canvas pixels and normalised
+   * to a 100x40 box on submit, so the wall can draw them at any card size.
+   * Points are thinned as they arrive — a slow signature otherwise produces a
+   * few thousand samples, and the whole charm of this is that it stays a couple
+   * of hundred bytes.
+   */
   type Pt = { x: number; y: number };
   let strokes: Pt[][] = [];
   let drawing = false;
+  let pad: HTMLCanvasElement | null = null;
+
+  /* Re-created whenever the card is re-rendered, then the existing strokes are
+     drawn back onto it — so changing the pattern or the finish never costs
+     somebody the signature they already wrote. */
+  function mountPad() {
+    const sig = stage?.querySelector<HTMLElement>('[data-gb-sig]');
+    if (!sig) return;
+    pad = document.createElement('canvas');
+    pad.className = 'gbc__pad';
+    sig.appendChild(pad);
+
+    const r = pad.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    pad.width = Math.max(1, Math.round(r.width * dpr));
+    pad.height = Math.max(1, Math.round(r.height * dpr));
+
+    pad.addEventListener('pointerdown', (e) => {
+      drawing = true;
+      pad!.setPointerCapture(e.pointerId);
+      strokes.push([at(e)]);
+      /* Stops the pen dragging the dialog out from under itself. */
+      e.preventDefault();
+    });
+    pad.addEventListener('pointermove', (e) => {
+      if (!drawing) return;
+      const s = strokes[strokes.length - 1];
+      const p = at(e);
+      const last = s[s.length - 1];
+      /* 2.5px of travel before a point counts. Below that it's tremor. */
+      if (Math.hypot(p.x - last.x, p.y - last.y) < 2.5) return;
+      s.push(p);
+      repaint();
+    });
+    const stopDraw = () => {
+      if (!drawing) return;
+      drawing = false;
+      reflectSigned();
+    };
+    pad.addEventListener('pointerup', stopDraw);
+    pad.addEventListener('pointercancel', stopDraw);
+    pad.addEventListener('pointerleave', stopDraw);
+
+    repaint();
+    reflectSigned();
+  }
 
   function padCtx() {
     const ctx = pad?.getContext('2d');
     if (!ctx || !pad) return null;
-    ctx.lineWidth = 3.2;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    ctx.lineWidth = 2.2 * dpr;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = '#232838';
+    /* The four finishes run from white to near-black, so the ink has to be
+       whatever the card's own text is rather than a fixed colour. Read off the
+       card, not the stage: `--c-fg` is set by `.gbc--<finish>` on the card
+       itself, so asking the wrapper gets nothing and falls back to dark, which
+       on the ink finish is dark ink on a near-black card. */
+    const card = stage?.querySelector('.gbc');
+    ctx.strokeStyle =
+      (card && getComputedStyle(card).getPropertyValue('--c-fg')?.trim()) || '#232838';
     return ctx;
   }
 
@@ -391,6 +474,15 @@ const reasons = ['Hiring', 'Collaboration', 'Just exploring', 'Industry buddy', 
     }
   }
 
+  /* The hint is the affordance now that the labelled row is gone, so it has to
+     disappear the moment it has been acted on — and Clear only exists once
+     there is something to clear. */
+  function reflectSigned() {
+    const has = strokes.some((s) => s.length > 1);
+    hint?.classList.toggle('is-signed', has);
+    if (clearBtn) clearBtn.hidden = !has;
+  }
+
   function at(e: PointerEvent): Pt {
     const r = pad!.getBoundingClientRect();
     return {
@@ -399,40 +491,10 @@ const reasons = ['Hiring', 'Collaboration', 'Just exploring', 'Industry buddy', 
     };
   }
 
-  if (pad) {
-    pad.addEventListener('pointerdown', (e) => {
-      drawing = true;
-      pad.setPointerCapture(e.pointerId);
-      strokes.push([at(e)]);
-      /* Stops the pen from scrolling the dialog out from under itself. */
-      e.preventDefault();
-    });
-    pad.addEventListener('pointermove', (e) => {
-      if (!drawing) return;
-      const s = strokes[strokes.length - 1];
-      const p = at(e);
-      const last = s[s.length - 1];
-      /* 2.5px of travel before a point counts. Below that it's tremor. */
-      if (Math.hypot(p.x - last.x, p.y - last.y) < 2.5) return;
-      s.push(p);
-      repaint();
-    });
-    const stopDraw = () => {
-      if (!drawing) return;
-      drawing = false;
-      /* The card only catches up when the pen lifts. Re-rendering the preview
-         on every sampled point would rebuild it a hundred times a stroke. */
-      paintPreview();
-    };
-    pad.addEventListener('pointerup', stopDraw);
-    pad.addEventListener('pointercancel', stopDraw);
-    pad.addEventListener('pointerleave', stopDraw);
-  }
-
-  document.querySelector('[data-gb-clear]')?.addEventListener('click', () => {
+  clearBtn?.addEventListener('click', () => {
     strokes = [];
     repaint();
-    paintPreview();
+    reflectSigned();
   });
 
   /* Normalise to the 100x40 viewBox the cards use. Returns '' for anything too
@@ -472,17 +534,10 @@ const reasons = ['Hiring', 'Collaboration', 'Just exploring', 'Industry buddy', 
     if (!dlg) return;
     err && (err.hidden = true);
     dlg.showModal();
-    /* Canvas has no layout until the dialog is shown, so the backing store is
-       sized here rather than at load — otherwise the first stroke lands at the
-       wrong scale. */
-    if (pad) {
-      const r = pad.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      pad.width = Math.round(r.width * dpr);
-      pad.height = Math.round(r.height * dpr);
-      repaint();
-    }
-    paintPreview();
+    /* Rendered after showModal, not before: the card has no layout until the
+       dialog is open, and the canvas backing store is sized from its box — size
+       it too early and the first stroke lands at the wrong scale. */
+    renderCard();
   }
 
   document.querySelector('[data-gb-open]')?.addEventListener('click', open);
@@ -560,16 +615,30 @@ const reasons = ['Hiring', 'Collaboration', 'Just exploring', 'Industry buddy', 
         return;
       }
 
+      /* Stamped, then handed over. The sweep is the moment the card stops being
+         a draft — without it the dialog just vanishes and the wall silently has
+         one more card on it, which is the same event with the join cut out. */
+      const madeCard = stage?.querySelector('.gbc');
+      if (madeCard && !still) {
+        madeCard.classList.add('is-shining');
+        await new Promise((r) => setTimeout(r, 900));
+      }
+
       render(out.entries ?? [], out.total ?? 0);
       dlg?.close();
       form.reset();
       strokes = [];
-      repaint();
+      reflectSigned();
+
       /* The point of the whole section: the card you just made is on the wall,
-         so put it in front of the person who made it. */
-      document
-        .querySelector('.gb__wall .gb__slot')
-        ?.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'center' });
+         so put it in front of the person who made it, and mark it so it is
+         obvious which one of them is theirs. */
+      const fresh = document.querySelector<HTMLElement>('.gb__wall .gb__slot');
+      if (fresh) {
+        fresh.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'center' });
+        fresh.classList.add('is-fresh');
+        window.setTimeout(() => fresh.classList.remove('is-fresh'), 2600);
+      }
     } catch {
       if (err) {
         err.textContent = 'No connection. Try again in a moment.';
