@@ -1,0 +1,85 @@
+{
+  "slug": "ikarus-nest",
+  "title": "Ikarus Nest",
+  "voice": "en-US-AndrewMultilingualNeural",
+  "note": "Spoken script. NOT the page read aloud — a guided tour that points at what is on screen. Governed by the same rules as the case study: research facts only, never imply the product launched, 'we' for research and 'I' for design. Edit the text and re-run `npm run walkthrough`; only changed beats are re-synthesised.",
+  "beats": [
+    {
+      "at": "csHero",
+      "say": "This is Ikarus Nest. A marketplace where 3D artists sell printable files, and people with printers buy them. I'll take you through it. Scroll whenever you like and I'll get out of the way.",
+      "hold": 400
+    },
+    {
+      "at": "overview",
+      "say": "Ikarus 3D was a studio making 3D models for brands. Nest was their move into a consumer product, and it was built around one big idea. Stop piracy by never letting the file leave the platform."
+    },
+    {
+      "at": "my-role",
+      "say": "I joined a design team of three. I owned how the marketplace was organised, its core screens, every empty state, and a set of reusable components. The research came first, and that was the team's work."
+    },
+    {
+      "at": "the-problem",
+      "say": "Here is the bet the product was built on. A 3D model is a file, and once it is downloaded the artist has no control over it. So Nest removed the download. Licences capped prints, a built-in slicer prepared the file, and it went straight to the printer over wifi."
+    },
+    {
+      "at": "what-we-learned-from-43-people",
+      "say": "Then we went and talked to the market. Forty three interviews. Twenty seven artists, sixteen printer owners. And every single artist raised piracy before we asked about it.",
+      "hold": 500
+    },
+    {
+      "at": "what-we-learned-from-43-people",
+      "say": "Almost none of them wanted it solved. One called it the cost of doing business. Another said the free copies were marketing, reaching people he never could. What they asked for instead was reach, payouts and analytics."
+    },
+    {
+      "at": "the-turn",
+      "say": "So the research did not adjust the product. It changed what the product was for. Piracy protection moved off the critical path, and the promise to artists went from we protect your files, to we help you reach people.",
+      "hold": 400
+    },
+    {
+      "at": "the-turn",
+      "say": "That left two questions. Is listing here worth an artist's time, when they already have an audience somewhere else? And will this file actually print on my machine? Everything I designed after this answers one of those."
+    },
+    {
+      "at": "onboarding",
+      "say": "Onboarding first. Artists hated verification friction, but buyers needed to feel safe handing over card details. So signing up is short, and becoming a creator is a separate step, taken later."
+    },
+    {
+      "at": "onboarding",
+      "say": "And look at what is beside the form. Live campaigns, with real backer counts and amounts raised. A marketplace with no history cannot claim it is alive. It has to show you something happening."
+    },
+    {
+      "at": "explore",
+      "say": "Explore answers both sides on one screen. Search sits above the categories, because the buyers who know exactly what they want were the ones being failed elsewhere. And the editorial rows are the reach artists asked for."
+    },
+    {
+      "at": "the-model-page",
+      "say": "The model page answers one question. Will this print on my machine? Material, scale, time to print, whether it needs supports. All checkable before paying. Beside it, a 3D viewer, so you can turn the model rather than trust a render of it."
+    },
+    {
+      "at": "the-model-page",
+      "say": "Then the decision I am most pleased with. Test print photos, pooled from buyers who already paid, sitting above the creator's own gallery. Creator proof can be curated. Buyer proof cannot. Both are photographs of the same print, and only one of them is evidence.",
+      "hold": 500
+    },
+    {
+      "at": "campaign-creation",
+      "say": "Campaign creation is six steps, and three of them exist because three different artists named the gap. Updates, because one could not show work in progress. Pre-marketing, for the Meta Pixel another one missed. Milestones, for the stretch goals neither platform gave him."
+    },
+    {
+      "at": "statistics",
+      "say": "Statistics ranked in the artists' top five. One of them could see the total from an affiliate link, but not which reward tier it came from. So this is one row per model, detailed enough to say which thing is working, not just whether anything is."
+    },
+    {
+      "at": "edge-cases",
+      "say": "Then the edges. Mature content is gated rather than banned, because one artist told us that was most of what he made. And deleting a model is three different problems, because a marketplace sells access to something. Deleting it is a question about obligations."
+    },
+    {
+      "at": "design-system-and-handoff",
+      "say": "This was before Figma had Dev Mode, so behaviour was written down screen by screen in annotations. Colour, type, inputs, buttons, alerts, labels and cards, all specified in both themes."
+    },
+    {
+      "at": "what-i-learned",
+      "say": "The project ended at handoff. What I take from it is short. The product was built against a problem almost nobody had asked us to solve, and forty three conversations caught it. Thanks for listening.",
+      "hold": 600
+    }
+  ]
+}

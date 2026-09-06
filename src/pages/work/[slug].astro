@@ -3,6 +3,8 @@ import { getCollection, render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import CaseHeroField from '../../components/CaseHeroField.astro';
 import CaseBlocks from '../../components/CaseBlocks.astro';
+import Walkthrough from '../../components/Walkthrough.astro';
+import { existsSync } from 'node:fs';
 
 export async function getStaticPaths() {
   const projects = await getCollection('work', ({ data }) => !data.draft);
@@ -42,6 +44,15 @@ const more = rest.slice(1);
 
 const shotOf = (p: (typeof all)[number]) =>
   p.data.cover ?? p.data.folderArt ?? p.data.shots?.[0];
+
+/* Walkthrough audio is generated locally by `npm run walkthrough` and committed,
+   so whether this case study has one is a question about the filesystem at build
+   time. Checked here rather than fetched in the browser: a case study without a
+   script should not ship the player at all, let alone show a control that turns
+   out to lead nowhere. */
+const hasWalkthrough = existsSync(
+  new URL(`../../../public/walkthrough/${entry.id}/manifest.json`, import.meta.url),
+);
 ---
 
 <Base title={`${d.client} — ${d.title}`} description={d.summary}>
@@ -254,6 +265,8 @@ const shotOf = (p: (typeof all)[number]) =>
       </nav>
     </div>
   </article>
+
+  {hasWalkthrough && <Walkthrough slug={entry.id} title={`${d.client} — ${d.title}`} />}
 
   {/* Lightbox. One dialog for every image on the page; the script fills it
       from whichever figure was clicked and walks prev/next through the rest. */}

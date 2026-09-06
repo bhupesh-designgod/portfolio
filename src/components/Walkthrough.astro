@@ -1,0 +1,635 @@
+---
+/* Walkthrough mode — the case study, narrated, with the page scrolling itself.
+ *
+ * Not the page read aloud. The script is written to be listened to and points
+ * at what is on screen; the body text stays what it always was, for reading.
+ * Scripts live in src/data/walkthroughs, audio is generated locally by
+ * `npm run walkthrough` and committed, so nothing here calls a TTS service at
+ * runtime — see scripts/walkthrough.mjs for why that matters.
+ *
+ * Three things this has to get right:
+ *
+ * 1. Interruption. The moment someone scrolls, reaches for a key or touches the
+ *    screen, the tour stops moving the page. Auto-scroll that fights the reader
+ *    is worse than no auto-scroll, so the bar for "they meant that" is low.
+ *
+ * 2. Where to start. Someone half way down does not want to be dragged back to
+ *    the top, and someone at the top does not want a choice they don't need. So
+ *    the question only gets asked when the answer isn't obvious.
+ *
+ * 3. Backgrounding. An <audio> element with MediaSession rather than Web Audio,
+ *    which is what Scout uses — Web Audio suspends when the tab backgrounds, and
+ *    on a four minute tour somebody will pocket their phone. This way it keeps
+ *    playing and gets lock-screen controls.
+ */
+interface Props {
+  /** Case study slug. Names the manifest at /walkthrough/<slug>/manifest.json. */
+  slug: string;
+  /** Shown on the lock screen. */
+  title: string;
+}
+
+const { slug, title } = Astro.props;
+---
+
+<div class="wt" data-wt data-wt-slug={slug} data-wt-title={title}>
+  {/* The resting state. Deliberately not a floating circle: this needs to say
+      what it does, because nothing else on the page suggests the case study can
+      talk. */}
+  <button type="button" class="wt__open" data-wt-open>
+    <svg class="wt__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 13a8 8 0 0 1 16 0M4 13v3.5a2 2 0 0 0 2 2h.5a1 1 0 0 0 1-1V14a1 1 0 0 0-1-1H4Zm16 0v3.5a2 2 0 0 1-2 2h-.5a1 1 0 0 1-1-1V14a1 1 0 0 1 1-1H20Z"
+        stroke="currentColor"
+        stroke-width="1.7"
+        stroke-linecap="round"
+        stroke-linejoin="round"></path>
+    </svg>
+    <span>Walk me through</span>
+  </button>
+
+  {/* Only ever shown when the reader is already somewhere. At the top of the
+      page there is no "here" to pick up from, so the question is skipped. */}
+  <div class="wt__ask" data-wt-ask hidden>
+    <p class="wt__askLead">Where should I start?</p>
+    <div class="wt__askBtns">
+      <button type="button" class="wt__btn wt__btn--go" data-wt-start="here">
+        Pick up from here
+      </button>
+      <button type="button" class="wt__btn" data-wt-start="top">From the beginning</button>
+    </div>
+  </div>
+
+  <div class="wt__player" data-wt-player hidden>
+    <button type="button" class="wt__ctl" data-wt-toggle aria-label="Pause walkthrough">
+      <svg class="wt__pause" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="7" y="5.5" width="3.6" height="13" rx="1.2" fill="currentColor"></rect>
+        <rect x="13.4" y="5.5" width="3.6" height="13" rx="1.2" fill="currentColor"></rect>
+      </svg>
+      <svg class="wt__play" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M8 5.4v13.2l11-6.6z" fill="currentColor"></path>
+      </svg>
+    </button>
+
+    <div class="wt__mid">
+      <div class="wt__bar" data-wt-bar><span></span></div>
+      {/* Captions are not decoration. Muted in an open-plan office, hard of
+          hearing, or a language you read better than you hear — all the same
+          need, and the word timings are already in the manifest. */}
+      <p class="wt__cap" data-wt-cap aria-live="polite"></p>
+    </div>
+
+    <button type="button" class="wt__ctl wt__ctl--x" data-wt-stop aria-label="End walkthrough">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          d="M6.5 6.5l11 11M17.5 6.5l-11 11"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.9"
+          stroke-linecap="round"></path>
+      </svg>
+    </button>
+  </div>
+
+  {/* preload="none" until it is wanted: this sits on every case study page and
+      almost nobody starts the tour. */}
+  <audio data-wt-audio preload="none"></audio>
+</div>
+
+<script>
+  const root = document.querySelector<HTMLElement>('[data-wt]');
+  if (root) {
+    const slug = root.dataset.wtSlug!;
+    const title = root.dataset.wtTitle ?? 'Walkthrough';
+
+    const openBtn = root.querySelector<HTMLButtonElement>('[data-wt-open]')!;
+    const ask = root.querySelector<HTMLElement>('[data-wt-ask]')!;
+    const player = root.querySelector<HTMLElement>('[data-wt-player]')!;
+    const toggleBtn = root.querySelector<HTMLButtonElement>('[data-wt-toggle]')!;
+    const stopBtn = root.querySelector<HTMLButtonElement>('[data-wt-stop]')!;
+    const bar = root.querySelector<HTMLElement>('[data-wt-bar] span')!;
+    const cap = root.querySelector<HTMLElement>('[data-wt-cap]')!;
+    const audio = root.querySelector<HTMLAudioElement>('[data-wt-audio]')!;
+
+    type Mark = { t: number; d: number; w: string };
+    type Beat = { at: string; say: string; src: string; ms: number; hold: number; marks: Mark[] };
+
+    let beats: Beat[] = [];
+    let i = 0;
+    let live = false;
+    /* Set while the player itself is moving the page, so its own scrolling is
+       not mistaken for the reader taking over. */
+    let selfScrolling = false;
+    let holdTimer = 0;
+    let preloader: HTMLAudioElement | null = null;
+
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    /* Lenis is not constructed under reduced motion, so this is null exactly
+       when the fallback is wanted. */
+    const lenis = () => (window as any).__lenis ?? null;
+
+    /* Clear of the nav pill, with room above the heading so the section reads as
+       a section rather than as a line stuck to the top of the window. */
+    const OFFSET = 132;
+    /* Ceiling on drift, in px/sec. Some sections are several screens of images
+       long; crossing one in a twenty second beat would be a blur, so the tour
+       covers what it comfortably can and the next beat catches up. */
+    const DRIFT = 78;
+
+    const topOf = (id: string) => {
+      const el = document.getElementById(id);
+      if (!el) return null;
+      return Math.max(0, el.getBoundingClientRect().top + window.scrollY - OFFSET);
+    };
+
+    function glide(y: number, seconds: number) {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const target = Math.max(0, Math.min(y, max));
+      selfScrolling = true;
+      const l = lenis();
+      if (l && !reduced) {
+        l.scrollTo(target, { duration: seconds, easing: (t: number) => t, lock: false });
+      } else {
+        window.scrollTo({ top: target, behavior: reduced ? 'auto' : 'smooth' });
+      }
+      /* Long enough for the animation to finish before user-scroll detection is
+         armed again. Lenis fires no reliable "done" for a cancelled scroll. */
+      window.setTimeout(() => {
+        selfScrolling = false;
+      }, Math.min(seconds * 1000 + 120, 1600));
+    }
+
+    function killScroll() {
+      const l = lenis();
+      if (l) l.scrollTo(window.scrollY, { immediate: true });
+    }
+
+    /* ------------------------------ captions ------------------------------
+       Marks are in speech order and mostly line up with the words in the text,
+       but the synthesiser does not always split where a space does. So each
+       mark walks forward to the next token it matches rather than trusting the
+       index — a miss costs one unhighlighted word, not a desynchronised line. */
+    let capWords: HTMLElement[] = [];
+    let capTimes: number[] = [];
+
+    const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+
+    function buildCaption(beat: Beat) {
+      cap.textContent = '';
+      capWords = [];
+      capTimes = [];
+      const tokens = beat.say.split(/(\s+)/);
+      for (const tok of tokens) {
+        if (/^\s+$/.test(tok)) {
+          cap.appendChild(document.createTextNode(tok));
+          continue;
+        }
+        const span = document.createElement('span');
+        span.textContent = tok;
+        cap.appendChild(span);
+        capWords.push(span);
+        capTimes.push(Infinity);
+      }
+      let at = 0;
+      for (const m of beat.marks) {
+        const want = norm(m.w);
+        if (!want) continue;
+        for (let k = at; k < capWords.length && k < at + 4; k++) {
+          if (norm(capWords[k].textContent ?? '').includes(want)) {
+            capTimes[k] = Math.min(capTimes[k], m.t);
+            at = k + 1;
+            break;
+          }
+        }
+      }
+      /* Anything the matcher skipped inherits the previous word's time, so it
+         lights up with its neighbour instead of never. */
+      let last = 0;
+      for (let k = 0; k < capTimes.length; k++) {
+        if (capTimes[k] === Infinity) capTimes[k] = last;
+        else last = capTimes[k];
+      }
+    }
+
+    function paintCaption(ms: number) {
+      for (let k = 0; k < capWords.length; k++) {
+        const on = capTimes[k] <= ms;
+        if (capWords[k].dataset.on !== String(on)) {
+          capWords[k].dataset.on = String(on);
+        }
+      }
+    }
+
+    /* -------------------------------- beats -------------------------------- */
+    function playBeat(n: number) {
+      i = n;
+      const beat = beats[i];
+      if (!beat) return finish();
+
+      buildCaption(beat);
+      audio.src = beat.src;
+      audio.currentTime = 0;
+      audio.play().catch(() => {});
+
+      const y = topOf(beat.at);
+      if (y !== null) glide(y, reduced ? 0 : 0.9);
+
+      /* Once settled on the section, creep toward the next one for the rest of
+         the beat, so the page is moving while the voice talks rather than
+         jumping once and sitting still. */
+      const next = beats[i + 1];
+      const seconds = Math.max(0, (beat.ms || 0) / 1000 - 1.1);
+      if (next && seconds > 1.5 && !reduced) {
+        window.setTimeout(() => {
+          if (!live || audio.paused) return;
+          const from = window.scrollY;
+          const to = topOf(next.at);
+          if (to === null || to <= from) return;
+          glide(Math.min(to, from + seconds * DRIFT), seconds);
+        }, 1000);
+      }
+
+      /* One clip ahead is enough to cover the gap and no more — this is a
+         phone-data feature as much as a desktop one. */
+      const after = beats[i + 1];
+      if (after) {
+        preloader = new Audio(after.src);
+        preloader.preload = 'auto';
+        preloader.load();
+      }
+
+      updateMedia(beat);
+    }
+
+    audio.addEventListener('ended', () => {
+      if (!live) return;
+      const beat = beats[i];
+      const wait = beat?.hold ?? 0;
+      holdTimer = window.setTimeout(() => {
+        if (live) playBeat(i + 1);
+      }, wait);
+    });
+
+    audio.addEventListener('timeupdate', () => {
+      const beat = beats[i];
+      if (!beat) return;
+      paintCaption(audio.currentTime * 1000);
+      const done = i + (audio.duration ? audio.currentTime / audio.duration : 0);
+      bar.style.transform = `scaleX(${Math.min(1, done / beats.length)})`;
+    });
+
+    /* ------------------------------ transport ------------------------------ */
+    function updateMedia(beat: Beat) {
+      if (!('mediaSession' in navigator)) return;
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: `${i + 1}. ${beat.say.slice(0, 60)}`,
+        artist: 'Walkthrough',
+        album: title,
+      });
+      const set = (a: MediaSessionAction, fn: (() => void) | null) => {
+        try {
+          navigator.mediaSession.setActionHandler(a, fn);
+        } catch {}
+      };
+      set('play', () => resume());
+      set('pause', () => pause());
+      set('previoustrack', () => playBeat(Math.max(0, i - 1)));
+      set('nexttrack', () => playBeat(i + 1));
+    }
+
+    function pause() {
+      audio.pause();
+      window.clearTimeout(holdTimer);
+      killScroll();
+      root.dataset.state = 'paused';
+      toggleBtn.setAttribute('aria-label', 'Resume walkthrough');
+    }
+
+    function resume() {
+      audio.play().catch(() => {});
+      root.dataset.state = 'playing';
+      toggleBtn.setAttribute('aria-label', 'Pause walkthrough');
+    }
+
+    function finish() {
+      live = false;
+      audio.pause();
+      window.clearTimeout(holdTimer);
+      root.dataset.state = 'idle';
+      player.hidden = true;
+      ask.hidden = true;
+      openBtn.hidden = false;
+      cap.textContent = '';
+    }
+
+    /* --------------------------- user takes over --------------------------- */
+    /* Any of these means the reader wants the page, so the tour stops driving
+       it. The voice is paused rather than stopped: picking a section to read and
+       then wanting the narration back is a normal thing to do. */
+    const yielded = () => {
+      if (!live || selfScrolling || audio.paused) return;
+      pause();
+      root.dataset.yielded = 'true';
+      window.setTimeout(() => delete root.dataset.yielded, 2600);
+    };
+    for (const ev of ['wheel', 'touchstart', 'pointerdown'] as const) {
+      window.addEventListener(ev, yielded, { passive: true });
+    }
+    window.addEventListener('keydown', (e) => {
+      if (['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(e.key)) {
+        yielded();
+      }
+      if (e.key === 'Escape' && live) finish();
+    });
+    /* The controls are inside the page, so a click on them would read as the
+       reader grabbing the scroll. */
+    root.addEventListener('pointerdown', (e) => e.stopPropagation());
+
+    /* -------------------------------- start -------------------------------- */
+    async function load() {
+      if (beats.length) return true;
+      try {
+        const res = await fetch(`/walkthrough/${slug}/manifest.json`);
+        if (!res.ok) return false;
+        const m = await res.json();
+        beats = m.beats ?? [];
+        return beats.length > 0;
+      } catch {
+        return false;
+      }
+    }
+
+    /* The beat whose section the reader is currently in — the same "last anchor
+       above the fold" lookup the contents rail already does. */
+    function beatHere() {
+      const y = window.scrollY + OFFSET + 8;
+      let best = 0;
+      for (let k = 0; k < beats.length; k++) {
+        const t = topOf(beats[k].at);
+        if (t !== null && t <= y) best = k;
+      }
+      return best;
+    }
+
+    function begin(from: number) {
+      live = true;
+      ask.hidden = true;
+      openBtn.hidden = true;
+      player.hidden = false;
+      root.dataset.state = 'playing';
+      playBeat(from);
+    }
+
+    openBtn.addEventListener('click', async () => {
+      openBtn.disabled = true;
+      const ok = await load();
+      openBtn.disabled = false;
+      if (!ok) return;
+
+      /* Only ask when there is something to choose between. Near the top of the
+         page "from here" and "from the beginning" are the same answer. */
+      const here = beatHere();
+      if (here <= 0) {
+        begin(0);
+        return;
+      }
+      ask.hidden = false;
+      openBtn.hidden = true;
+      root.dataset.state = 'asking';
+    });
+
+    root.querySelectorAll<HTMLButtonElement>('[data-wt-start]').forEach((b) =>
+      b.addEventListener('click', () => begin(b.dataset.wtStart === 'top' ? 0 : beatHere())),
+    );
+
+    toggleBtn.addEventListener('click', () => (audio.paused ? resume() : pause()));
+    stopBtn.addEventListener('click', finish);
+
+    /* Leaving the page mid-tour should not leave a voice playing. */
+    window.addEventListener('pagehide', () => audio.pause());
+  }
+</script>
+
+<style>
+  .wt {
+    position: fixed;
+    left: 24px;
+    bottom: 24px;
+    z-index: 60;
+    font-family: 'Inter', 'Nunito', system-ui, sans-serif;
+  }
+
+  /* `hidden` is only a presentation hint and loses to any explicit display,
+     which every one of these has. Without this the three states stack on top of
+     each other and all of them are on screen at once. */
+  .wt__open[hidden],
+  .wt__ask[hidden],
+  .wt__player[hidden] {
+    display: none !important;
+  }
+
+  .wt__open,
+  .wt__ask,
+  .wt__player {
+    /* The nav pill's material, so the tour reads as part of the site's chrome
+       rather than as a plugin that landed on it. */
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(18px) saturate(1.5);
+    -webkit-backdrop-filter: blur(18px) saturate(1.5);
+    border: 1px solid rgba(20, 28, 56, 0.09);
+    box-shadow:
+      0 1px 2px rgba(20, 28, 56, 0.06),
+      0 14px 38px rgba(20, 28, 56, 0.16);
+  }
+
+  .wt__open {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 11px 18px 11px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #0b0d12;
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), color 0.2s ease;
+  }
+  .wt__open:hover {
+    transform: translateY(-2px);
+    color: var(--blue-500);
+  }
+  .wt__icon {
+    width: 19px;
+    height: 19px;
+    color: var(--blue-500);
+  }
+
+  .wt__ask {
+    padding: 14px 16px;
+    border-radius: 18px;
+    width: 262px;
+  }
+  .wt__askLead {
+    margin: 0 0 10px;
+    font-size: 12px;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+    color: #7b7f8c;
+  }
+  .wt__askBtns {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .wt__btn {
+    padding: 9px 13px;
+    border-radius: 10px;
+    border: 1px solid rgba(20, 28, 56, 0.1);
+    background: #fff;
+    cursor: pointer;
+    font-size: 13.5px;
+    text-align: left;
+    color: #0b0d12;
+    transition: border-color 0.18s ease, color 0.18s ease;
+  }
+  .wt__btn:hover {
+    border-color: var(--blue-300);
+    color: var(--blue-500);
+  }
+  .wt__btn--go {
+    background: var(--blue-500);
+    border-color: var(--blue-500);
+    color: #fff;
+  }
+  .wt__btn--go:hover {
+    background: var(--blue-700);
+    border-color: var(--blue-700);
+    color: #fff;
+  }
+
+  .wt__player {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 18px;
+    width: min(420px, calc(100vw - 48px));
+  }
+  .wt__ctl {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border: 0;
+    border-radius: 50%;
+    cursor: pointer;
+    background: var(--blue-500);
+    color: #fff;
+    transition: background 0.2s ease;
+  }
+  .wt__ctl:hover {
+    background: var(--blue-700);
+  }
+  .wt__ctl svg {
+    width: 18px;
+    height: 18px;
+  }
+  .wt__ctl--x {
+    background: transparent;
+    color: #7b7f8c;
+  }
+  .wt__ctl--x:hover {
+    background: rgba(20, 28, 56, 0.06);
+    color: #0b0d12;
+  }
+
+  /* One icon at a time, driven by the state on the root. */
+  .wt__play {
+    display: none;
+  }
+  .wt[data-state='paused'] .wt__pause {
+    display: none;
+  }
+  .wt[data-state='paused'] .wt__play {
+    display: block;
+  }
+
+  .wt__mid {
+    flex: 1;
+    min-width: 0;
+  }
+  .wt__bar {
+    height: 2px;
+    border-radius: 2px;
+    background: rgba(20, 28, 56, 0.12);
+    overflow: hidden;
+  }
+  .wt__bar span {
+    display: block;
+    height: 100%;
+    background: var(--blue-500);
+    transform: scaleX(0);
+    transform-origin: 0 50%;
+    transition: transform 0.25s linear;
+  }
+  .wt__cap {
+    margin: 7px 0 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: #9aa0ad;
+    /* Two lines, ellipsised. A caption that grows re-lays the bar out mid
+       sentence, which is more distracting than the words are useful. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .wt__cap span {
+    transition: color 0.12s linear;
+  }
+  .wt__cap span[data-on='true'] {
+    color: #0b0d12;
+  }
+
+  /* A one-off nudge after the reader takes the page back, so the tour having
+     stopped is not something they have to notice for themselves. */
+  .wt[data-yielded] .wt__player::after {
+    content: 'Paused — you took the wheel';
+    position: absolute;
+    left: 14px;
+    bottom: calc(100% + 8px);
+    padding: 5px 10px;
+    border-radius: 8px;
+    background: #0b0d12;
+    color: #fff;
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+  .wt__player {
+    position: relative;
+  }
+
+  @media (max-width: 780px) {
+    .wt {
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+    }
+    .wt__player {
+      width: auto;
+    }
+    /* Clears the assistant, which sits bottom-right on the same edge. */
+    .wt__open {
+      max-width: calc(100% - 76px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wt__open,
+    .wt__bar span,
+    .wt__cap span {
+      transition: none;
+    }
+  }
+</style>

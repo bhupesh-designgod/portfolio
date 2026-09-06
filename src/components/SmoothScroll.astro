@@ -23,5 +23,13 @@ import 'lenis/dist/lenis.css';
       requestAnimationFrame(raf);
     };
     requestAnimationFrame(raf);
+
+    /* Published so anything that needs to move the page programmatically goes
+       through Lenis rather than around it. `window.scrollTo` fights Lenis' own
+       rAF — both write scrollTop on the same frame and the page judders. The
+       walkthrough player is the only caller today; it falls back to
+       `window.scrollTo` when this is absent, which is the reduced-motion case
+       where Lenis is never constructed. */
+    (window as any).__lenis = lenis;
   }
 </script>
