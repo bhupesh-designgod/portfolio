@@ -8,7 +8,13 @@ import 'lenis/dist/lenis.css';
 <script>
   import Lenis from 'lenis';
 
-  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  /* Flip to true to put Lenis back. Off while Bhupesh compares the feel of the
+     site on native scroll — everything else copes: hash links fall back to the
+     `scroll-behavior: smooth` already on <html>, and the walkthrough player
+     checks for `window.__lenis` and uses `window.scrollTo` when it is absent. */
+  const SMOOTH = false;
+
+  if (SMOOTH && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     const lenis = new Lenis({
       /* Fraction of the remaining distance covered per frame. At 0.09 the first
          few frames barely moved, which read as the page resisting the wheel

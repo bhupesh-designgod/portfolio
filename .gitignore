@@ -55,3 +55,7 @@ coverage/
 # thinking about it goes in here.
 /private/
 /scratch/
+
+# Local guestbook entries. `astro dev` with no Upstash store configured keeps
+# signatures here so the flow can be exercised end to end; never committed.
+.guestbook-dev.json

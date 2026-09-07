@@ -227,7 +227,10 @@ const reasons = ['Hiring', 'Collaboration', 'Just exploring', 'Industry buddy', 
       <p class="gbd__thanks">Thanks for being here.</p>
       <div class="gbd__acts">
         <button type="button" class="gbd__ghostBtn" data-gb-cancel>Cancel</button>
-        <button type="submit" class="gbd__go" data-gb-submit>Leave my mark</button>
+        {/* Names the destination, not the transaction. "Submit" tells you a form
+            went somewhere; this tells you where the thing you just made ends
+            up, which is the only reason anyone filled it in. */}
+        <button type="submit" class="gbd__go" data-gb-submit>Pin it to the wall</button>
       </div>
     </div>
   </form>
@@ -597,7 +600,7 @@ const reasons = ['Hiring', 'Collaboration', 'Just exploring', 'Industry buddy', 
     if (!body.name) return;
 
     btn && (btn.disabled = true);
-    btn && (btn.textContent = 'Signing…');
+    btn && (btn.textContent = 'Pinning it up…');
 
     try {
       const res = await fetch('/api/guestbook', {
@@ -646,7 +649,7 @@ const reasons = ['Hiring', 'Collaboration', 'Just exploring', 'Industry buddy', 
       }
     } finally {
       btn && (btn.disabled = false);
-      btn && (btn.textContent = 'Leave my mark');
+      btn && (btn.textContent = 'Pin it to the wall');
     }
   });
 </script>

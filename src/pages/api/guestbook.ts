@@ -28,6 +28,17 @@ const REST_URL =
 const REST_TOKEN =
   import.meta.env.KV_REST_API_TOKEN ?? import.meta.env.UPSTASH_REDIS_REST_TOKEN ?? '';
 
+/* No store configured and running `astro dev`: keep entries in a git-ignored
+   file so the whole flow — sign, submit, sweep, land on the wall — can be
+   exercised locally without an account anywhere.
+
+   Deliberately dev-only. The same fallback in production would be a lie: each
+   serverless instance has its own filesystem and it is wiped between cold
+   starts, so a visitor would watch their card appear and then find it gone. In
+   production with no store the POST still refuses, which is honest. */
+const DEV_FILE = '.guestbook-dev.json';
+const devStore = import.meta.env.DEV && !REST_URL;
+
 const KEY = 'guestbook';
 const KEEP = 500;      // entries retained; the wall shows five
 const PAGE = 24;       // returned per GET — enough for the future wall page
@@ -84,7 +95,27 @@ async function pipeline(cmds: (string | number)[][]): Promise<any[] | null> {
   }
 }
 
+async function devRead(): Promise<Entry[]> {
+  const { readFile } = await import('node:fs/promises');
+  try {
+    const raw = JSON.parse(await readFile(DEV_FILE, 'utf8'));
+    return Array.isArray(raw) ? raw : [];
+  } catch {
+    return [];
+  }
+}
+
+async function devWrite(list: Entry[]) {
+  const { writeFile } = await import('node:fs/promises');
+  await writeFile(DEV_FILE, JSON.stringify(list, null, 2));
+}
+
 async function readWall(): Promise<{ entries: Entry[]; total: number }> {
+  if (devStore) {
+    const all = await devRead();
+    return { entries: all.slice(0, PAGE), total: all.length };
+  }
+
   const out = await pipeline([
     ['LRANGE', KEY, 0, PAGE - 1],
     ['LLEN', KEY],
@@ -179,7 +210,7 @@ function cleanSign(raw: unknown): string | undefined {
 export const GET: APIRoute = async () => json(await readWall());
 
 export const POST: APIRoute = async ({ request }) => {
-  if (!REST_URL || !REST_TOKEN) {
+  if (!devStore && (!REST_URL || !REST_TOKEN)) {
     return json({ error: 'The guestbook isn’t open yet. Check back shortly.' }, 503);
   }
 
@@ -199,7 +230,10 @@ export const POST: APIRoute = async ({ request }) => {
   const bad = screen(name, note);
   if (bad) return json({ error: bad }, 400);
 
-  if (await rateLimited(clientIp(request))) {
+  /* The limiter is Redis-backed, so there is nothing to count against in the
+     dev store — and rate-limiting yourself while building the thing is only an
+     obstacle. */
+  if (!devStore && (await rateLimited(clientIp(request)))) {
     return json({ error: 'You’ve signed already — thank you twice over.' }, 429);
   }
 
@@ -215,11 +249,17 @@ export const POST: APIRoute = async ({ request }) => {
     ...(cleanSign(body?.sign) ? { sign: cleanSign(body?.sign) } : {}),
   };
 
-  const out = await pipeline([
-    ['LPUSH', KEY, JSON.stringify(entry)],
-    ['LTRIM', KEY, 0, KEEP - 1],
-  ]);
-  if (!out) return json({ error: 'Couldn’t save that. Try again in a moment.' }, 502);
+  if (devStore) {
+    const all = await devRead();
+    all.unshift(entry);
+    await devWrite(all.slice(0, KEEP));
+  } else {
+    const out = await pipeline([
+      ['LPUSH', KEY, JSON.stringify(entry)],
+      ['LTRIM', KEY, 0, KEEP - 1],
+    ]);
+    if (!out) return json({ error: 'Couldn’t save that. Try again in a moment.' }, 502);
+  }
 
   /* Hand back the fresh wall so the client re-renders from the server's truth
      rather than optimistically splicing in its own copy. */
