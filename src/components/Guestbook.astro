@@ -48,9 +48,13 @@ const reasons = ['Hiring', 'Collaboration', 'Just exploring', 'Industry buddy', 
     <div class="gb__top">
       <div class="gb__intro">
         <h2 class="gb__title">Leave a little mark.</h2>
+        {/* Less a comment box than a bench with initials carved in it. The
+            old line read as a request for feedback on the site, which is not
+            what this is: nobody is being asked to review anything, only to
+            leave a trace that they came by. */}
         <p class="gb__lead">
-          A small guestbook for the kind people who made it this far. Make
-          yourself a pass &mdash; then go and find it on the wall.
+          Less a comment box, more carving your initials into a bench. Make
+          yourself a pass, sign it, and it stays on the wall.
         </p>
       </div>
 
@@ -85,10 +89,6 @@ const reasons = ['Hiring', 'Collaboration', 'Just exploring', 'Industry buddy', 
           </span>
         </button>
       </div>
-
-      {/* The one piece of handwriting in the section. Says why a guestbook is
-          here at all, in the one voice a heading can't use. */}
-      <p class="gb__aside" aria-hidden="true">Different people.<br />Same good energy.</p>
 
       {/* Inside the top grid rather than after it, sharing a row with the lower
           half of the pass. Below the grid it would have to clear the pass's full
@@ -216,8 +216,9 @@ const reasons = ['Hiring', 'Collaboration', 'Just exploring', 'Industry buddy', 
 
       <label class="gbd__row">
         <span class="gbd__label">A quick note <i>(optional)</i></span>
+        {/* "Love your work!" prompted a review. This prompts a trace. */}
         <input class="gbd__in" name="note" type="text" maxlength="90"
-          placeholder="Love your work!" data-gb-note />
+          placeholder="Passing through." data-gb-note />
       </label>
     </div>
 

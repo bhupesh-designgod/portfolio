@@ -1,11 +1,11 @@
 ---
 client: TBS
-title: A trainer dashboard that remembers 30 clients, so the coach doesn't have to
-heroTitle: A dashboard that *remembers*, so the coach doesn't have to
+title: A coach's workspace that opens on who needs them today
+heroTitle: Who needs you *today*
 summary: >-
-  The coach's side of the TBS build. He was running thirty people out of his
-  own head. I designed the workspace that does the remembering, so his day
-  starts with who needs him rather than who messaged last.
+  The coach's side of the same build. A workspace that turns a day of scattered
+  messages into a queue: who needs you, what they need, and a plan builder to
+  answer it. Around 50 screens, sharing one design system with the client app.
 tags: [Product strategy, Information architecture, Internal tools, Design systems]
 tint: '#f1eee6'
 accent: gold

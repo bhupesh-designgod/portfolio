@@ -1,11 +1,11 @@
 ---
 client: TBS
-title: Helping a fitness coach grow past 30 clients without losing the human touch
-heroTitle: Making room for the *31st client*
+title: A coaching app that tells you exactly what to do today
+heroTitle: Today's plan, *one tap away*
 summary: >-
-  A fitness coach ran his whole business on WhatsApp and hit a ceiling at 30
-  clients. I designed the client app that lets him coach more people without
-  coaching any of them less.
+  The client side of an online coaching business. A five-tab app that answers
+  one question every morning — what am I doing today — and keeps the coach one
+  tap away. Designed from research through to a 60-screen handoff.
 tags: [Product strategy, 0 → 1, Information architecture, Design systems]
 tint: '#e7f0e9'
 accent: gold

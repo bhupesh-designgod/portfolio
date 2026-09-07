@@ -1,12 +1,12 @@
 ---
 client: Ikarus 3D
-title: Designing a 3D-printing marketplace around what artists and buyers actually asked for
-heroTitle: 43 interviews changed *what we built*
+title: A marketplace where 3D artists get reach and buyers know a file will print
+heroTitle: A marketplace *both sides* trust
 summary: >-
-  A marketplace where 3D artists sell printable files and hobbyists buy them.
-  The product's big idea was anti-piracy. We talked to 43 people and found
-  almost nobody wanted that. I designed the marketplace that came out of what
-  they did want.
+  A marketplace and crowdfunding platform for 3D-printable files. Artists get
+  reach, payouts and campaigns; buyers get proof from other buyers that a file
+  actually prints. I designed the marketplace, the model page and the campaign
+  builder.
 tags: [Marketplace design, Two-sided products, Design systems, Developer handoff]
 tint: '#e9e7fb'
 accent: violet

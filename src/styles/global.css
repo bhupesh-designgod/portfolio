@@ -4227,14 +4227,15 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
    sit level with the pass's lower half instead of below its shadow. */
 .gb__top {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(120px, 0.3fr);
+  /* Two columns since the marginal note was removed. The pass takes the room
+     it freed rather than the layout keeping a gap where a line used to be. */
+  grid-template-columns: minmax(0, 1fr) auto;
   grid-template-rows: auto auto;
   align-items: start;
-  gap: 36px;
+  gap: 40px;
 }
 .gb__intro { grid-column: 1; grid-row: 1; }
 .gb__passWrap { grid-column: 2; grid-row: 1 / span 2; }
-.gb__aside { grid-column: 3; grid-row: 1; }
 .gb__wallHead { grid-column: 1; grid-row: 2; align-self: end; }
 
 /* Same size and setting as `.work__title` and the testimonials heading. This is
@@ -4255,19 +4256,6 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   font-size: 17px;
   line-height: 1.6;
   color: #4a4f5c;
-}
-
-/* The one piece of handwriting left in the section. */
-.gb__aside {
-  margin: 6px 0 0;
-  font-family: "Caveat", "Segoe Script", cursive;
-  font-weight: 600;
-  font-size: 25px;
-  line-height: 1.22;
-  letter-spacing: 0.2px;
-  color: var(--blue-500);
-  rotate: -4deg;
-  justify-self: start;
 }
 
 /* ------------------------------- the pass --------------------------------
@@ -4436,8 +4424,8 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
 .gb__passWrap {
   /* The perspective belongs to the parent, not the card: on the card itself it
      is applied after the rotation and the lean flattens out. */
-  perspective: 900px;
-  width: 392px;
+  perspective: 1000px;
+  width: 440px;
 }
 .gb__pass {
   display: block;
@@ -4944,11 +4932,7 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
 .gbd__go:disabled { opacity: 0.6; cursor: default; }
 
 @media (max-width: 1120px) {
-  /* The aside is the first thing to go — at this width it either overlaps the
-     pass or squeezes to two words a line. */
-  .gb__top { grid-template-columns: minmax(0, 1fr) auto; }
-  .gb__aside { display: none; }
-  .gb__passWrap { width: 340px; }
+  .gb__passWrap { width: 356px; }
   .gb__wall { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .gb__slot:nth-child(n) { rotate: 0deg; }
 }
@@ -4958,7 +4942,7 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   /* Stacked: heading, then the pass under it. */
   .gb__top { grid-template-columns: minmax(0, 1fr); gap: 6px; }
   .gb__intro, .gb__passWrap, .gb__wallHead { grid-column: 1; grid-row: auto; }
-  .gb__passWrap { width: min(100%, 392px); margin: 26px auto 0; }
+  .gb__passWrap { width: min(100%, 440px); margin: 26px auto 0; }
   .gb__title { font-size: 44px; }
   .gb__wallHead { margin-top: 44px; }
   .gb__wallTitle { font-size: 26px; }
