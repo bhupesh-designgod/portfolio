@@ -233,9 +233,9 @@ const { src = '/assets/playground/reel.mp4', href = '/playground' } = Astro.prop
     width: 100%;
     aspect-ratio: 0.72 / 1;
     overflow: hidden;
-    /* A doorway, so the top corners are rounder than the bottom ones — the
-       bottom of a door meets the floor square. */
-    border-radius: 165px 165px 12px 12px;
+    /* Square, like the frames in the reference. The same 12px the cards
+       elsewhere on the site use, so it reads as one family. */
+    border-radius: 12px;
     background: #fff;
     text-decoration: none;
     box-shadow: 0 26px 60px rgba(20, 28, 56, 0.15);
