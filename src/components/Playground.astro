@@ -1,31 +1,20 @@
 ---
 /* The playground door.
  *
- * One doorway on the right: a picture floating on a slowly drifting gradient,
+ * One card on the right: a picture floating on a slowly drifting gradient,
  * standing on a reflective floor. Click it and you are in the playground.
  *
- * The hover is the pmndrs image-gallery interaction (examples/image-gallery,
- * the Frame component). There the coloured mat is a fixed size and the picture
- * scales down inside it, so the mat thickens from underneath rather than a ring
- * growing outward:
+ * The card itself does not move. The only thing the hover does is light up the
+ * label, so the affordance is on the thing you are about to click rather than
+ * on the whole object.
  *
- *   image scale   rest 0.85 x 0.9  ->  hover 0.7225 x 0.8145
- *   frame (mat)   fixed at 0.9 x 0.93
- *   frame colour  white -> orange
- *
- * Against the mat rather than the outer frame that is 0.944 x 0.968 at rest and
- * 0.803 x 0.876 on hover, which is what the transforms below use. Orange is the
- * primary blue here, and white is the page, so at rest the mat is invisible and
- * the door has no border.
- *
- * The reflection is a plain DOM copy rather than the canvas this used while the
- * door held a video. Nothing in the picture moves per frame any more, so a
- * mirrored duplicate costs one image the browser has already decoded and no
- * requestAnimationFrame at all. The markup is written out twice rather than
- * shared, because Astro frontmatter is TypeScript and cannot hold markup.
+ * The reflection is a plain DOM copy. Nothing in the picture moves per frame, so
+ * a mirrored duplicate costs one image the browser has already decoded — no
+ * canvas, no draw loop. The markup is written out twice rather than shared,
+ * because Astro frontmatter is TypeScript and cannot hold markup.
  */
 interface Props {
-  /** The picture in the doorway. */
+  /** The picture in the card. */
   src?: string;
   alt?: string;
   href?: string;
@@ -125,34 +114,30 @@ const {
     color: #4a4f5c;
   }
 
-  /* -------------------------------- the door ------------------------------- */
+  /* -------------------------------- the card ------------------------------- */
   .pg__stage {
     position: relative;
     width: 330px;
   }
-
-  /* The door is the mat. The picture inside it is what moves. */
   .pg__door {
     position: relative;
-    z-index: 1;
     display: block;
     width: 100%;
     aspect-ratio: 0.72 / 1;
     overflow: hidden;
     border-radius: 12px;
-    background: #fff;
+    background: #fbf7f9;
     text-decoration: none;
     box-shadow: 0 26px 60px rgba(20, 28, 56, 0.15);
-    /* maath's damp at smoothTime 0.1 is quick and does not overshoot. */
-    transition: background-color 0.28s ease;
+    transition: box-shadow 0.45s ease;
   }
   .pg__door:hover,
   .pg__door:focus-visible {
-    background: var(--blue-500);
+    box-shadow: 0 32px 70px rgba(20, 28, 56, 0.2);
   }
-  /* The mat is the focus ring; a second outline would double it up. */
   .pg__door:focus-visible {
-    outline: none;
+    outline: 2px solid var(--blue-500);
+    outline-offset: 6px;
   }
 
   .pg__pic {
@@ -162,13 +147,6 @@ const {
     overflow: hidden;
     border-radius: inherit;
     background: #fbf7f9;
-    transform: scale(0.944, 0.968);
-    transform-origin: 50% 50%;
-    transition: transform 0.28s ease;
-  }
-  .pg__door:hover .pg__pic,
-  .pg__door:focus-visible .pg__pic {
-    transform: scale(0.803, 0.876);
   }
 
   /* ------------------------------ the gradient -----------------------------
@@ -239,63 +217,71 @@ const {
     box-sizing: border-box;
   }
 
-  /* Dark, because the ground behind it is pale now. */
+  /* ------------------------------- the label ------------------------------- */
   .pg__label {
     position: absolute;
     z-index: 2;
-    left: 0;
-    right: 0;
-    bottom: 26px;
+    left: 50%;
+    bottom: 22px;
+    translate: -50% 0;
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
     font-family: 'Inter', 'Nunito', system-ui, sans-serif;
     font-size: 13px;
     font-weight: 500;
     letter-spacing: 1.6px;
     text-transform: uppercase;
+    white-space: nowrap;
     color: #0b0d12;
+    /* Transparent at rest so the card is the picture and nothing else. */
+    background: transparent;
+    transition:
+      background-color 0.28s ease,
+      color 0.28s ease,
+      gap 0.28s cubic-bezier(0.22, 1, 0.36, 1);
   }
   .pg__label svg {
     width: 17px;
     height: 17px;
   }
+  .pg__door:hover .pg__label,
+  .pg__door:focus-visible .pg__label {
+    background: var(--blue-500);
+    color: #fff;
+    gap: 12px;
+  }
 
   /* -------------------------------- the floor ------------------------------ */
   .pg__floor {
-    /* 0.72 wide against 0.40 of the door's height: the compression you get
+    /* 0.72 wide against 0.40 of the card's height: the compression you get
        looking at a floor from standing height. */
     aspect-ratio: 0.72 / 0.4;
     overflow: hidden;
     filter: blur(2px);
-    /* Higher than it was with the video. That content was dark and read against
-       white at 40%; a pale gradient at 40% is white on white. */
+    /* Higher than it was with a video. That content was dark and read against
+       white at 0.4; a pale gradient at 0.4 is white on white. */
     opacity: 0.62;
     -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.5) 34%, transparent 82%);
     mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.5) 34%, transparent 82%);
     pointer-events: none;
   }
   /* Flipped about its own top edge and squashed to 40%, so the top of the
-     reflection is the bottom of the door, which is where the two meet.
-     
+     reflection is the bottom of the card, which is where the two meet.
+
      The translate is load-bearing and easy to miss. Transforms apply
      right-to-left: translateY(-100%) lifts the element by its own height so it
-     sits entirely above the origin, and scaleY(-0.4) then maps it back down
-     into the box. Without it the flip throws the content above the origin,
-     where the floor's overflow: hidden clips every pixel of it and the
-     reflection is simply absent. */
+     sits entirely above the origin, and scaleY(-0.4) then maps it back down into
+     the box. Without it the flip throws the content above the origin, where the
+     floor's overflow: hidden clips every pixel and the reflection is absent. */
   .pg__mirror {
     position: relative;
     width: 100%;
     aspect-ratio: 0.72 / 1;
     transform: scaleY(-0.4) translateY(-100%);
     transform-origin: 50% 0;
-  }
-  .pg__mirror .pg__pic {
-    /* Held at the resting scale. The floor does not answer the hover, and
-       matching it would mean the reflection moving while the door does. */
-    transform: scale(0.944, 0.968);
   }
 
   @media (max-width: 900px) {
@@ -317,7 +303,6 @@ const {
 
   @media (prefers-reduced-motion: reduce) {
     .pg__door,
-    .pg__pic,
     .pg__label {
       transition: none;
     }
