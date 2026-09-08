@@ -107,7 +107,21 @@ const socials = [
     {/* The prompt the tiles were missing. Four unlabelled icons ask the reader
         to decide something; a line telling them it does not matter which one
         removes the decision, which is the whole point of putting four here. */}
-    <p class="ft__lead">Say hello &mdash; wherever you already are</p>
+    {/* A small hand, not a mascot. Line art in the same stroke weight as the
+        social tiles below it, and it waves for about a second in every six —
+        long enough to be noticed once, short enough that it is still by the
+        time anyone reads the line. */}
+    <p class="ft__lead">
+      <svg class="ft__wave" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M8.4 11V5.7a1.35 1.35 0 0 1 2.7 0V11M11.1 10.6V4.5a1.35 1.35 0 0 1 2.7 0v6.1M13.8 10.8V6.1a1.35 1.35 0 0 1 2.7 0v5.9M16.5 9.3a1.35 1.35 0 0 1 2.7 0v4.5a7 7 0 0 1-7 7h-.9a6 6 0 0 1-4.24-1.76l-3.05-3.05a1.45 1.45 0 0 1 2.05-2.05L8.4 15"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"></path>
+      </svg>
+      <span>Say hello, wherever you already are</span>
+    </p>
 
     <ul class="ft__tiles">
       {
@@ -481,12 +495,41 @@ const socials = [
      actually uses, so it gets the size that implies. */
   /* The line that turns four icons into an invitation. */
   .ft__lead {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     margin: clamp(28px, 4vw, 44px) 0 0;
     text-align: center;
     font-size: 13.5px;
     font-weight: 600;
     letter-spacing: 0.1px;
     color: rgba(255, 255, 255, 0.62);
+  }
+
+  .ft__wave {
+    flex: 0 0 auto;
+    width: 17px;
+    height: 17px;
+    /* Pivot at the wrist, which is where a hand actually hinges. Rotating about
+       the centre makes it slide rather than wave. */
+    transform-origin: 70% 85%;
+    animation: ft-wave 6s ease-in-out infinite;
+  }
+
+  /* Four beats of waving, then five seconds of nothing. A hand that waves
+     continuously is a mascot; this one just catches the eye once. */
+  @keyframes ft-wave {
+    0%, 82%, 100% { transform: rotate(0deg); }
+    85% { transform: rotate(13deg); }
+    88% { transform: rotate(-9deg); }
+    91% { transform: rotate(11deg); }
+    94% { transform: rotate(-7deg); }
+    97% { transform: rotate(4deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ft__wave { animation: none; }
   }
 
   .ft__tiles {

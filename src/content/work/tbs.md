@@ -4,8 +4,8 @@ title: A coaching app that tells you exactly what to do today
 heroTitle: Today's plan, *one tap away*
 summary: >-
   The client side of an online coaching business. A five-tab app that answers
-  one question every morning — what am I doing today — and keeps the coach one
-  tap away. Designed from research through to a 60-screen handoff.
+  one question every morning: what am I doing today. It keeps the coach one tap
+  away. Designed from research through to a 60-screen handoff.
 tags: [Product strategy, 0 → 1, Information architecture, Design systems]
 tint: '#e7f0e9'
 accent: gold

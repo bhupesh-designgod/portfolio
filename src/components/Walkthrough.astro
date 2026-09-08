@@ -105,7 +105,7 @@ const { slug, title, accent = 'gold' } = Astro.props;
   <div class="wt-frame" data-wt-frame aria-hidden="true">
     <span class="wt-frame__chip">
       <span class="wt-frame__dot"></span>
-      <span data-wt-chip>Walking you through &mdash; scroll any time to take over</span>
+      <span data-wt-chip>Walking you through. Scroll any time to take over</span>
     </span>
   </div>
 
@@ -402,14 +402,14 @@ const { slug, title, accent = 'gold' } = Astro.props;
       /* The frame stays up while paused, quietly. It is the thing saying the
          mode is still on; taking it away the moment someone scrolls would make
          the tour look like it had crashed rather than stepped aside. */
-      chip.textContent = 'You have control — press play to carry on';
+      chip.textContent = 'You have control. Press play to carry on';
     }
 
     function resume() {
       audio.play().catch(() => {});
       root.dataset.state = 'playing';
       toggleBtn.setAttribute('aria-label', 'Pause walkthrough');
-      chip.textContent = 'Walking you through — scroll any time to take over';
+      chip.textContent = 'Walking you through. Scroll any time to take over';
     }
 
     function finish() {
@@ -487,7 +487,7 @@ const { slug, title, accent = 'gold' } = Astro.props;
       /* Scout reads this to stand down: two voices narrating the same page,
          one of them interrupting the other, is worse than either alone. */
       window.dispatchEvent(new CustomEvent('walkthrough:start'));
-      chip.textContent = 'Walking you through — scroll any time to take over';
+      chip.textContent = 'Walking you through. Scroll any time to take over';
       playBeat(from);
     }
 
@@ -812,7 +812,7 @@ const { slug, title, accent = 'gold' } = Astro.props;
   /* A one-off nudge after the reader takes the page back, so the tour having
      stopped is not something they have to notice for themselves. */
   .wt[data-yielded] .wt__player::after {
-    content: 'Paused — you took the wheel';
+    content: 'Paused. You took the wheel';
     position: absolute;
     left: 14px;
     bottom: calc(100% + 8px);
