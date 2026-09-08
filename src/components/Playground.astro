@@ -55,7 +55,7 @@ const CELLS = Array.from({ length: COLS * ROWS }, (_, i) => ({
       </p>
     </div>
 
-    <div class="pg__stage">
+    <div class="pg__stage" data-pg-stage>
       <a class="pg__card" href={href} data-pg-card>
         {/* Layer 1: the picture. */}
         <span class="pg__pic">
@@ -95,6 +95,10 @@ const CELLS = Array.from({ length: COLS * ROWS }, (_, i) => ({
             <img class="pg__art" src={src} alt="" width="684" height="799"
               loading="lazy" decoding="async" />
           </span>
+          {/* The floor reflects whatever the card is currently showing, so it
+              carries the word too. No pixels down here: the dissolve happens on
+              the card and the floor simply shows the result of it. */}
+          <span class="pg__word">{label}</span>
         </div>
       </div>
     </div>
@@ -102,12 +106,13 @@ const CELLS = Array.from({ length: COLS * ROWS }, (_, i) => ({
 </section>
 
 <script>
+  const stage = document.querySelector<HTMLElement>('[data-pg-stage]');
   const card = document.querySelector<HTMLElement>('[data-pg-card]');
   const pixels = card
     ? Array.from(card.querySelectorAll<HTMLElement>('[data-pg-pixels] i'))
     : [];
 
-  if (card && pixels.length) {
+  if (stage && card && pixels.length) {
     /* react-bits' animationStepDuration. The whole thing is twice this: cover,
        swap, uncover. */
     const STEP = 300;
@@ -134,7 +139,7 @@ const CELLS = Array.from({ length: COLS * ROWS }, (_, i) => ({
       for (const p of pixels) for (const a of p.getAnimations()) a.cancel();
 
       if (still) {
-        card!.dataset.on = String(reveal);
+        stage!.dataset.on = String(reveal);
         return;
       }
 
@@ -150,7 +155,7 @@ const CELLS = Array.from({ length: COLS * ROWS }, (_, i) => ({
 
       /* Swapped while every pixel is covering it, which is the whole trick. */
       swap = window.setTimeout(() => {
-        card!.dataset.on = String(reveal);
+        stage!.dataset.on = String(reveal);
       }, STEP);
 
       shuffled().forEach((p, i) =>
@@ -183,7 +188,7 @@ const CELLS = Array.from({ length: COLS * ROWS }, (_, i) => ({
     position: relative;
     z-index: 3;
     background: #fff;
-    padding: 104px 8% 116px;
+    padding: 104px 8% 210px;
     color: #0b0d12;
   }
   .pg__wrap {
@@ -212,6 +217,10 @@ const CELLS = Array.from({ length: COLS * ROWS }, (_, i) => ({
   }
 
   /* -------------------------------- the card ------------------------------- */
+  /* The stage is the card's height and nothing more. With the floor in flow it
+     was 642px rather than 458px, and the grid's `align-items: center` put the
+     heading 92px below the middle of the card — centred on the reflection as
+     much as on the thing casting it. */
   .pg__stage {
     position: relative;
     width: 330px;
@@ -241,7 +250,7 @@ const CELLS = Array.from({ length: COLS * ROWS }, (_, i) => ({
   }
   /* Both layers are always present and one of them is simply not displayed, so
      the swap at the midpoint costs no layout and cannot flash. */
-  .pg__card[data-on='true'] .pg__pic {
+  .pg__stage[data-on='true'] .pg__pic {
     display: none;
   }
 
@@ -323,7 +332,7 @@ const CELLS = Array.from({ length: COLS * ROWS }, (_, i) => ({
     text-transform: uppercase;
     color: #fff;
   }
-  .pg__card[data-on='true'] .pg__word {
+  .pg__stage[data-on='true'] .pg__word {
     display: grid;
   }
 
@@ -343,6 +352,12 @@ const CELLS = Array.from({ length: COLS * ROWS }, (_, i) => ({
 
   /* -------------------------------- the floor ------------------------------ */
   .pg__floor {
+    /* Out of flow, so it does not count toward the stage's height. The section's
+       bottom padding is what makes room for it instead. */
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
     /* 0.72 wide against 0.40 of the card's height: the compression you get
        looking at a floor from standing height. */
     aspect-ratio: 0.72 / 0.4;
@@ -368,15 +383,10 @@ const CELLS = Array.from({ length: COLS * ROWS }, (_, i) => ({
     transform: scaleY(-0.4) translateY(-100%);
     transform-origin: 50% 0;
   }
-  /* The floor keeps showing the picture. It is a reflection of the card as it
-     stands, not of what the pointer is doing to it. */
-  .pg__mirror .pg__pic {
-    display: block;
-  }
 
   @media (max-width: 900px) {
     .pg {
-      padding: 72px 6% 88px;
+      padding: 72px 6% 200px;
     }
     .pg__wrap {
       grid-template-columns: minmax(0, 1fr);

@@ -55,11 +55,6 @@ const testimonials = (await getCollection('testimonials')).sort(byOrder).map((e)
     </div>
   </section>
 
-  {/* Sits with the work rather than after the résumé: both sections answer
-      "what has he made", and the side projects are the lighter half of that
-      answer. */}
-  <Playground />
-
   <section class="resume" id="resume">
     <div class="resume__wrap">
       <ResumeList heading="Experience" rows={experience} />
@@ -71,6 +66,8 @@ const testimonials = (await getCollection('testimonials')).sort(byOrder).map((e)
   <HoverCue />
 
   <Testimonials quotes={testimonials} />
+
+  <Playground />
 
   {/* Last thing before the footer. The wall fills itself from
       /api/guestbook once the page is up — see the component. */}
