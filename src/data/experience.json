@@ -1,10 +1,30 @@
 [
   {
+    "id": "tbs",
+    "org": "TBS Fitness",
+    "role": "Product Designer, freelance",
+    "dates": "May - Jul 2026",
+    "logoBg": "#16211a",
+    "order": 1
+  },
+  {
+    "id": "structurology",
+    "org": "Structurology",
+    "role": "Product Designer, freelance",
+    "dates": "Jul - Nov 2024",
+    "logo": "/assets/logos/structurology.png",
+    "logoBg": "#561c24",
+    "href": "https://www.structurology.com/",
+    "order": 2
+  },
+  {
     "id": "ikarus-3d",
     "org": "Ikarus 3D",
-    "role": "Product Design Intern",
+    "role": "UI/UX Associate, full-time internship",
     "dates": "Sep 2023 - Jul 2024",
-    "logoBg": "#111318",
-    "order": 1
+    "logo": "/assets/logos/ikarus-3d.png",
+    "logoBg": "#eef4fb",
+    "href": "https://ikarus3d.com/",
+    "order": 3
   }
 ]
