@@ -17,6 +17,7 @@ const byOrder = (a: { data: { order: number } }, b: { data: { order: number } })
   a.data.order - b.data.order;
 
 const experience = (await getCollection('experience')).sort(byOrder).map((e) => e.data);
+const freelance = (await getCollection('freelance')).sort(byOrder).map((e) => e.data);
 const education = (await getCollection('education')).sort(byOrder).map((e) => e.data);
 const testimonials = (await getCollection('testimonials')).sort(byOrder).map((e) => e.data);
 ---
@@ -58,6 +59,7 @@ const testimonials = (await getCollection('testimonials')).sort(byOrder).map((e)
   <section class="resume" id="resume">
     <div class="resume__wrap">
       <ResumeList heading="Experience" rows={experience} />
+      <ResumeList heading="Freelance" rows={freelance} />
       <ResumeList heading="Education" rows={education} />
     </div>
   </section>

@@ -81,6 +81,13 @@ const experience = defineCollection({
   schema: resumeRow,
 });
 
+/* Client engagements, kept apart from Experience. Same shape — the split is
+   about what a reader should take in first, not about the data. */
+const freelance = defineCollection({
+  loader: file('./src/data/freelance.json'),
+  schema: resumeRow,
+});
+
 const education = defineCollection({
   loader: file('./src/data/education.json'),
   schema: resumeRow,
@@ -106,4 +113,4 @@ const testimonials = defineCollection({
   }),
 });
 
-export const collections = { work, experience, education, testimonials };
+export const collections = { work, experience, freelance, education, testimonials };

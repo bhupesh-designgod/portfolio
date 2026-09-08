@@ -1,0 +1,20 @@
+[
+  {
+    "id": "tbs",
+    "org": "TBS Fitness",
+    "role": "Product Designer",
+    "dates": "May - Jul 2026",
+    "logoBg": "#16211a",
+    "order": 1
+  },
+  {
+    "id": "structurology",
+    "org": "Structurology",
+    "role": "Product Designer",
+    "dates": "Jul - Nov 2024",
+    "logo": "/assets/logos/structurology.png",
+    "logoBg": "#561c24",
+    "href": "https://www.structurology.com/",
+    "order": 2
+  }
+]
