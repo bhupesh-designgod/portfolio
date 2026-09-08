@@ -305,28 +305,18 @@ are answered by what the platform chooses to show, and when.</p>
   <div class="k-decision__h"><span class="k-tile"><svg class="k-ic"><use href="#i-megaphone"/></svg></span><h4>Live campaigns sit beside the sign-up form</h4></div>
   <dl>
     <div><dt>Decision</dt><dd>Give half the sign-up screen to running campaigns rather than to brand art.</dd></div>
-  </dl>
-  <details class="k-rat">
-    <summary><span>Why this decision?</span></summary>
-    <dl class="k-rat__body">
     <div><dt>Because</dt><dd>Artists' first question is whether anyone is here. A marketplace with no history cannot answer that with a claim, only with something happening on screen.</dd></div>
     <div><dt>Result</dt><dd>The marketplace starts selling itself before anyone has an account.</dd></div>
-    </dl>
-  </details>
+  </dl>
 </div>
 
 <div class="k-decision k-wide">
   <div class="k-decision__h"><span class="k-tile"><svg class="k-ic"><use href="#i-check"/></svg></span><h4>Verification is staged, not front-loaded</h4></div>
   <dl>
     <div><dt>Decision</dt><dd>Account creation, email verification, username, terms. Becoming a creator is a separate step taken later.</dd></div>
-  </dl>
-  <details class="k-rat">
-    <summary><span>Why this decision?</span></summary>
-    <dl class="k-rat__body">
     <div><dt>Because</dt><dd>The friction artists named was being asked to prove who they are before they had a reason to.</dd></div>
     <div><dt>Result</dt><dd>Browsing is two screens away from the landing page; proving identity waits until there is something to list.</dd></div>
-    </dl>
-  </details>
+  </dl>
 </div>
 
 <div class="k-grid k-grid--c2 k-wide">
@@ -411,14 +401,9 @@ page does something better.
   <div class="k-decision__h"><span class="k-tile"><svg class="k-ic"><use href="#i-camera"/></svg></span><h4>Proof comes from buyers, not the seller</h4></div>
   <dl>
     <div><dt>Decision</dt><dd>Pool photos from buyers' own reviews into a strip on the model page, above the creator's gallery.</dd></div>
-  </dl>
-  <details class="k-rat">
-    <summary><span>Why this decision?</span></summary>
-    <dl class="k-rat__body">
     <div><dt>Because</dt><dd>Creator-supplied proof can be curated. Buyer-supplied proof can't. Both are photographs of the same print; only one of them is evidence.</dd></div>
     <div><dt>Result</dt><dd>The "will it print" question gets answered by people with the same problem, which is the only answer buyers said they trusted.</dd></div>
-    </dl>
-  </details>
+  </dl>
 </div>
 
 Comments sit above the reviews with threads, replies and reporting, because
