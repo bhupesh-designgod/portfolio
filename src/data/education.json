@@ -4,7 +4,8 @@
     "org": "UPES",
     "role": "M.Des Product Design",
     "dates": "Jul 2024 - Jul 2026",
-    "logoBg": "#0b4da2",
+    "logo": "/assets/logos/upes.svg",
+    "logoBg": "#eef4fb",
     "order": 1
   },
   {
@@ -12,7 +13,8 @@
     "org": "Chitkara University",
     "role": "B.Des Design",
     "dates": "Jul 2020 - Jun 2024",
-    "logoBg": "#b4232a",
+    "logo": "/assets/logos/chitkara.png",
+    "logoBg": "#ce0000",
     "order": 2
   }
 ]

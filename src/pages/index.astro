@@ -59,7 +59,11 @@ const testimonials = (await getCollection('testimonials')).sort(byOrder).map((e)
   <section class="resume" id="resume">
     <div class="resume__wrap">
       <ResumeList heading="Experience" rows={experience} />
-      <ResumeList heading="Freelance" rows={freelance} />
+      <ResumeList
+        heading="Freelance / part-time"
+        note="Client work taken on alongside the M.Des."
+        rows={freelance}
+      />
       <ResumeList heading="Education" rows={education} />
     </div>
   </section>
