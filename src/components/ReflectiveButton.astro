@@ -1,37 +1,36 @@
 ---
-/* A button milled from the same metal as ReflectiveCard.
+/* The same metal, milled down to a button — and the switch that turns the
+ * camera on.
  *
- * Same idea, smaller surface: a cold gradient rippled by the SVG filter chain,
- * a grain pass, and a specular highlight that tracks the pointer. Built as its
- * own thing rather than reusing LiquidMetalButton, which is already the hero's
- * call to action — two identical buttons doing different jobs on one site read
- * as one button in the wrong place.
+ * Clicking it asks for camera access, and once the answer is yes the button's
+ * own surface starts reflecting, along with every other reflective surface on
+ * the page. It is the only control here that requests the camera directly, so
+ * it carries the whole state machine in its label: what it will do, that it is
+ * asking, that it is on, and what went wrong if it is not.
  *
- * Where the card is a slab, this is a machined part: a tighter noise frequency
- * so the grain is finer at this size, and a hard top edge, because small metal
- * objects catch light in a line rather than a wash.
+ * Where the card is a slab, this is a machined part — the grain is brushed
+ * finer, because at 54px tall the card's streak spacing would put about four
+ * visible lines across the entire button.
  */
 interface Props {
-  href?: string;
-  type?: 'button' | 'submit';
   id?: string;
+  class?: string;
 }
 
-const {
-  href,
-  type = 'button',
-  id = `rb-${Math.random().toString(36).slice(2, 8)}`,
-} = Astro.props;
-
-const Tag = href ? 'a' : 'button';
+const { id = `rb-${Math.random().toString(36).slice(2, 8)}`, class: className = '' } = Astro.props;
 ---
 
-<Tag class="rb" href={href} type={href ? undefined : type} data-rb>
+<button class:list={['rb', className]} type="button" data-rb data-state="idle">
   <svg class="rb__defs" aria-hidden="true" focusable="false">
     <defs>
-      <filter id={id} x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
-        {/* Brushed finer than the card: at 54px tall the card's streak spacing
-            would put a handful of visible lines across the whole button. */}
+      <filter
+        id={`${id}-brush`}
+        x="-10%"
+        y="-10%"
+        width="120%"
+        height="120%"
+        color-interpolation-filters="sRGB"
+      >
         <feTurbulence
           type="fractalNoise"
           baseFrequency="0.01 2.6"
@@ -48,29 +47,107 @@ const Tag = href ? 'a' : 'button';
                   0.5 0.35 0.15 0 0"
           result="grey"
         />
-        <feComponentTransfer in="grey" result="brushed">
+        <feComponentTransfer in="grey">
           <feFuncA type="linear" slope="0.5" intercept="0.24" />
         </feComponentTransfer>
+      </filter>
+
+      {/* Shallower displacement than the card's. The same scale on something
+          this short pulls the reflection clean off the ends. */}
+      <filter id={`${id}-cam`} x="-15%" y="-15%" width="130%" height="130%">
+        <feTurbulence
+          type="turbulence"
+          baseFrequency="0.03"
+          numOctaves="2"
+          seed="3"
+          result="noise"
+        />
+        <feColorMatrix in="noise" type="luminanceToAlpha" result="noiseAlpha" />
+        <feDisplacementMap
+          in="SourceGraphic"
+          in2="noise"
+          scale="7"
+          xChannelSelector="R"
+          yChannelSelector="G"
+          result="rippled"
+        />
+        <feSpecularLighting
+          in="noiseAlpha"
+          surfaceScale="6"
+          specularConstant="1"
+          specularExponent="26"
+          lighting-color="#ffffff"
+          result="light"
+        >
+          <fePointLight x="30" y="-10" z="90" />
+        </feSpecularLighting>
+        <feComposite in="light" in2="rippled" operator="in" result="lit" />
+        <feBlend in="lit" in2="rippled" mode="screen" />
       </filter>
     </defs>
   </svg>
 
   <span class="rb__metal" aria-hidden="true"></span>
-  <span class="rb__brush" style={`filter:url(#${id})`} aria-hidden="true"></span>
+  <span class="rb__brush" style={`filter:url(#${id}-brush)`} aria-hidden="true"></span>
   <span class="rb__grain" aria-hidden="true"></span>
+
+  <video
+    class="rb__cam"
+    data-rb-cam
+    style={`filter:blur(6px) url(#${id}-cam)`}
+    muted
+    playsinline
+    autoplay
+    aria-hidden="true"></video>
+
   <span class="rb__spec" aria-hidden="true"></span>
   <span class="rb__edge" aria-hidden="true"></span>
 
-  <span class="rb__label"><slot /></span>
-</Tag>
+  {/* The label is the state readout, so it is a live region — someone using a
+     screen reader gets told the camera came on, same as everyone else. */}
+  <span class="rb__label" data-rb-label aria-live="polite"><slot>Turn the reflection on</slot></span>
+</button>
 
 <script>
-  for (const el of document.querySelectorAll<HTMLElement>('[data-rb]')) {
+  import { attach, onState, release, request, getState } from '../lib/reflective';
+
+  const COPY: Record<string, string> = {
+    idle: 'Turn the reflection on',
+    asking: 'Waiting for the camera…',
+    live: 'Reflection on — click to stop',
+    denied: 'Camera blocked. Allow it in the address bar',
+    unavailable: 'No camera available here',
+  };
+
+  for (const el of document.querySelectorAll<HTMLButtonElement>('[data-rb]')) {
+    const label = el.querySelector<HTMLElement>('[data-rb-label]');
+    const cam = el.querySelector<HTMLVideoElement>('[data-rb-cam]');
+
     el.addEventListener('pointermove', (e) => {
       const r = el.getBoundingClientRect();
       el.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
     });
     el.addEventListener('pointerleave', () => el.style.setProperty('--mx', '30%'));
+
+    el.addEventListener('click', () => {
+      if (getState() === 'live') {
+        release();
+        return;
+      }
+      /* Attach before asking, so the frames land the moment permission is
+         granted rather than a repaint later. */
+      if (cam) attach(cam);
+      request();
+    });
+
+    onState((s) => {
+      el.dataset.state = s;
+      /* Only ever swap the text — replacing the node would drop it out of the
+         live region and the announcement with it. */
+      if (label) label.textContent = COPY[s] ?? COPY.idle;
+      el.setAttribute('aria-pressed', String(s === 'live'));
+      el.disabled = s === 'unavailable';
+    });
   }
 </script>
 
@@ -88,12 +165,13 @@ const Tag = href ? 'a' : 'button';
     overflow: hidden;
     isolation: isolate;
     cursor: pointer;
-    text-decoration: none;
     background: #10141c;
     box-shadow:
       0 10px 26px rgba(8, 12, 24, 0.4),
       0 1px 0 rgba(255, 255, 255, 0.14) inset;
-    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
+    transition:
+      transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.25s ease;
   }
   .rb:hover {
     transform: translateY(-1px);
@@ -107,6 +185,13 @@ const Tag = href ? 'a' : 'button';
   .rb:focus-visible {
     outline: 2px solid var(--blue-500);
     outline-offset: 3px;
+  }
+  .rb[disabled] {
+    cursor: default;
+    opacity: 0.55;
+  }
+  .rb[disabled]:hover {
+    transform: none;
   }
 
   .rb__defs {
@@ -153,12 +238,32 @@ const Tag = href ? 'a' : 'button';
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
+  /* Explicitly sized: a video is a replaced element, and width:auto takes its
+     intrinsic width rather than filling the box. */
+  .rb__cam {
+    position: absolute;
+    left: -10%;
+    top: -10%;
+    width: 120%;
+    height: 120%;
+    z-index: 2;
+    object-fit: cover;
+    opacity: 0;
+    transform: scaleX(-1);
+    mix-blend-mode: screen;
+    pointer-events: none;
+    transition: opacity 0.7s ease;
+  }
+  .rb[data-state='live'] .rb__cam {
+    opacity: 0.5;
+  }
+
   /* Only the horizontal position tracks the pointer. On something this short a
-     vertical highlight has nowhere to go, and moving it just looks noisy. */
+     vertical highlight has nowhere to go and just looks noisy. */
   .rb__spec {
     position: absolute;
     inset: 0;
-    z-index: 2;
+    z-index: 3;
     pointer-events: none;
     mix-blend-mode: overlay;
     background:
@@ -171,11 +276,14 @@ const Tag = href ? 'a' : 'button';
       linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 46%);
     transition: background 0.08s linear;
   }
+  .rb[data-state='live'] .rb__spec {
+    opacity: 0.5;
+  }
 
   .rb__edge {
     position: absolute;
     inset: 0;
-    z-index: 3;
+    z-index: 4;
     border-radius: inherit;
     padding: 1px;
     pointer-events: none;
@@ -197,19 +305,20 @@ const Tag = href ? 'a' : 'button';
 
   .rb__label {
     position: relative;
-    z-index: 4;
+    z-index: 5;
     font-family: 'Inter', 'Nunito', system-ui, sans-serif;
     font-size: 14px;
     font-weight: 600;
     letter-spacing: 0.4px;
     color: #f2f5fa;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
     white-space: nowrap;
   }
 
   @media (prefers-reduced-motion: reduce) {
     .rb,
-    .rb__spec {
+    .rb__spec,
+    .rb__cam {
       transition: none;
     }
     .rb:hover {
