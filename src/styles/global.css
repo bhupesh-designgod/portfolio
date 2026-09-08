@@ -5023,3 +5023,74 @@ body.wt-on .cs-toc__list a[aria-current='true'] { font-weight: 600; }
   .wt-spot,
   body.wt-on #csProse > * { transition: none; }
 }
+
+/* ===================== "WHY THIS DECISION?" DISCLOSURE =====================
+   The decision itself stays on the page; the reasoning behind it is one click
+   away. Someone skimming the case study gets what was built, and someone who
+   wants to know why it was built that way can ask, without the page making the
+   argument at everybody.
+
+   A native <details>, not an overlay. An overlay traps scroll, needs a close
+   affordance and a focus trap, and takes the reader out of the paragraph they
+   were in. This expands in place, works with no JavaScript at all, and the
+   browser already handles the keyboard and the screen-reader announcement.
+   ========================================================================= */
+.k-rat {
+  margin: 4px 0 12px;
+  border-top: 1px solid var(--k-line);
+}
+
+.k-rat summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 12px 0 0;
+  padding: 7px 13px 7px 11px;
+  border: 1px solid var(--k-line);
+  border-radius: 999px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--a-text);
+  background: var(--a-wash);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+/* Safari draws its own triangle and ignores `list-style` on the summary. */
+.k-rat summary::-webkit-details-marker { display: none; }
+
+/* The chevron is drawn here rather than in the markdown, so the three blocks
+   that use this carry no icon markup of their own. */
+.k-rat summary::before {
+  content: '';
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  background: currentColor;
+  transition: rotate 0.25s ease;
+  -webkit-mask: var(--k-rat-chev) center / contain no-repeat;
+  mask: var(--k-rat-chev) center / contain no-repeat;
+}
+.k-rat {
+  --k-rat-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 5l7 7-7 7' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.k-rat[open] summary::before { rotate: 90deg; }
+
+.k-rat summary:hover { background: var(--a-soft); border-color: var(--a-line); }
+.k-rat summary:focus-visible { outline: 2px solid var(--a-500); outline-offset: 2px; }
+
+/* Reuses the decision list's own row styling, so the revealed rows look like
+   the rows they were lifted out of rather than like a different component. */
+.k-rat__body { margin: 0 !important; }
+.k-rat__body > div:first-child { border-top: 0 !important; }
+.k-rat[open] .k-rat__body { animation: k-rat-in 0.28s ease both; }
+
+@keyframes k-rat-in {
+  from { opacity: 0; translate: 0 -4px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .k-rat summary::before { transition: none; }
+  .k-rat[open] .k-rat__body { animation: none; }
+}
