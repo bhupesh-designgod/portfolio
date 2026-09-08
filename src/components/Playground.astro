@@ -1,30 +1,48 @@
 ---
-/* The playground door.
+/* The playground card.
  *
- * One card on the right: a picture floating on a slowly drifting gradient,
- * standing on a reflective floor. Click it and you are in the playground.
+ * A picture on a drifting gradient, standing on a reflective floor. Hover it and
+ * the card dissolves, pixel by pixel, into the word PLAYGROUND. Click it and you
+ * are in the playground.
  *
- * The card itself does not move. The only thing the hover does is light up the
- * label, so the affordance is on the thing you are about to click rather than
- * on the whole object.
+ * The transition is the react-bits PixelTransition mechanic, read from the
+ * source (react-bits, public/r/PixelTransition-JS-CSS.json) rather than guessed:
  *
- * The reflection is a plain DOM copy. Nothing in the picture moves per frame, so
- * a mirrored duplicate costs one image the browser has already decoded — no
- * canvas, no draw loop. The markup is written out twice rather than shared,
- * because Astro frontmatter is TypeScript and cannot hold markup.
+ *   1. a gridSize x gridSize grid of absolutely positioned pixels, hidden
+ *   2. on enter they are switched ON one at a time in a random order, over
+ *      animationStepDuration
+ *   3. at that point the second layer is swapped in underneath them
+ *   4. they are switched OFF again, in a *second, different* random order
+ *
+ * The two shuffles matter. Reusing one order makes the pixels uncover in the
+ * same sequence they covered, which reads as a wipe rather than a dissolve.
+ *
+ * Theirs is GSAP toggling `display`; this is the Web Animations API toggling
+ * opacity over one millisecond, which is the same hard on/off without the
+ * dependency. Their default step is 0.3s and grid is 7x7; this is 0.3s over
+ * 8x11, because the card is portrait and square pixels want a portrait grid.
  */
 interface Props {
-  /** The picture in the card. */
   src?: string;
   alt?: string;
   href?: string;
+  label?: string;
 }
 
 const {
-  src = '/assets/playground/thumb.webp',
+  src = '/assets/playground/thumb-cat.webp',
   alt = '',
   href = '/playground',
+  label = 'Playground',
 } = Astro.props;
+
+/* 8 x 11 is 0.727, which is as close to the card's 0.72 as whole pixels get. */
+const COLS = 8;
+const ROWS = 11;
+const CELLS = Array.from({ length: COLS * ROWS }, (_, i) => ({
+  x: (i % COLS) * (100 / COLS),
+  y: Math.floor(i / COLS) * (100 / ROWS),
+}));
 ---
 
 <section class="pg" id="playground">
@@ -38,41 +56,43 @@ const {
     </div>
 
     <div class="pg__stage">
-      <a class="pg__door" href={href}>
+      <a class="pg__card" href={href} data-pg-card>
+        {/* Layer 1: the picture. */}
         <span class="pg__pic">
           <span class="pg__field" aria-hidden="true"><i></i><i></i><i></i></span>
           <img
             class="pg__art"
             src={src}
             alt={alt}
-            width="900"
-            height="1080"
+            width="684"
+            height="799"
             loading="lazy"
             decoding="async"
           />
         </span>
 
-        <span class="pg__label">
-          <span>Enter playground</span>
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path
-              d="M5 12h13M12.5 6.5 19 12l-6.5 5.5"
-              stroke="currentColor"
-              stroke-width="1.9"
-              stroke-linecap="round"
-              stroke-linejoin="round"></path>
-          </svg>
+        {/* Layer 2, revealed by the dissolve. Inert until then, so a pointer
+            never lands on it and a screen reader never reads the word twice. */}
+        <span class="pg__word" data-pg-word aria-hidden="true">{label}</span>
+
+        {/* The pixels sit over both. */}
+        <span class="pg__pixels" data-pg-pixels aria-hidden="true">
+          {
+            CELLS.map((c) => (
+              <i style={`left:${c.x}%;top:${c.y}%;width:${100 / COLS}%;height:${100 / ROWS}%`} />
+            ))
+          }
         </span>
       </a>
 
-      {/* The floor. The same picture, flipped and compressed, fading as it
+      {/* The floor. The picture again, flipped and compressed, fading as it
           recedes. Hidden from the accessibility tree: it is the same content
           twice and a screen reader should meet it once. */}
       <div class="pg__floor" aria-hidden="true">
         <div class="pg__mirror">
           <span class="pg__pic">
             <span class="pg__field"><i></i><i></i><i></i></span>
-            <img class="pg__art" src={src} alt="" width="900" height="1080"
+            <img class="pg__art" src={src} alt="" width="684" height="799"
               loading="lazy" decoding="async" />
           </span>
         </div>
@@ -80,6 +100,83 @@ const {
     </div>
   </div>
 </section>
+
+<script>
+  const card = document.querySelector<HTMLElement>('[data-pg-card]');
+  const pixels = card
+    ? Array.from(card.querySelectorAll<HTMLElement>('[data-pg-pixels] i'))
+    : [];
+
+  if (card && pixels.length) {
+    /* react-bits' animationStepDuration. The whole thing is twice this: cover,
+       swap, uncover. */
+    const STEP = 300;
+    const EACH = STEP / pixels.length;
+
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let on = false;
+    let swap = 0;
+
+    /* Fisher-Yates. Called twice per run so the cover order and the uncover
+       order are independent — the point of the effect. */
+    const shuffled = () => {
+      const a = pixels.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
+
+    function run(reveal: boolean) {
+      on = reveal;
+      window.clearTimeout(swap);
+      for (const p of pixels) for (const a of p.getAnimations()) a.cancel();
+
+      if (still) {
+        card!.dataset.on = String(reveal);
+        return;
+      }
+
+      /* One millisecond, so each pixel is a hard on and off rather than a fade.
+         That is what makes it read as pixels and not as a blur. */
+      shuffled().forEach((p, i) =>
+        p.animate([{ opacity: 0 }, { opacity: 1 }], {
+          duration: 1,
+          delay: i * EACH,
+          fill: 'forwards',
+        }),
+      );
+
+      /* Swapped while every pixel is covering it, which is the whole trick. */
+      swap = window.setTimeout(() => {
+        card!.dataset.on = String(reveal);
+      }, STEP);
+
+      shuffled().forEach((p, i) =>
+        p.animate([{ opacity: 1 }, { opacity: 0 }], {
+          duration: 1,
+          delay: STEP + i * EACH,
+          fill: 'forwards',
+        }),
+      );
+    }
+
+    /* Pointer, and keyboard focus, the way the source does it. */
+    card.addEventListener('pointerenter', () => {
+      if (!on) run(true);
+    });
+    card.addEventListener('pointerleave', () => {
+      if (on) run(false);
+    });
+    card.addEventListener('focus', () => {
+      if (!on) run(true);
+    });
+    card.addEventListener('blur', () => {
+      if (on) run(false);
+    });
+  }
+</script>
 
 <style>
   .pg {
@@ -119,7 +216,7 @@ const {
     position: relative;
     width: 330px;
   }
-  .pg__door {
+  .pg__card {
     position: relative;
     display: block;
     width: 100%;
@@ -129,13 +226,8 @@ const {
     background: #fbf7f9;
     text-decoration: none;
     box-shadow: 0 26px 60px rgba(20, 28, 56, 0.15);
-    transition: box-shadow 0.45s ease;
   }
-  .pg__door:hover,
-  .pg__door:focus-visible {
-    box-shadow: 0 32px 70px rgba(20, 28, 56, 0.2);
-  }
-  .pg__door:focus-visible {
+  .pg__card:focus-visible {
     outline: 2px solid var(--blue-500);
     outline-offset: 6px;
   }
@@ -146,14 +238,14 @@ const {
     display: block;
     overflow: hidden;
     border-radius: inherit;
-    background: #fbf7f9;
+  }
+  /* Both layers are always present and one of them is simply not displayed, so
+     the swap at the midpoint costs no layout and cannot flash. */
+  .pg__card[data-on='true'] .pg__pic {
+    display: none;
   }
 
-  /* ------------------------------ the gradient -----------------------------
-     Three soft blobs drifting over a pale ground, each on its own long, uneven
-     duration so the field never repeats on a beat you can spot. Animated with
-     transform rather than background-position, which keeps it on the compositor
-     instead of repainting a gradient every frame. */
+  /* ------------------------------ the gradient ----------------------------- */
   .pg__field {
     position: absolute;
     inset: 0;
@@ -209,49 +301,44 @@ const {
     inset: 0;
     width: 100%;
     height: 100%;
-    /* contain, not cover: it is a cut-out with transparency, and cropping it
-       would take the petals off. */
-    object-fit: contain;
-    object-position: 50% 54%;
-    padding: 7% 8%;
-    box-sizing: border-box;
+    object-fit: cover;
+    object-position: 50% 32%;
   }
 
-  /* ------------------------------- the label ------------------------------- */
-  .pg__label {
+  /* --------------------------- the revealed word --------------------------- */
+  .pg__word {
     position: absolute;
+    inset: 0;
     z-index: 2;
-    left: 50%;
-    bottom: 22px;
-    translate: -50% 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 14px;
-    border-radius: 999px;
-    font-family: 'Inter', 'Nunito', system-ui, sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 1.6px;
-    text-transform: uppercase;
-    white-space: nowrap;
-    color: #0b0d12;
-    /* Transparent at rest so the card is the picture and nothing else. */
-    background: transparent;
-    transition:
-      background-color 0.28s ease,
-      color 0.28s ease,
-      gap 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-  .pg__label svg {
-    width: 17px;
-    height: 17px;
-  }
-  .pg__door:hover .pg__label,
-  .pg__door:focus-visible .pg__label {
+    display: none;
+    place-content: center;
+    padding: 0 8%;
     background: var(--blue-500);
+    font-family: 'Bebas Neue', 'Nunito', sans-serif;
+    font-weight: 400;
+    font-size: 54px;
+    line-height: 0.94;
+    letter-spacing: 1px;
+    text-align: center;
+    text-transform: uppercase;
     color: #fff;
-    gap: 12px;
+  }
+  .pg__card[data-on='true'] .pg__word {
+    display: grid;
+  }
+
+  /* ------------------------------- the pixels ------------------------------ */
+  .pg__pixels {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+  }
+  .pg__pixels i {
+    position: absolute;
+    display: block;
+    opacity: 0;
+    background: var(--blue-500);
   }
 
   /* -------------------------------- the floor ------------------------------ */
@@ -261,8 +348,6 @@ const {
     aspect-ratio: 0.72 / 0.4;
     overflow: hidden;
     filter: blur(2px);
-    /* Higher than it was with a video. That content was dark and read against
-       white at 0.4; a pale gradient at 0.4 is white on white. */
     opacity: 0.62;
     -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.5) 34%, transparent 82%);
     mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.5) 34%, transparent 82%);
@@ -283,6 +368,11 @@ const {
     transform: scaleY(-0.4) translateY(-100%);
     transform-origin: 50% 0;
   }
+  /* The floor keeps showing the picture. It is a reflection of the card as it
+     stands, not of what the pointer is doing to it. */
+  .pg__mirror .pg__pic {
+    display: block;
+  }
 
   @media (max-width: 900px) {
     .pg {
@@ -302,10 +392,6 @@ const {
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .pg__door,
-    .pg__label {
-      transition: none;
-    }
     .pg__field i {
       animation: none;
     }
