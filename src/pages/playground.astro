@@ -33,8 +33,8 @@ import ReflectiveButton from '../components/ReflectiveButton.astro';
             </ReflectiveCard>
           </button>
           <figcaption class="pgp__cap">
-            Brushed steel at rest. Open it and the surface reflects whoever is
-            in front of the screen.
+            Brushed steel at rest. Open it and a pane of glass goes over the
+            metal, refracting whoever is in front of the screen.
           </figcaption>
         </figure>
 
@@ -73,23 +73,24 @@ import ReflectiveButton from '../components/ReflectiveButton.astro';
       <div class="rcm__panel">
         <p class="rcm__kicker">Reflective card</p>
         <p class="rcm__blurb">
-          A camera frame, blurred, rippled through a noise field and screened
-          over brushed metal. Drag the sliders to change the surface.
+          A pane of glass over brushed steel. The camera is blurred, bent
+          through a low-frequency field, and bent harder again in a ring at the
+          edge, where a real pane refracts most.
         </p>
 
         <label class="rcm__ctl">
-          <span>Ripple</span>
-          <input type="range" min="0" max="40" value="14" data-ctl="ripple" />
+          <span>Refraction</span>
+          <input type="range" min="0" max="120" value="48" data-ctl="ripple" />
         </label>
 
         <label class="rcm__ctl">
-          <span>Softness</span>
-          <input type="range" min="0" max="24" value="10" data-ctl="soft" />
+          <span>Blur</span>
+          <input type="range" min="0" max="30" value="8" data-ctl="soft" />
         </label>
 
         <label class="rcm__ctl">
-          <span>Reflection</span>
-          <input type="range" min="0" max="100" value="62" data-ctl="mix" />
+          <span>Presence</span>
+          <input type="range" min="0" max="100" value="92" data-ctl="mix" />
         </label>
 
         <label class="rcm__check">
@@ -117,7 +118,8 @@ import ReflectiveButton from '../components/ReflectiveButton.astro';
 
   if (dlg && open) {
     const card = dlg.querySelector<HTMLElement>('[data-rc]')!;
-    const cam = card.querySelector<HTMLVideoElement>('[data-rc-cam]')!;
+    /* The pane and the edge lens, both fed from the one stream. */
+    const cams = [...card.querySelectorAll<HTMLVideoElement>('[data-rc-cam]')];
     const disp = card.querySelector<SVGElement>('[data-rc-disp]')!;
     const slot = dlg.querySelector<HTMLElement>('[data-modal-slot]')!;
 
@@ -127,7 +129,7 @@ import ReflectiveButton from '../components/ReflectiveButton.astro';
       dlg.showModal();
       /* Attached before the ask, so frames land the moment permission is
          granted rather than a repaint later. */
-      attach(cam);
+      for (const c of cams) attach(c);
       request();
     });
 
@@ -139,7 +141,9 @@ import ReflectiveButton from '../components/ReflectiveButton.astro';
       if (e.target === dlg) close();
     });
     /* Covers Escape too — the browser fires close for that itself. */
-    dlg.addEventListener('close', () => detach(cam));
+    dlg.addEventListener('close', () => {
+      for (const c of cams) detach(c);
+    });
 
     /* Filter primitives are not stylable, so ripple has to be an attribute
        write. The other two are custom properties. */

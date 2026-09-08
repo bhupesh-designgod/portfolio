@@ -52,38 +52,27 @@ const { id = `rb-${Math.random().toString(36).slice(2, 8)}`, class: className = 
         </feComponentTransfer>
       </filter>
 
-      {/* Shallower displacement than the card's. The same scale on something
-          this short pulls the reflection clean off the ends. */}
-      <filter id={`${id}-cam`} x="-15%" y="-15%" width="130%" height="130%">
+      {/* Same glass as the card, at a tenth the area. No bump map and no
+          specular pass — that pair is what made the old surface read as frost.
+          The field is scaled to the button: a frequency low enough to bend the
+          whole pill in one curve rather than ripple across it. */}
+      <filter id={`${id}-liquid`} x="-20%" y="-20%" width="140%" height="140%">
         <feTurbulence
-          type="turbulence"
-          baseFrequency="0.03"
-          numOctaves="2"
-          seed="3"
-          result="noise"
+          type="fractalNoise"
+          baseFrequency="0.012 0.02"
+          numOctaves="1"
+          seed="5"
+          result="warp"
         />
-        <feColorMatrix in="noise" type="luminanceToAlpha" result="noiseAlpha" />
         <feDisplacementMap
           in="SourceGraphic"
-          in2="noise"
-          scale="7"
+          in2="warp"
+          scale="16"
           xChannelSelector="R"
           yChannelSelector="G"
-          result="rippled"
         />
-        <feSpecularLighting
-          in="noiseAlpha"
-          surfaceScale="6"
-          specularConstant="1"
-          specularExponent="26"
-          lighting-color="#ffffff"
-          result="light"
-        >
-          <fePointLight x="30" y="-10" z="90" />
-        </feSpecularLighting>
-        <feComposite in="light" in2="rippled" operator="in" result="lit" />
-        <feBlend in="lit" in2="rippled" mode="screen" />
       </filter>
+
     </defs>
   </svg>
 
@@ -92,9 +81,9 @@ const { id = `rb-${Math.random().toString(36).slice(2, 8)}`, class: className = 
   <span class="rb__grain" aria-hidden="true"></span>
 
   <video
-    class="rb__cam"
+    class="rb__glass"
     data-rb-cam
-    style={`filter:blur(6px) url(#${id}-cam)`}
+    style={`filter:blur(7px) url(#${id}-liquid)`}
     muted
     playsinline
     autoplay
@@ -240,7 +229,7 @@ const { id = `rb-${Math.random().toString(36).slice(2, 8)}`, class: className = 
 
   /* Explicitly sized: a video is a replaced element, and width:auto takes its
      intrinsic width rather than filling the box. */
-  .rb__cam {
+  .rb__glass {
     position: absolute;
     left: -10%;
     top: -10%;
@@ -250,12 +239,14 @@ const { id = `rb-${Math.random().toString(36).slice(2, 8)}`, class: className = 
     object-fit: cover;
     opacity: 0;
     transform: scaleX(-1);
-    mix-blend-mode: screen;
     pointer-events: none;
     transition: opacity 0.7s ease;
   }
-  .rb[data-state='live'] .rb__cam {
-    opacity: 0.5;
+  .rb[data-state='live'] .rb__glass {
+    opacity: 0.88;
+  }
+  .rb[data-state='live'] .rb__brush {
+    opacity: 0.2;
   }
 
   /* Only the horizontal position tracks the pointer. On something this short a
@@ -265,7 +256,7 @@ const { id = `rb-${Math.random().toString(36).slice(2, 8)}`, class: className = 
     inset: 0;
     z-index: 3;
     pointer-events: none;
-    mix-blend-mode: overlay;
+    mix-blend-mode: screen;
     background:
       radial-gradient(
         34% 120% at var(--mx) 34%,
@@ -318,7 +309,7 @@ const { id = `rb-${Math.random().toString(36).slice(2, 8)}`, class: className = 
   @media (prefers-reduced-motion: reduce) {
     .rb,
     .rb__spec,
-    .rb__cam {
+    .rb__glass {
       transition: none;
     }
     .rb:hover {

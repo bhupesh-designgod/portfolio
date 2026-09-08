@@ -84,41 +84,54 @@ const {
         </feComponentTransfer>
       </filter>
 
-      {/* The reflection. This one runs per video frame, so it is deliberately
-          short: turbulence, one displacement, one specular pass. A camera frame
-          has no hard edges, which is why displacement suits it and wrecked the
-          gradient underneath when I tried the same thing there. */}
-      <filter id={`${id}-cam`} x="-15%" y="-15%" width="130%" height="130%">
+      {/* Refraction, on the body of the pane.
+          
+          The frost this replaces came from feSpecularLighting over two octaves
+          of turbulence: that pair is a bump map, and a bump map is exactly what
+          etched glass is. So both are gone. What is left is one octave of noise
+          at a very low frequency — a field that varies over most of the card
+          rather than every few pixels — which bends the image in slow curves
+          instead of pebbling it. That is the difference between looking through
+          a bathroom window and looking through a thick lens. */}
+      <filter id={`${id}-liquid`} x="-15%" y="-15%" width="130%" height="130%">
         <feTurbulence
-          type="turbulence"
-          baseFrequency="0.014"
-          numOctaves="2"
-          seed="3"
-          result="noise"
+          type="fractalNoise"
+          baseFrequency="0.0026 0.0042"
+          numOctaves="1"
+          seed="9"
+          result="warp"
         />
-        <feColorMatrix in="noise" type="luminanceToAlpha" result="noiseAlpha" />
         <feDisplacementMap
           data-rc-disp
           in="SourceGraphic"
-          in2="noise"
-          scale="14"
+          in2="warp"
+          scale="48"
           xChannelSelector="R"
           yChannelSelector="G"
-          result="rippled"
         />
-        <feSpecularLighting
-          in="noiseAlpha"
-          surfaceScale="14"
-          specularConstant="0.9"
-          specularExponent="22"
-          lighting-color="#ffffff"
-          result="light"
-        >
-          <fePointLight x="60" y="0" z="220" />
-        </feSpecularLighting>
-        <feComposite in="light" in2="rippled" operator="in" result="lit" />
-        <feBlend in="lit" in2="rippled" mode="screen" />
       </filter>
+
+      {/* Refraction at the rim, where a real pane bends light hardest. Same
+          field, tighter and stronger, on a copy of the frame that is scaled up
+          and masked to a ring — which is what gives the card thickness rather
+          than reading as a warped photograph. */}
+      <filter id={`${id}-rim`} x="-25%" y="-25%" width="150%" height="150%">
+        <feTurbulence
+          type="fractalNoise"
+          baseFrequency="0.0045 0.0065"
+          numOctaves="1"
+          seed="3"
+          result="warp"
+        />
+        <feDisplacementMap
+          in="SourceGraphic"
+          in2="warp"
+          scale="96"
+          xChannelSelector="R"
+          yChannelSelector="G"
+        />
+      </filter>
+
     </defs>
   </svg>
 
@@ -129,17 +142,35 @@ const {
   <span class="rc__brush" style={`filter:url(#${id}-brush)`} aria-hidden="true"></span>
   <span class="rc__grain" aria-hidden="true"></span>
 
-  {/* The reflection. Explicitly sized rather than left to four insets: a video
-      is a replaced element, and width:auto takes its intrinsic width instead of
+  {/* The pane. Explicitly sized rather than left to four insets: a video is a
+      replaced element, and width:auto takes its intrinsic width instead of
       filling the box. */}
   <video
-    class="rc__cam"
+    class="rc__glass"
     data-rc-cam
-    style={`filter:blur(var(--rc-soft, 10px)) url(#${id}-cam)`}
+    style={`filter:saturate(1.3) brightness(1.03) blur(var(--rc-soft, 8px)) url(#${id}-liquid)`}
     muted
     playsinline
     autoplay
     aria-hidden="true"></video>
+
+  {/* The edge lens: the same stream again, scaled up, bent harder, and masked
+      to a ring that follows the corner radius. */}
+  <span class="rc__rim" aria-hidden="true">
+    <video
+      class="rc__rimcam"
+      data-rc-cam
+      style={`filter:saturate(1.45) brightness(1.06) blur(2px) url(#${id}-rim)`}
+      muted
+      playsinline
+      autoplay></video>
+  </span>
+
+  {/* Glass splits colour where it bends hardest. A spectral ring at low opacity
+      is a cheaper read on that than displacing three channels separately, and
+      it costs nothing per frame. */}
+  <span class="rc__fringe" aria-hidden="true"></span>
+  <span class="rc__inner" aria-hidden="true"></span>
 
   <span class="rc__spec" aria-hidden="true"></span>
 
@@ -184,10 +215,12 @@ const {
   const io = new IntersectionObserver(
     (entries) => {
       for (const e of entries) {
-        const cam = e.target.querySelector<HTMLVideoElement>('[data-rc-cam]');
-        if (!cam) continue;
-        if (e.isIntersecting) join(cam);
-        else leave(cam);
+        /* Two surfaces per card now — the pane and the edge lens — both fed
+           from the one stream. */
+        for (const cam of e.target.querySelectorAll<HTMLVideoElement>('[data-rc-cam]')) {
+          if (e.isIntersecting) join(cam);
+          else leave(cam);
+        }
       }
     },
     { rootMargin: '120px' },
@@ -209,13 +242,16 @@ const {
     display: block;
     width: 100%;
     aspect-ratio: var(--rc-aspect, 0.78 / 1);
-    border-radius: 18px;
+    border-radius: 22px;
     overflow: hidden;
     isolation: isolate;
     background: #0d1016;
     box-shadow:
       0 24px 60px rgba(8, 12, 24, 0.45),
-      0 1px 0 rgba(255, 255, 255, 0.06) inset;
+      0 1px 0 rgba(255, 255, 255, 0.06) inset,
+      0 12px 26px -18px rgba(255, 255, 255, 0.5) inset,
+      0 -10px 22px -18px rgba(255, 255, 255, 0.28) inset,
+      0 0 0 1px rgba(10, 14, 22, 0.35) inset;
   }
   .rc__defs {
     position: absolute;
@@ -264,10 +300,10 @@ const {
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
-  /* Screen, because a reflection adds light to a surface rather than covering
-     it — the brushed metal stays visible underneath and the room lands on top
-     of it. Oversized so the displacement never drags an edge into frame. */
-  .rc__cam {
+  /* The pane. Normal blend, not screen: glass transmits what is in front of it
+     rather than adding light to what is behind, and screening a bright room
+     over the metal was most of why the old surface looked like a smear. */
+  .rc__glass {
     position: absolute;
     left: -8%;
     top: -8%;
@@ -276,45 +312,159 @@ const {
     z-index: 2;
     object-fit: cover;
     opacity: 0;
-    mix-blend-mode: screen;
     pointer-events: none;
     transition: opacity 0.7s ease;
   }
   /* A mirror, not a camera: unflipped, moving your hand left moves it right. */
-  .rc[data-mirror='1'] .rc__cam {
+  .rc[data-mirror='1'] .rc__glass,
+  .rc[data-mirror='1'] .rc__rimcam {
     transform: scaleX(-1);
   }
-  .rc[data-state='live'] .rc__cam {
-    opacity: var(--rc-cam-opacity, 0.62);
+  .rc[data-state='live'] .rc__glass {
+    opacity: var(--rc-cam-opacity, 0.92);
   }
 
-  .rc__spec {
+  /* A ring that follows the corner radius, drawn the same way as the hairline:
+     two masks, the inner one subtracted. */
+  .rc__rim {
     position: absolute;
     inset: 0;
     z-index: 3;
+    border-radius: inherit;
+    overflow: hidden;
+    opacity: 0;
     pointer-events: none;
-    mix-blend-mode: overlay;
+    transition: opacity 0.7s ease;
+    /* Two soft bands unioned, not a subtracted content box. Subtracting gives
+       a hard 20px inset rectangle, and a visible seam is the one thing a pane
+       of glass does not have — the bend has to fade toward the middle. */
+    -webkit-mask:
+      linear-gradient(to right, #000 0, transparent 26%, transparent 74%, #000 100%),
+      linear-gradient(to bottom, #000 0, transparent 26%, transparent 74%, #000 100%);
+    -webkit-mask-composite: source-over;
+    mask:
+      linear-gradient(to right, #000 0, transparent 26%, transparent 74%, #000 100%),
+      linear-gradient(to bottom, #000 0, transparent 26%, transparent 74%, #000 100%);
+    mask-composite: add;
+  }
+  .rc[data-state='live'] .rc__rim {
+    opacity: 0.9;
+  }
+  /* Scaled past the frame, because a lens shows you a magnified slice of what
+     is behind its edge, not the same slice shifted. */
+  .rc__rimcam {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scale(1.18);
+  }
+  .rc[data-mirror='1'] .rc__rimcam {
+    transform: scaleX(-1) scale(1.18);
+  }
+
+  .rc__fringe {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    border-radius: inherit;
+    opacity: 0.16;
+    mix-blend-mode: screen;
+    pointer-events: none;
+    filter: blur(7px);
+    background: conic-gradient(
+      from 210deg,
+      rgba(255, 90, 130, 0.85),
+      rgba(90, 200, 255, 0.85) 24%,
+      rgba(150, 255, 210, 0.7) 48%,
+      rgba(255, 200, 100, 0.85) 72%,
+      rgba(255, 90, 130, 0.85)
+    );
+    transition: opacity 0.7s ease;
+    -webkit-mask:
+      linear-gradient(to right, #000 0, transparent 30%, transparent 70%, #000 100%),
+      linear-gradient(to bottom, #000 0, transparent 30%, transparent 70%, #000 100%);
+    -webkit-mask-composite: source-over;
+    mask:
+      linear-gradient(to right, #000 0, transparent 30%, transparent 70%, #000 100%),
+      linear-gradient(to bottom, #000 0, transparent 30%, transparent 70%, #000 100%);
+    mask-composite: add;
+  }
+  .rc[data-state='live'] .rc__fringe {
+    opacity: 0.5;
+  }
+
+  .rc__inner {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    border-radius: inherit;
+    padding: 1.5px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.7s ease;
+    background: linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.98) 0%,
+      rgba(255, 255, 255, 0.22) 28%,
+      rgba(150, 175, 210, 0.12) 52%,
+      rgba(255, 255, 255, 0.34) 74%,
+      rgba(255, 255, 255, 0.9) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+  }
+  .rc[data-state='live'] .rc__inner {
+    opacity: 0.85;
+  }
+
+  /* The gloss on top of the pane: a highlight where the pointer is, and a fixed
+     diagonal sheen that makes the surface read as curved rather than flat. */
+  .rc__spec {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    mix-blend-mode: screen;
     background:
       radial-gradient(
-        42% 34% at var(--mx) var(--my),
-        rgba(255, 255, 255, 0.85),
-        rgba(255, 255, 255, 0.18) 42%,
+        40% 32% at var(--mx) var(--my),
+        rgba(255, 255, 255, 0.5),
+        rgba(255, 255, 255, 0.1) 45%,
         transparent 70%
       ),
       linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.52) 0%,
+        rgba(255, 255, 255, 0.16) 12%,
+        rgba(255, 255, 255, 0) 34%
+      ),
+      linear-gradient(
         135deg,
-        rgba(255, 255, 255, 0.34) 0%,
-        rgba(255, 255, 255, 0.06) 38%,
+        rgba(255, 255, 255, 0.26) 0%,
+        rgba(255, 255, 255, 0.04) 34%,
         rgba(255, 255, 255, 0) 52%,
-        rgba(255, 255, 255, 0.1) 66%,
-        rgba(255, 255, 255, 0.28) 100%
+        rgba(255, 255, 255, 0.04) 68%,
+        rgba(255, 255, 255, 0.24) 100%
       );
     transition: background 0.08s linear;
   }
-  /* The reflection is doing the work once it is on; a second bright highlight
-     over the top of it only flattens what the camera is showing. */
-  .rc[data-state='live'] .rc__spec {
-    opacity: 0.45;
+
+  /* The brushing is the resting surface. Once there is glass over it, the
+     streaks read through the pane as dirt on the metal. */
+  .rc[data-state='live'] .rc__brush {
+    opacity: 0.24;
+  }
+  .rc[data-state='live'] .rc__grain {
+    opacity: 0.06;
   }
 
   /* Type on metal is unreadable without a ground under it, and more so once a
@@ -333,7 +483,7 @@ const {
   }
   .rc__body {
     position: relative;
-    z-index: 4;
+    z-index: 6;
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -393,7 +543,7 @@ const {
   .rc__edge {
     position: absolute;
     inset: 0;
-    z-index: 5;
+    z-index: 7;
     border-radius: inherit;
     padding: 1px;
     pointer-events: none;
@@ -415,7 +565,10 @@ const {
 
   @media (prefers-reduced-motion: reduce) {
     .rc__spec,
-    .rc__cam {
+    .rc__glass,
+    .rc__rim,
+    .rc__fringe,
+    .rc__inner {
       transition: none;
     }
   }
