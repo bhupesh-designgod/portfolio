@@ -1,0 +1,219 @@
+---
+/* A button milled from the same metal as ReflectiveCard.
+ *
+ * Same idea, smaller surface: a cold gradient rippled by the SVG filter chain,
+ * a grain pass, and a specular highlight that tracks the pointer. Built as its
+ * own thing rather than reusing LiquidMetalButton, which is already the hero's
+ * call to action — two identical buttons doing different jobs on one site read
+ * as one button in the wrong place.
+ *
+ * Where the card is a slab, this is a machined part: a tighter noise frequency
+ * so the grain is finer at this size, and a hard top edge, because small metal
+ * objects catch light in a line rather than a wash.
+ */
+interface Props {
+  href?: string;
+  type?: 'button' | 'submit';
+  id?: string;
+}
+
+const {
+  href,
+  type = 'button',
+  id = `rb-${Math.random().toString(36).slice(2, 8)}`,
+} = Astro.props;
+
+const Tag = href ? 'a' : 'button';
+---
+
+<Tag class="rb" href={href} type={href ? undefined : type} data-rb>
+  <svg class="rb__defs" aria-hidden="true" focusable="false">
+    <defs>
+      <filter id={id} x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
+        {/* Brushed finer than the card: at 54px tall the card's streak spacing
+            would put a handful of visible lines across the whole button. */}
+        <feTurbulence
+          type="fractalNoise"
+          baseFrequency="0.01 2.6"
+          numOctaves="2"
+          seed="4"
+          result="noise"
+        />
+        <feColorMatrix
+          in="noise"
+          type="matrix"
+          values="0 0 0 0 0.5
+                  0 0 0 0 0.5
+                  0 0 0 0 0.5
+                  0.5 0.35 0.15 0 0"
+          result="grey"
+        />
+        <feComponentTransfer in="grey" result="brushed">
+          <feFuncA type="linear" slope="0.5" intercept="0.24" />
+        </feComponentTransfer>
+      </filter>
+    </defs>
+  </svg>
+
+  <span class="rb__metal" aria-hidden="true"></span>
+  <span class="rb__brush" style={`filter:url(#${id})`} aria-hidden="true"></span>
+  <span class="rb__grain" aria-hidden="true"></span>
+  <span class="rb__spec" aria-hidden="true"></span>
+  <span class="rb__edge" aria-hidden="true"></span>
+
+  <span class="rb__label"><slot /></span>
+</Tag>
+
+<script>
+  for (const el of document.querySelectorAll<HTMLElement>('[data-rb]')) {
+    el.addEventListener('pointermove', (e) => {
+      const r = el.getBoundingClientRect();
+      el.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
+    });
+    el.addEventListener('pointerleave', () => el.style.setProperty('--mx', '30%'));
+  }
+</script>
+
+<style>
+  .rb {
+    --mx: 30%;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 54px;
+    padding: 0 30px;
+    border: 0;
+    border-radius: 999px;
+    overflow: hidden;
+    isolation: isolate;
+    cursor: pointer;
+    text-decoration: none;
+    background: #10141c;
+    box-shadow:
+      0 10px 26px rgba(8, 12, 24, 0.4),
+      0 1px 0 rgba(255, 255, 255, 0.14) inset;
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
+  }
+  .rb:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 14px 32px rgba(8, 12, 24, 0.46),
+      0 1px 0 rgba(255, 255, 255, 0.2) inset;
+  }
+  .rb:active {
+    transform: translateY(0);
+  }
+  .rb:focus-visible {
+    outline: 2px solid var(--blue-500);
+    outline-offset: 3px;
+  }
+
+  .rb__defs {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .rb__metal {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(
+      104deg,
+      #2b3341 0%,
+      #6f7b95 14%,
+      #212936 30%,
+      #57637a 48%,
+      #1d2430 64%,
+      #77839d 80%,
+      #29313f 96%
+    );
+  }
+
+  .rb__brush {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    opacity: 0.58;
+    mix-blend-mode: soft-light;
+    pointer-events: none;
+    background: #808080;
+  }
+
+  .rb__grain {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    opacity: 0.1;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Only the horizontal position tracks the pointer. On something this short a
+     vertical highlight has nowhere to go, and moving it just looks noisy. */
+  .rb__spec {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+    background:
+      radial-gradient(
+        34% 120% at var(--mx) 34%,
+        rgba(255, 255, 255, 0.95),
+        rgba(255, 255, 255, 0.2) 46%,
+        transparent 72%
+      ),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 46%);
+    transition: background 0.08s linear;
+  }
+
+  .rb__edge {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    border-radius: inherit;
+    padding: 1px;
+    pointer-events: none;
+    background: linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.85),
+      rgba(255, 255, 255, 0.12) 52%,
+      rgba(255, 255, 255, 0.4)
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+  }
+
+  .rb__label {
+    position: relative;
+    z-index: 4;
+    font-family: 'Inter', 'Nunito', system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    color: #f2f5fa;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+    white-space: nowrap;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rb,
+    .rb__spec {
+      transition: none;
+    }
+    .rb:hover {
+      transform: none;
+    }
+  }
+</style>

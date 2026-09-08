@@ -1,23 +1,121 @@
 ---
+/* The playground.
+ *
+ * A holding page. The two metal pieces are built and on it so they can be
+ * judged at real size; the layout is deliberately plain because it gets decided
+ * once there are actual concepts to arrange.
+ */
 import Base from '../layouts/Base.astro';
+import ReflectiveCard from '../components/ReflectiveCard.astro';
+import ReflectiveButton from '../components/ReflectiveButton.astro';
 ---
 
 <Base title="Playground — Bhupesh Parmar" description="Experiments, explorations and side work.">
-  <section class="page">
-    <div class="page__inner">
-      <p class="about__kicker" style="margin:0 0 10px;font-family:Inter,sans-serif;font-size:12px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:var(--blue-500)">Playground</p>
-      <h1 class="work__title">Experiments</h1>
-      <div class="prose">
-        <p>
-          Small things made for the fun of it: motion studies, interface
-          experiments and side projects that don&rsquo;t need a full write-up.
+  <section class="pgp">
+    <div class="pgp__inner">
+      <header class="pgp__head">
+        <h1 class="pgp__title">Playground</h1>
+        <p class="pgp__lead">
+          Side projects, motion studies and interface experiments. Nothing here
+          needs a case study.
         </p>
-        <p>
-          Nothing is published here yet. Until it is, the best place to see how
-          I work is <a href="/#work">the case studies</a>, or the assistant in
-          the corner, which can answer questions about any of them.
-        </p>
+      </header>
+
+      <p class="pgp__note">
+        Two pieces, built and waiting for something to hold. The layout gets
+        decided once there are concepts to arrange.
+      </p>
+
+      <div class="pgp__grid">
+        <ReflectiveCard index="01" title="Concept one" meta="Slot" id="rc-a">
+          <span class="pgp__ph">Your visual here</span>
+        </ReflectiveCard>
+
+        <ReflectiveCard index="02" title="Concept two" meta="Slot · link" href="#" id="rc-b">
+          <span class="pgp__ph">Pass <code>href</code> and it becomes a link</span>
+        </ReflectiveCard>
+
+        <ReflectiveCard index="03" title="Concept three" meta="Slot" id="rc-c">
+          <span class="pgp__ph">Any markup goes in the slot</span>
+        </ReflectiveCard>
+      </div>
+
+      <div class="pgp__btns">
+        <ReflectiveButton href="#" id="rb-a">See the experiment</ReflectiveButton>
+        <ReflectiveButton id="rb-b">Or a plain button</ReflectiveButton>
       </div>
     </div>
   </section>
 </Base>
+
+<style>
+  .pgp {
+    background: #fff;
+    padding: 132px 8% 140px;
+  }
+  .pgp__inner {
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+
+  .pgp__title {
+    margin: 0;
+    font-family: 'Bebas Neue', 'Nunito', sans-serif;
+    font-weight: 400;
+    font-size: 64px;
+    line-height: 1;
+    letter-spacing: 1px;
+    color: #0b0d12;
+  }
+  .pgp__lead {
+    max-width: 52ch;
+    margin: 16px 0 0;
+    font-size: 17px;
+    line-height: 1.62;
+    color: #4a4f5c;
+  }
+
+  .pgp__note {
+    margin: 44px 0 20px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+    letter-spacing: 1.1px;
+    text-transform: uppercase;
+    color: #9aa0ad;
+  }
+
+  .pgp__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 26px;
+  }
+
+  .pgp__ph {
+    max-width: 20ch;
+    text-align: center;
+    font-family: 'Inter', 'Nunito', system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    color: rgba(238, 242, 248, 0.62);
+  }
+  .pgp__ph code {
+    font-size: 12px;
+    color: rgba(238, 242, 248, 0.85);
+  }
+
+  .pgp__btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 52px;
+  }
+
+  @media (max-width: 780px) {
+    .pgp {
+      padding: 104px 6% 100px;
+    }
+    .pgp__title {
+      font-size: 44px;
+    }
+  }
+</style>

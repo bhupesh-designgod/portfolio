@@ -1,0 +1,343 @@
+---
+/* A card cut from brushed metal.
+ *
+ * The technique is react-bits' ReflectiveCard, read from source
+ * (public/r/ReflectiveCard-JS-CSS.json). Its metal is an SVG filter chain:
+ *
+ *   feTurbulence      -> a noise field
+ *   feDisplacementMap -> ripple the source through it
+ *   feSpecularLighting + fePointLight -> a highlight over that noise
+ *   feComposite + feBlend (screen) -> the highlight back onto the ripple
+ *
+ * One thing there is worth knowing before copying it: what it reflects is the
+ * viewer's WEBCAM. It calls getUserMedia on mount and puts a blurred, displaced
+ * feed of whoever is looking at it on the card. That is a lovely trick in a
+ * component gallery and the wrong thing to fire at a stranger opening a
+ * portfolio, so this feeds the same filter chain from a static gradient
+ * instead. The metal is identical; nothing asks for a camera.
+ *
+ * The filter is rasterised once, on a source that never moves, because
+ * feTurbulence and feDisplacementMap re-run on the CPU for every frame their
+ * input changes. What moves is a specular highlight that follows the pointer,
+ * which is a gradient position and costs nothing — and is the part that
+ * actually reads as reflective.
+ */
+interface Props {
+  index?: string;
+  title?: string;
+  meta?: string;
+  href?: string;
+  /** The filter is expensive to instantiate; give each card its own id. */
+  id?: string;
+}
+
+const {
+  index = '01',
+  title = 'Untitled',
+  meta = '',
+  href,
+  id = `rc-${Math.random().toString(36).slice(2, 8)}`,
+} = Astro.props;
+
+const Tag = href ? 'a' : 'div';
+---
+
+<Tag class="rc" href={href} data-rc>
+  {/* Zero-sized: this only exists to define the filter. */}
+  <svg class="rc__defs" aria-hidden="true" focusable="false">
+    <defs>
+      <filter id={id} x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
+        {/* Stretched noise: slow across x, fast down y, which draws streaks
+            along the brushing direction rather than the round lumps an even
+            baseFrequency gives. Fine and few-octaved — brushing is a sheen you
+            read at a glance, not a texture you count lines in. */}
+        <feTurbulence
+          type="fractalNoise"
+          baseFrequency="0.008 1.7"
+          numOctaves="2"
+          seed="7"
+          result="noise"
+        />
+        {/* Pulled hard toward mid grey. Straight out of feTurbulence the noise
+            spans the full range and reads as static; metal wants a narrow band
+            either side of neutral. */}
+        <feColorMatrix
+          in="noise"
+          type="matrix"
+          values="0 0 0 0 0.5
+                  0 0 0 0 0.5
+                  0 0 0 0 0.5
+                  0.5 0.35 0.15 0 0"
+          result="grey"
+        />
+        <feComponentTransfer in="grey" result="brushed">
+          <feFuncA type="linear" slope="0.55" intercept="0.22" />
+        </feComponentTransfer>
+      </filter>
+    </defs>
+  </svg>
+
+  {/* The metal. A cold gradient run through the filter above, which turns its
+      smooth bands into rippled brushed steel. */}
+  {/* Three layers, because one filtered layer cannot be tuned. Displacing the
+      gradient itself — which is what react-bits does to its webcam frame — makes
+      every row shift by a different amount, and a gradient has hard band
+      boundaries where a camera frame has none, so it comes out as scan lines.
+      So: the gradient stays clean, and the brushing goes over it. */}
+  <span class="rc__metal" aria-hidden="true"></span>
+  <span class="rc__brush" style={`filter:url(#${id})`} aria-hidden="true"></span>
+  <span class="rc__grain" aria-hidden="true"></span>
+  {/* The moving part: a highlight sitting where the pointer is. */}
+  <span class="rc__spec" aria-hidden="true"></span>
+  <span class="rc__edge" aria-hidden="true"></span>
+
+  <span class="rc__body">
+    <span class="rc__top">
+      <span class="rc__idx">{index}</span>
+      {meta && <span class="rc__meta">{meta}</span>}
+    </span>
+
+    <span class="rc__slot"><slot /></span>
+
+    <span class="rc__foot">
+      <span class="rc__title">{title}</span>
+      {href && (
+        <svg class="rc__go" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M5 12h13M12.5 6.5 19 12l-6.5 5.5" stroke="currentColor"
+            stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      )}
+    </span>
+  </span>
+</Tag>
+
+<script>
+  /* One listener per card. The highlight is two custom properties, so the work
+     per move is setting a string, not laying anything out. */
+  for (const el of document.querySelectorAll<HTMLElement>('[data-rc]')) {
+    el.addEventListener('pointermove', (e) => {
+      const r = el.getBoundingClientRect();
+      el.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
+      el.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`);
+    });
+    el.addEventListener('pointerleave', () => {
+      /* Back to the resting highlight, up and to the left, where a light in a
+         room usually is. */
+      el.style.setProperty('--mx', '28%');
+      el.style.setProperty('--my', '18%');
+    });
+  }
+</script>
+
+<style>
+  .rc {
+    --mx: 28%;
+    --my: 18%;
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: 0.78 / 1;
+    border-radius: 18px;
+    overflow: hidden;
+    isolation: isolate;
+    text-decoration: none;
+    background: #0d1016;
+    box-shadow:
+      0 24px 60px rgba(8, 12, 24, 0.45),
+      0 1px 0 rgba(255, 255, 255, 0.06) inset;
+  }
+  .rc__defs {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .rc__metal {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background:
+      linear-gradient(
+        112deg,
+        #232a37 0%,
+        #626e88 18%,
+        #1d242f 34%,
+        #4e5a70 52%,
+        #1a202a 68%,
+        #6b7791 84%,
+        #242b39 100%
+      );
+    opacity: 1;
+  }
+
+  /* The brushing. Soft-light so it lightens the gradient's dark bands and
+     darkens its light ones, which is what a directional grain does to a curved
+     surface — overlay at this strength just bleaches the top half. */
+  .rc__brush {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    opacity: 0.62;
+    mix-blend-mode: soft-light;
+    pointer-events: none;
+    background: #808080;
+  }
+
+  .rc__grain {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    opacity: 0.12;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* The reflection. Follows the pointer; the second, fixed gradient is the
+     sheen that makes the surface read as curved rather than flat. */
+  .rc__spec {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+    background:
+      radial-gradient(
+        42% 34% at var(--mx) var(--my),
+        rgba(255, 255, 255, 0.85),
+        rgba(255, 255, 255, 0.18) 42%,
+        transparent 70%
+      ),
+      linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.34) 0%,
+        rgba(255, 255, 255, 0.06) 38%,
+        rgba(255, 255, 255, 0) 52%,
+        rgba(255, 255, 255, 0.1) 66%,
+        rgba(255, 255, 255, 0.28) 100%
+      );
+    transition: background 0.08s linear;
+  }
+
+  /* A hairline, drawn as a masked gradient so it can be brighter at the top
+     left than the bottom right — which is what a lit edge does. */
+  .rc__edge {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    border-radius: inherit;
+    padding: 1px;
+    pointer-events: none;
+    background: linear-gradient(
+      140deg,
+      rgba(255, 255, 255, 0.75),
+      rgba(255, 255, 255, 0.14) 46%,
+      rgba(255, 255, 255, 0.5)
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+  }
+
+  /* The metal is a high-contrast surface and type on it is unreadable without
+     something between them. Top and bottom only, so the middle of the card
+     stays clear for whatever goes in the slot. */
+  .rc__body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      linear-gradient(180deg, rgba(7, 10, 16, 0.72) 0%, rgba(7, 10, 16, 0) 24%),
+      linear-gradient(0deg, rgba(7, 10, 16, 0.86) 0%, rgba(7, 10, 16, 0) 32%),
+      radial-gradient(70% 40% at 50% 50%, rgba(7, 10, 16, 0.46), transparent 70%);
+  }
+  .rc__body {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 22px;
+    color: #eef2f8;
+  }
+
+  .rc__top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .rc__idx,
+  .rc__meta {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10.5px;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+  }
+  .rc__idx {
+    color: rgba(238, 242, 248, 0.95);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  }
+  .rc__meta {
+    color: rgba(238, 242, 248, 0.72);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  }
+
+  .rc__slot {
+    flex: 1;
+    display: grid;
+    place-items: center;
+    min-height: 0;
+    padding: 14px 0;
+  }
+
+  .rc__foot {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.16);
+  }
+  .rc__title {
+    font-family: 'Bebas Neue', 'Nunito', sans-serif;
+    font-weight: 400;
+    font-size: 26px;
+    line-height: 1;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+  .rc__go {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 auto;
+    opacity: 0.7;
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease;
+  }
+  a.rc:hover .rc__go {
+    opacity: 1;
+    transform: translateX(4px);
+  }
+
+  a.rc:focus-visible {
+    outline: 2px solid var(--blue-500);
+    outline-offset: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rc__spec,
+    .rc__go {
+      transition: none;
+    }
+  }
+</style>
