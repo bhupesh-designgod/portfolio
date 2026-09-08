@@ -90,19 +90,22 @@ const reasons = ['Hiring', 'Collaboration', 'Just exploring', 'Industry buddy', 
         </button>
       </div>
 
-      {/* Inside the top grid rather than after it, sharing a row with the lower
-          half of the pass. Below the grid it would have to clear the pass's full
-          height, which opens a band of dead space the width of the page. */}
-      <div class="gb__wallHead">
-        <h3 class="gb__wallTitle">Who&rsquo;s been here?</h3>
-        <p class="gb__wallSub" data-gb-sub>
-          {
-            entries.length
-              ? 'Some kind people have already left a mark.'
-              : 'Nobody yet. The first card here is going to age well.'
-          }
-        </p>
-      </div>
+    </div>
+
+    {/* Below the band, not tucked into it. It used to share a grid row with the
+        lower half of the pass, which only worked while the left column was tall
+        enough to fill the pass's height. With the marginal note gone and the
+        lead down to two lines it no longer is, and the tuck opened a hole under
+        the copy instead of closing one. */}
+    <div class="gb__wallHead">
+      <h3 class="gb__wallTitle">Who&rsquo;s been here?</h3>
+      <p class="gb__wallSub" data-gb-sub>
+        {
+          entries.length
+            ? 'Some kind people have already left a mark.'
+            : 'Nobody yet. The first card here is going to age well.'
+        }
+      </p>
     </div>
 
     <ul class="gb__wall" data-gb-wall>
