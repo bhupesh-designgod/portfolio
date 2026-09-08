@@ -38,13 +38,6 @@ const { src = '/assets/playground/reel.mp4', href = '/playground' } = Astro.prop
     </div>
 
     <div class="pg__stage">
-      {/* The light itself. Two soft fields rather than an outline: one behind
-          the doorway spilling onto the wall, one pooling on the floor in front
-          of it. Both are blurred blobs, not copies of the door's shape, because
-          anything that traces the edge reads as a border however soft it is. */}
-      <span class="pg__bloom" aria-hidden="true"></span>
-      <span class="pg__pool" aria-hidden="true"></span>
-
       <a class="pg__door" href={href} data-pg-door>
         {/* Behind the video, so the door is a door even before the file loads
             or if autoplay is refused. */}
@@ -59,11 +52,6 @@ const { src = '/assets/playground/reel.mp4', href = '/playground' } = Astro.prop
           playsinline
           preload="metadata"
           aria-hidden="true"></video>
-
-        {/* The wash. Idle it is invisible; on hover the doorway fills with
-            light, which is the whole metaphor and also what makes the label
-            readable without a scrim sitting over the reel the rest of the time. */}
-        <span class="pg__wash" aria-hidden="true"></span>
 
         <span class="pg__label">
           <span>Enter playground</span>
@@ -190,12 +178,6 @@ const { src = '/assets/playground/reel.mp4', href = '/playground' } = Astro.prop
     background: #fff;
     padding: 104px 8% 116px;
     color: #0b0d12;
-    /* The bloom is wider than the door on purpose and the door sits against the
-       right edge, so it runs past the viewport and was widening the page by up
-       to 100px — a horizontal scrollbar on every breakpoint. `clip` rather than
-       `hidden`: hidden makes this a scroll container, which would also crop the
-       door's shadow vertically. */
-    overflow-x: clip;
   }
   .pg__wrap {
     max-width: 1180px;
@@ -230,76 +212,52 @@ const { src = '/assets/playground/reel.mp4', href = '/playground' } = Astro.prop
     width: 330px;
   }
 
-  /* Light on the wall. Deliberately wider and shorter than the door and pushed
-     well past its edges, so what you see is a field of light with a doorway in
-     it rather than a halo tracing a shape. */
-  .pg__bloom {
-    position: absolute;
-    left: 50%;
-    top: 40%;
-    width: 190%;
-    height: 120%;
-    translate: -50% -50%;
-    border-radius: 50%;
-    background: radial-gradient(
-      closest-side,
-      rgba(214, 230, 255, 0.95),
-      rgba(150, 190, 255, 0.5) 42%,
-      rgba(0, 89, 255, 0.16) 68%,
-      transparent 82%
-    );
-    filter: blur(34px);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.55s ease;
-  }
-
-  /* And on the floor, where the doorway meets it. Flattened hard, because light
-     falling on a floor you are looking across is an ellipse, not a circle. */
-  .pg__pool {
-    position: absolute;
-    left: 50%;
-    top: 100%;
-    width: 150%;
-    height: 30%;
-    translate: -50% -14%;
-    border-radius: 50%;
-    background: radial-gradient(
-      closest-side,
-      rgba(224, 236, 255, 0.9),
-      rgba(120, 170, 255, 0.34) 46%,
-      transparent 76%
-    );
-    filter: blur(22px);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.55s ease;
-  }
-
   .pg__door {
     position: relative;
     z-index: 1;
     display: block;
     width: 100%;
     aspect-ratio: 0.72 / 1;
-    overflow: hidden;
+    /* Not `hidden`: the ring below sits outside the door's own box, and hidden
+       would clip it. The reel is clipped by its own radius instead. */
+    overflow: visible;
     /* A doorway, so the top corners are rounder than the bottom ones — the
        bottom of a door meets the floor square. */
     border-radius: 165px 165px 12px 12px;
-    /* No border. An opening in a wall has no stroke around it; the only thing
-       that defines its edge is the difference between what is behind it and
-       what is through it. */
+    /* No border at rest. An opening in a wall has no stroke around it. */
     background: #0b0d12;
     text-decoration: none;
-    transition:
-      transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-      box-shadow 0.55s ease;
     box-shadow: 0 26px 60px rgba(20, 28, 56, 0.15);
+  }
+
+  /* The ring. Sits exactly on the door's edge at rest and steps outward on
+     hover, so the movement is the border leaving the shape rather than a shape
+     fading in. One line, one colour, no blur. */
+  .pg__door::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 2px solid var(--blue-500);
+    border-radius: inherit;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      inset 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+      border-radius 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.26s ease;
+  }
+  .pg__door:hover::after,
+  .pg__door:focus-visible::after {
+    inset: -10px;
+    /* The radius grows with the offset, or the ring pinches at the arch. */
+    border-radius: 175px 175px 22px 22px;
+    opacity: 1;
   }
 
   .pg__ground {
     position: absolute;
     inset: 0;
+    border-radius: inherit;
     background: linear-gradient(170deg, #1b2036, #0b0d12 62%, #05070f);
   }
 
@@ -309,25 +267,10 @@ const { src = '/assets/playground/reel.mp4', href = '/playground' } = Astro.prop
     width: 100%;
     height: 100%;
     object-fit: cover;
+    border-radius: inherit;
     /* Held back a little so the label stays readable over a bright frame, and
        so the door reads as a view through rather than a screen. */
     opacity: 0.82;
-  }
-
-  /* The interior when the door opens. A gradient with a bright core rather than
-     flat white: light has a source, and a flat fill reads as a card that changed
-     colour instead of a doorway that lit up. */
-  .pg__wash {
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(
-      74% 58% at 50% 62%,
-      #ffffff 0%,
-      #f4f8ff 58%,
-      #e6eeff 100%
-    );
-    opacity: 0;
-    transition: opacity 0.5s ease;
   }
 
   .pg__label {
@@ -345,40 +288,10 @@ const { src = '/assets/playground/reel.mp4', href = '/playground' } = Astro.prop
     letter-spacing: 1.6px;
     text-transform: uppercase;
     color: #fff;
-    transition: color 0.42s ease, gap 0.35s ease;
   }
   .pg__label svg {
     width: 17px;
     height: 17px;
-  }
-
-  /* Hover: the doorway opens and light comes out of it. Nothing traces the
-     edge — the shadow softens because a lit object casts less of one, and the
-     light fields either side do the rest. */
-  .pg__stage:has(.pg__door:hover) .pg__bloom,
-  .pg__stage:has(.pg__door:focus-visible) .pg__bloom,
-  .pg__stage:has(.pg__door:hover) .pg__pool,
-  .pg__stage:has(.pg__door:focus-visible) .pg__pool {
-    opacity: 1;
-  }
-
-  .pg__door:hover,
-  .pg__door:focus-visible {
-    transform: translateY(-5px);
-    box-shadow: 0 30px 64px rgba(90, 140, 220, 0.2);
-  }
-  .pg__door:hover .pg__wash,
-  .pg__door:focus-visible .pg__wash {
-    opacity: 0.96;
-  }
-  .pg__door:hover .pg__label,
-  .pg__door:focus-visible .pg__label {
-    color: var(--blue-500);
-    gap: 12px;
-  }
-  .pg__door:focus-visible {
-    outline: 2px solid var(--blue-500);
-    outline-offset: 8px;
   }
 
   /* -------------------------------- the floor ------------------------------ */
@@ -386,9 +299,9 @@ const { src = '/assets/playground/reel.mp4', href = '/playground' } = Astro.prop
     display: block;
     width: 100%;
     /* Foreshortened by aspect-ratio, not by a percentage height. A percentage
-       height against a parent of auto height is indeterminate, so the canvas
-       fell back to its bitmap's aspect and rendered a full second door hanging
-       upside down instead of a floor.
+       against a parent of auto height is indeterminate, so the canvas fell back
+       to its bitmap's aspect and rendered a full second door hanging upside
+       down instead of a floor.
 
        0.72 wide by 1 tall is the door; this is the same width against 0.40 of
        that height, which is the compression you get looking at a floor from
@@ -401,15 +314,7 @@ const { src = '/assets/playground/reel.mp4', href = '/playground' } = Astro.prop
     /* Fades as it recedes, and never quite reaches the bottom of its box. */
     -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.5) 34%, transparent 82%);
     mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.5) 34%, transparent 82%);
-    transition: opacity 0.45s ease;
     pointer-events: none;
-  }
-  /* The reflection is of a dark reel. Once the doorway is lit there is nothing
-     dark left to mirror, so the drawn frames fade out and the light pool takes
-     over as what the floor is showing. */
-  .pg__stage:has(.pg__door:hover) .pg__floor,
-  .pg__stage:has(.pg__door:focus-visible) .pg__floor {
-    opacity: 0.1;
   }
 
   @media (max-width: 900px) {
@@ -431,11 +336,9 @@ const { src = '/assets/playground/reel.mp4', href = '/playground' } = Astro.prop
 
   @media (prefers-reduced-motion: reduce) {
     .pg__door,
-    .pg__wash,
+    .pg__door::after,
     .pg__label,
-    .pg__floor,
-    .pg__bloom,
-    .pg__pool {
+    .pg__floor {
       transition: none;
     }
     .pg__door:hover,
