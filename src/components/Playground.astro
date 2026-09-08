@@ -1,0 +1,388 @@
+---
+/* The playground door.
+ *
+ * One doorway on the right, showing a reel of side work through it, standing on
+ * a reflective floor. Click it and you are in the playground.
+ *
+ * The reference for this is the pmndrs image-gallery demo, which is
+ * react-three-fiber with a MeshReflectorMaterial floor. That is the right tool
+ * when the camera moves and the geometry is real. Here the door faces the camera
+ * and never turns, so the whole effect is a rectangle, a mirrored copy of the
+ * same frames, and a gradient — which the DOM does for about two kilobytes
+ * instead of putting React, three and drei on a page that currently ships almost
+ * no JavaScript. Same picture, and the video stays a real <video> element the
+ * browser can decode in hardware rather than a texture uploaded every frame.
+ *
+ * The reflection is drawn rather than faked with a second <video>: one decode,
+ * one small canvas, flipped in the draw call. Two video elements pointing at the
+ * same file is two decodes, which on a phone is the difference between free and
+ * noticeable.
+ */
+interface Props {
+  /** The reel shown through the door. Swap the file, keep the path. */
+  src?: string;
+  href?: string;
+}
+
+const { src = '/assets/playground/reel.mp4', href = '/playground' } = Astro.props;
+---
+
+<section class="pg" id="playground">
+  <div class="pg__wrap">
+    <div class="pg__intro">
+      <h2 class="pg__title">The playground</h2>
+      <p class="pg__lead">
+        Side projects, motion studies and things built for the fun of it. None of
+        them need a case study. All of them are in one place.
+      </p>
+    </div>
+
+    <div class="pg__stage">
+      <a class="pg__door" href={href} data-pg-door>
+        {/* Behind the video, so the door is a door even before the file loads
+            or if autoplay is refused. */}
+        <span class="pg__ground" aria-hidden="true"></span>
+
+        <video
+          class="pg__reel"
+          data-pg-video
+          src={src}
+          muted
+          loop
+          playsinline
+          preload="metadata"
+          aria-hidden="true"></video>
+
+        {/* The wash. Idle it is invisible; on hover the doorway fills with
+            light, which is the whole metaphor and also what makes the label
+            readable without a scrim sitting over the reel the rest of the time. */}
+        <span class="pg__wash" aria-hidden="true"></span>
+
+        <span class="pg__label">
+          <span>Enter playground</span>
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M5 12h13M12.5 6.5 19 12l-6.5 5.5"
+              stroke="currentColor"
+              stroke-width="1.9"
+              stroke-linecap="round"
+              stroke-linejoin="round"></path>
+          </svg>
+        </span>
+      </a>
+
+      {/* The floor. A mirrored, foreshortened copy of what the door is showing,
+          fading out as it recedes. */}
+      <canvas class="pg__floor" data-pg-floor aria-hidden="true"></canvas>
+    </div>
+  </div>
+</section>
+
+<script>
+  const door = document.querySelector<HTMLElement>('[data-pg-door]');
+  const video = document.querySelector<HTMLVideoElement>('[data-pg-video]');
+  const floor = document.querySelector<HTMLCanvasElement>('[data-pg-floor]');
+
+  if (door && video && floor) {
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const ctx = floor.getContext('2d', { alpha: true });
+
+    /* The bitmap is deliberately small. It is blurred and faded to about half
+       opacity, so resolution past this buys nothing and costs a draw. */
+    const W = 240;
+    let H = 150;
+    let raf = 0;
+    let onScreen = false;
+
+    function size() {
+      const r = door!.getBoundingClientRect();
+      if (!r.width) return;
+      H = Math.round(W * (r.height / r.width));
+      if (floor!.width !== W || floor!.height !== H) {
+        floor!.width = W;
+        floor!.height = H;
+      }
+    }
+
+    /* Matches the door's `object-fit: cover` crop, so the reflection lines up
+       with what is actually visible through the doorway rather than with the
+       whole frame. A reflection of a different crop is the thing that makes
+       these look wrong. */
+    function draw() {
+      if (!ctx || !video!.videoWidth) return;
+      const vw = video!.videoWidth;
+      const vh = video!.videoHeight;
+      const scale = Math.max(W / vw, H / vh);
+      const sw = W / scale;
+      const sh = H / scale;
+      const sx = (vw - sw) / 2;
+      const sy = (vh - sh) / 2;
+
+      ctx.save();
+      ctx.clearRect(0, 0, W, H);
+      /* Flip in the draw rather than in CSS: the element stays upright, so the
+         mask and the blur below read top-to-bottom like the floor does. */
+      ctx.translate(0, H);
+      ctx.scale(1, -1);
+      ctx.drawImage(video!, sx, sy, sw, sh, 0, 0, W, H);
+      ctx.restore();
+    }
+
+    const tick = () => {
+      if (!onScreen || video!.paused) {
+        raf = 0;
+        return;
+      }
+      draw();
+      raf = requestAnimationFrame(tick);
+    };
+    const run = () => {
+      if (!raf) raf = requestAnimationFrame(tick);
+    };
+
+    /* Nothing decodes or draws until the door is actually on screen. This sits
+       in the middle of a long page and most visits never reach it. */
+    new IntersectionObserver(
+      ([e]) => {
+        onScreen = e.isIntersecting;
+        if (onScreen) {
+          size();
+          if (!still) video!.play().then(run).catch(() => {
+            /* Autoplay refused. The door keeps its gradient and the floor stays
+               empty, which is a quiet door rather than a broken one. */
+          });
+          else {
+            /* Reduced motion: one frame, held. The reflection is still correct,
+               it just does not move. */
+            video!.currentTime = 0.1;
+            video!.addEventListener('seeked', draw, { once: true });
+          }
+        } else {
+          video!.pause();
+        }
+      },
+      { rootMargin: '200px' },
+    ).observe(door);
+
+    video.addEventListener('play', run);
+    video.addEventListener('loadedmetadata', () => {
+      size();
+      draw();
+    });
+    window.addEventListener('resize', () => {
+      size();
+      draw();
+    });
+  }
+</script>
+
+<style>
+  .pg {
+    position: relative;
+    z-index: 3;
+    background: #fff;
+    padding: 104px 8% 116px;
+    color: #0b0d12;
+  }
+  .pg__wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 56px;
+  }
+
+  .pg__title {
+    margin: 0;
+    font-family: 'Bebas Neue', 'Nunito', sans-serif;
+    font-weight: 400;
+    font-size: 64px;
+    line-height: 1;
+    letter-spacing: 1px;
+  }
+  .pg__lead {
+    max-width: 46ch;
+    margin: 18px 0 0;
+    font-size: 17px;
+    line-height: 1.62;
+    color: #4a4f5c;
+  }
+
+  /* -------------------------------- the door ------------------------------- */
+  .pg__stage {
+    /* The door and its reflection are one object; the stage is what keeps them
+       joined when the column resizes. */
+    width: 330px;
+  }
+
+  .pg__door {
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: 0.72 / 1;
+    overflow: hidden;
+    /* A doorway, so the top corners are rounder than the bottom ones — the
+       bottom of a door meets the floor square. */
+    border-radius: 165px 165px 12px 12px;
+    border: 1px solid rgba(20, 28, 56, 0.12);
+    background: #0b0d12;
+    text-decoration: none;
+    isolation: isolate;
+    transition:
+      transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.5s ease,
+      border-color 0.4s ease;
+    box-shadow:
+      0 2px 6px rgba(20, 28, 56, 0.08),
+      0 24px 60px rgba(20, 28, 56, 0.16);
+  }
+
+  /* The glow. A blurred ring sitting behind the door, off until the pointer
+     arrives. Drawn as a pseudo-element rather than a box-shadow so it can be
+     blurred independently of the door's own shadow. */
+  .pg__door::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    z-index: -1;
+    border-radius: inherit;
+    background: linear-gradient(180deg, var(--blue-300), var(--blue-500));
+    filter: blur(16px);
+    opacity: 0;
+    transition: opacity 0.45s ease;
+  }
+
+  .pg__ground {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(170deg, #1b2036, #0b0d12 62%, #05070f);
+  }
+
+  .pg__reel {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* Held back a little so the label stays readable over a bright frame, and
+       so the door reads as a view through rather than a screen. */
+    opacity: 0.82;
+  }
+
+  .pg__wash {
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    opacity: 0;
+    transition: opacity 0.42s ease;
+  }
+
+  .pg__label {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: 'Inter', 'Nunito', system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: #fff;
+    transition: color 0.42s ease, gap 0.35s ease;
+  }
+  .pg__label svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  /* Hover: the doorway fills with light. */
+  .pg__door:hover,
+  .pg__door:focus-visible {
+    transform: translateY(-6px);
+    border-color: rgba(0, 89, 255, 0.4);
+    box-shadow:
+      0 2px 6px rgba(20, 28, 56, 0.06),
+      0 32px 70px rgba(0, 89, 255, 0.22);
+  }
+  .pg__door:hover::before,
+  .pg__door:focus-visible::before {
+    opacity: 0.85;
+  }
+  .pg__door:hover .pg__wash,
+  .pg__door:focus-visible .pg__wash {
+    opacity: 0.94;
+  }
+  .pg__door:hover .pg__label,
+  .pg__door:focus-visible .pg__label {
+    color: var(--blue-500);
+    gap: 12px;
+  }
+  .pg__door:focus-visible {
+    outline: 2px solid var(--blue-500);
+    outline-offset: 6px;
+  }
+
+  /* -------------------------------- the floor ------------------------------ */
+  .pg__floor {
+    display: block;
+    width: 100%;
+    /* Foreshortened by aspect-ratio, not by a percentage height. A percentage
+       height against a parent of auto height is indeterminate, so the canvas
+       fell back to its bitmap's aspect and rendered a full second door hanging
+       upside down instead of a floor.
+
+       0.72 wide by 1 tall is the door; this is the same width against 0.40 of
+       that height, which is the compression you get looking at a floor from
+       standing height. */
+    aspect-ratio: 0.72 / 0.4;
+    /* Touching, because a reflection starts where the object meets the floor. */
+    margin-top: 0;
+    filter: blur(2.5px);
+    opacity: 0.5;
+    /* Fades as it recedes, and never quite reaches the bottom of its box. */
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.5) 34%, transparent 82%);
+    mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.5) 34%, transparent 82%);
+    transition: opacity 0.45s ease;
+    pointer-events: none;
+  }
+  /* The floor catches the light too. */
+  .pg__stage:hover .pg__floor {
+    opacity: 0.2;
+  }
+
+  @media (max-width: 900px) {
+    .pg {
+      padding: 72px 6% 88px;
+    }
+    .pg__wrap {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 8px;
+    }
+    .pg__title {
+      font-size: 44px;
+    }
+    .pg__stage {
+      width: min(100%, 330px);
+      margin: 34px auto 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pg__door,
+    .pg__wash,
+    .pg__label,
+    .pg__floor,
+    .pg__door::before {
+      transition: none;
+    }
+    .pg__door:hover,
+    .pg__door:focus-visible {
+      transform: none;
+    }
+  }
+</style>
