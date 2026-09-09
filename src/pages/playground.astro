@@ -31,10 +31,10 @@ import ReflectiveButton from '../components/ReflectiveButton.astro';
             <ReflectiveCard
               index="01"
               title="Reflective card"
-              meta="Metal · camera"
+              meta="Ice · camera"
               id="rc-tile"
-              art="/assets/playground/selfie-cat.gif"
-              artAlt=""
+              finish="ice"
+              art="/assets/playground/card-art.mp4"
             />
             {/* The cue lives here rather than in the card, because a scoped
                 style in this file cannot reach into that component to react to
@@ -42,7 +42,7 @@ import ReflectiveButton from '../components/ReflectiveButton.astro';
             <span class="pgp__cue">Click to try it</span>
           </button>
           <figcaption class="pgp__cap">
-            Someone else is in it for now. Open it and the glass starts
+            Frosted, with someone already behind it. Open it and the ice starts
             refracting whoever is actually in front of the screen.
           </figcaption>
         </figure>
@@ -52,8 +52,8 @@ import ReflectiveButton from '../components/ReflectiveButton.astro';
             <ReflectiveButton id="rb-main" />
           </div>
           <figcaption class="pgp__cap">
-            The same metal, and the switch. Clicking asks for the camera; every
-            reflective surface on the page comes on together.
+            Still metal, and it is the switch. Clicking asks for the camera;
+            every reflective surface on the page comes on together.
           </figcaption>
         </figure>
       </div>
@@ -70,8 +70,9 @@ import ReflectiveButton from '../components/ReflectiveButton.astro';
           <ReflectiveCard
             index="01"
             title="Reflective card"
-            meta="Metal · camera"
+            meta="Ice · camera"
             id="rc-modal"
+            finish="ice"
             aspect="0.82 / 1"
           >
             <span class="rcm__slot" data-modal-slot>Waiting for the camera</span>
@@ -82,9 +83,9 @@ import ReflectiveButton from '../components/ReflectiveButton.astro';
       <div class="rcm__panel">
         <p class="rcm__kicker">Reflective card</p>
         <p class="rcm__blurb">
-          A pane of glass over brushed steel. The camera is blurred, bent
-          through a low-frequency field, and bent harder again in a ring at the
-          edge, where a real pane refracts most.
+          A pane of ice. The camera is blurred, bent through a low-frequency
+          field, and bent harder again in a ring at the edge, where a real pane
+          refracts most.
         </p>
 
         <label class="rcm__ctl">

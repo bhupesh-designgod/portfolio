@@ -32,9 +32,11 @@ interface Props {
   id?: string;
   /** Overridable so the same component can be a tile or a full-size panel. */
   aspect?: string;
-  /** Stands in for the reflection until the camera is on. */
+  /** Stands in for the reflection until the camera is on. Image or video. */
   art?: string;
   artAlt?: string;
+  /** 'metal' is brushed steel; 'ice' frosts the whole surface. */
+  finish?: 'metal' | 'ice';
   class?: string;
 }
 
@@ -46,14 +48,20 @@ const {
   aspect = '0.78 / 1',
   art,
   artAlt = '',
+  finish = 'metal',
   class: className = '',
 } = Astro.props;
+
+/* Decided here rather than by a second prop: the file extension already says
+   which element this needs, and a wrong pairing would just fail silently. */
+const artIsVideo = !!art && /\.(mp4|webm|mov)$/i.test(art);
 ---
 
 <div
   class:list={['rc', className]}
   data-rc
   data-mirror="1"
+  data-finish={finish}
   style={`--rc-aspect:${aspect}`}
 >
   {/* Zero-sized: this exists only to define the two filters. */}
@@ -121,6 +129,24 @@ const {
         />
       </filter>
 
+      {finish === 'ice' && (
+        <filter id={`${id}-frost`} x="-10%" y="-10%" width="120%" height="120%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.055" numOctaves="3" seed="11" result="n" />
+          <feColorMatrix in="n" type="luminanceToAlpha" result="na" />
+          <feSpecularLighting
+            in="na"
+            surfaceScale="3.2"
+            specularConstant="1.15"
+            specularExponent="17"
+            lighting-color="#eaf6ff"
+            result="lit"
+          >
+            <feDistantLight azimuth="235" elevation="55" />
+          </feSpecularLighting>
+          <feComposite in="lit" in2="SourceGraphic" operator="in" />
+        </filter>
+      )}
+
       {/* Refraction at the rim, where a real pane bends light hardest. Same
           field, tighter and stronger, on a copy of the frame that is scaled up
           and masked to a ring — which is what gives the card thickness rather
@@ -157,7 +183,19 @@ const {
        looks like it is already reflecting something. No crop maths here: unlike
        the screen recording this replaced, the source is just a picture, so it
        covers the card and the card's own labels go over the top as usual. */
-    <img class="rc__art" src={art} alt={artAlt} data-rc-art />
+    artIsVideo ? (
+      <video
+        class="rc__art"
+        data-rc-art
+        src={art}
+        preload="none"
+        muted
+        loop
+        playsinline
+        aria-hidden="true"></video>
+    ) : (
+      <img class="rc__art" src={art} alt={artAlt} data-rc-art />
+    )
   )}
 
   {/* The pane. Explicitly sized rather than left to four insets: a video is a
@@ -174,6 +212,18 @@ const {
 
   {/* The edge lens: the same stream again, scaled up, bent harder, and masked
       to a ring that follows the corner radius. */}
+  {finish === 'ice' && (
+    /* Frost sits above the art and the camera because it is a surface in front
+       of them, not a texture behind. backdrop-filter blurs whatever has been
+       painted below it in this stacking context, which is exactly what looking
+       through ice does; the crystal pass on top is the feTurbulence and
+       feSpecularLighting pair that made the old camera surface look etched.
+       That was wrong for liquid glass and is right for this. */
+    <span class="rc__frost" aria-hidden="true">
+      <span class="rc__frostTex" style={`filter:url(#${id}-frost)`}></span>
+    </span>
+  )}
+
   <span class="rc__rim" aria-hidden="true">
     <video
       class="rc__rimcam"
@@ -238,6 +288,14 @@ const {
         for (const cam of e.target.querySelectorAll<HTMLVideoElement>('[data-rc-cam]')) {
           if (e.isIntersecting) join(cam);
           else leave(cam);
+        }
+
+        /* Art can be a video. Nothing is fetched until here, because preload
+           is none, and it stops again once the tile scrolls away. */
+        const art = e.target.querySelector('[data-rc-art]');
+        if (art instanceof HTMLVideoElement) {
+          if (e.isIntersecting) art.play().catch(() => {});
+          else art.pause();
         }
 
       }
@@ -317,6 +375,63 @@ const {
     mix-blend-mode: overlay;
     pointer-events: none;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ------------------------------- ice ---------------------------------- */
+
+  /* A different substrate, not a tint over the steel: ice is pale and cool
+     where brushed metal is dark and neutral, so the gradient is replaced
+     rather than filtered. */
+  .rc[data-finish='ice'] .rc__metal {
+    background: linear-gradient(
+      118deg,
+      #cfe4f2 0%,
+      #f2fbff 16%,
+      #b9d5e8 32%,
+      #e8f6ff 50%,
+      #aecde3 66%,
+      #f4fcff 84%,
+      #c6dfef 100%
+    );
+  }
+  /* Brushing is a milled texture. Ice has none. */
+  .rc[data-finish='ice'] .rc__brush {
+    opacity: 0.12;
+  }
+  .rc[data-finish='ice'] .rc__grain {
+    opacity: 0.07;
+  }
+
+  .rc__frost {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background: rgba(226, 242, 252, 0.13);
+    backdrop-filter: blur(var(--rc-frost, 2.4px)) saturate(0.92) brightness(1.04);
+    -webkit-backdrop-filter: blur(var(--rc-frost, 2.4px)) saturate(0.92) brightness(1.04);
+  }
+  /* The crystal pass reads as ice at a glance and as a wall of noise if it is
+     any stronger than this; the subject behind still has to be a person. */
+  .rc__frostTex {
+    position: absolute;
+    inset: 0;
+    opacity: 0.3;
+    mix-blend-mode: screen;
+    background: #7f8f9a;
+  }
+
+  /* On ice the light does not travel along a grain, it scatters, so the rim
+     reads whiter and the spectral ring goes cold rather than rainbow. */
+  .rc[data-finish='ice'] .rc__fringe {
+    background: conic-gradient(
+      from 200deg,
+      rgba(180, 225, 255, 0.9),
+      rgba(255, 255, 255, 0.8) 26%,
+      rgba(150, 210, 245, 0.75) 52%,
+      rgba(235, 250, 255, 0.85) 76%,
+      rgba(180, 225, 255, 0.9)
+    );
   }
 
   /* Sits where the live camera will, so switching between them is a crossfade
