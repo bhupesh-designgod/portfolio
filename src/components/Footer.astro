@@ -4,7 +4,7 @@
  * Everything here answers one question: how does someone who just finished
  * reading a case study reach you without thinking about it? So the email is
  * the largest thing on the page, it can be copied in one click for anyone who
- * lives in a webmail tab, and the four places you actually post are targets
+ * lives in a webmail tab, and the five places you actually post are targets
  * you could hit with your elbow.
  *
  * What is deliberately absent: a newsletter box for a newsletter that does not
@@ -14,6 +14,7 @@
 interface Props {
   email?: string;
   linkedin?: string;
+  medium?: string;
   instagram?: string;
   x?: string;
   /** Shown top-right. Leave empty to drop the line entirely. */
@@ -24,6 +25,7 @@ interface Props {
 const {
   email = 'designs.bhupesh@gmail.com',
   linkedin = 'https://www.linkedin.com/in/bhupeshparmar/',
+  medium = 'https://medium.com/@designs.bhupesh',
   instagram = 'https://www.instagram.com/designs.bhupesh/',
   x = 'https://x.com/designsbhupesh',
   status = 'Open to product design roles',
@@ -51,6 +53,7 @@ const links = [
 const socials = [
   { key: 'mail', href: `mailto:${email}`, label: 'Email' },
   { key: 'in', href: linkedin, label: 'LinkedIn' },
+  { key: 'md', href: medium, label: 'Medium' },
   { key: 'ig', href: instagram, label: 'Instagram' },
   { key: 'x', href: x, label: 'X' },
 ];
@@ -152,6 +155,13 @@ const socials = [
                     />
                   </>
                 )}
+                {s.key === 'md' && (
+                  <>
+                    <circle cx="6.4" cy="12" r="6.4" fill="currentColor" />
+                    <ellipse cx="16.6" cy="12" rx="2.7" ry="6.4" fill="currentColor" />
+                    <ellipse cx="22.3" cy="12" rx="1" ry="6.4" fill="currentColor" />
+                  </>
+                )}
                 {s.key === 'ig' && (
                   <>
                     <rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5.2" fill="none"
@@ -170,7 +180,7 @@ const socials = [
               </svg>
             </a>
             {/* Named, not just aria-labelled. An envelope is obvious and the
-                other three are not — X's mark in particular means nothing to
+                other four are not — X's mark in particular means nothing to
                 anyone who has not been told. */}
             <span class="ft__tileName">{s.label}</span>
           </li>
@@ -569,7 +579,7 @@ const socials = [
     transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), background 0.28s ease;
   }
   .ft__tile svg { width: 46%; height: 46%; }
-  /* Alternating tilt, so the row reads as four objects rather than a toolbar. */
+  /* Alternating tilt, so the row reads as a handful of objects rather than a toolbar. */
   .ft__tiles li:nth-child(odd) .ft__tile { transform: rotate(-3deg); }
   .ft__tiles li:nth-child(even) .ft__tile { transform: rotate(2.5deg); }
   .ft__tile:hover {
