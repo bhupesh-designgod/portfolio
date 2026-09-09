@@ -32,6 +32,9 @@ interface Props {
   id?: string;
   /** Overridable so the same component can be a tile or a full-size panel. */
   aspect?: string;
+  /** A recording of this card working, used as the resting state. */
+  clip?: string;
+  clipPoster?: string;
   class?: string;
 }
 
@@ -41,11 +44,19 @@ const {
   meta = '',
   id = `rc-${Math.random().toString(36).slice(2, 8)}`,
   aspect = '0.78 / 1',
+  clip,
+  clipPoster,
   class: className = '',
 } = Astro.props;
 ---
 
-<div class:list={['rc', className]} data-rc data-mirror="1" style={`--rc-aspect:${aspect}`}>
+<div
+  class:list={['rc', className]}
+  data-rc
+  data-mirror="1"
+  data-has-clip={clip ? '' : undefined}
+  style={`--rc-aspect:${aspect}`}
+>
   {/* Zero-sized: this exists only to define the two filters. */}
   <svg class="rc__defs" aria-hidden="true" focusable="false">
     <defs>
@@ -142,6 +153,31 @@ const {
   <span class="rc__brush" style={`filter:url(#${id}-brush)`} aria-hidden="true"></span>
   <span class="rc__grain" aria-hidden="true"></span>
 
+  {clip && (
+    /* A recording of this card actually working, standing in for the resting
+       state. The frame contains the whole card on a white page, so it is
+       cropped to the card's interior: measured at x 89, y 82, 667x841 in an
+       844x960 frame, then pulled in unevenly: 3.5% at the sides, 2.5% at the
+       top, 6% at the bottom. Uneven because the recording sits 2.3% below
+       centre, and because the measurement finds dark pixels, so it under-reads
+       the edges where the recorded card is bright and left a pale strip of the
+       page along the bottom. Cropping that off symmetrically ate the card's own
+       top row instead.
+
+       preload="none" plus a poster means the 2.5MB costs nothing until the
+       tile is actually on screen; the observer below starts it there. */
+    <video
+      class="rc__clip"
+      data-rc-clip
+      src={clip}
+      poster={clipPoster}
+      preload="none"
+      muted
+      loop
+      playsinline
+      aria-hidden="true"></video>
+  )}
+
   {/* The pane. Explicitly sized rather than left to four insets: a video is a
       replaced element, and width:auto takes its intrinsic width instead of
       filling the box. */}
@@ -221,6 +257,16 @@ const {
           if (e.isIntersecting) join(cam);
           else leave(cam);
         }
+
+        const clip = e.target.querySelector<HTMLVideoElement>('[data-rc-clip]');
+        if (clip) {
+          if (e.isIntersecting) {
+            /* Nothing is fetched until here, because preload is none. */
+            clip.play().catch(() => {});
+          } else {
+            clip.pause();
+          }
+        }
       }
     },
     { rootMargin: '120px' },
@@ -298,6 +344,35 @@ const {
     mix-blend-mode: overlay;
     pointer-events: none;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Geometry derived from the measured crop, kept as properties so a different
+     recording only needs four numbers changed. */
+  .rc__clip {
+    position: absolute;
+    left: -18.11%;
+    top: -13.39%;
+    width: 136.06%;
+    height: 124.75%;
+    z-index: 2;
+    /* fill, not cover. Cover rescales uniformly and re-centres, which throws
+       away the measured offsets above and let the recorded card's bottom edge
+       back into frame. fill maps this box 1:1 onto the video, so the crop is
+       exactly what was measured; the aspect differs by 1.6%, which is not
+       visible on a face behind frosted glass. */
+    object-fit: fill;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+  }
+  /* Once the real camera is running the recording of a camera is just noise. */
+  .rc[data-state='live'] .rc__clip {
+    opacity: 0;
+  }
+
+  /* The recording already contains this card's index, meta and title, so
+     drawing ours over the top would double every label. */
+  .rc[data-has-clip] .rc__body {
+    display: none;
   }
 
   /* The pane. Normal blend, not screen: glass transmits what is in front of it
@@ -568,7 +643,8 @@ const {
     .rc__glass,
     .rc__rim,
     .rc__fringe,
-    .rc__inner {
+    .rc__inner,
+    .rc__clip {
       transition: none;
     }
   }

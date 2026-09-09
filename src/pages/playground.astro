@@ -28,13 +28,22 @@ import ReflectiveButton from '../components/ReflectiveButton.astro';
           {/* The card is a surface, not a control, so the button is the wrapper
               rather than the card itself. */}
           <button class="pgp__open" type="button" data-open-card aria-haspopup="dialog">
-            <ReflectiveCard index="01" title="Reflective card" meta="Metal · camera" id="rc-tile">
-              <span class="pgp__ph">Click to open it</span>
-            </ReflectiveCard>
+            <ReflectiveCard
+              index="01"
+              title="Reflective card"
+              meta="Metal · camera"
+              id="rc-tile"
+              clip="/assets/playground/reflective-card.mp4"
+              clipPoster="/assets/playground/reflective-card-poster.jpg"
+            />
+            {/* The cue lives here rather than in the card, because a scoped
+                style in this file cannot reach into that component to react to
+                this button's hover. */}
+            <span class="pgp__cue">Click to try it</span>
           </button>
           <figcaption class="pgp__cap">
-            Brushed steel at rest. Open it and a pane of glass goes over the
-            metal, refracting whoever is in front of the screen.
+            A recording of the card working. Open it and the glass starts
+            refracting whoever is actually in front of the screen.
           </figcaption>
         </figure>
 
@@ -232,6 +241,7 @@ import ReflectiveButton from '../components/ReflectiveButton.astro';
   }
 
   .pgp__open {
+    position: relative;
     display: block;
     width: 100%;
     max-width: 288px;
@@ -257,11 +267,29 @@ import ReflectiveButton from '../components/ReflectiveButton.astro';
     min-height: 176px;
   }
 
-  .pgp__ph {
+  .pgp__cue {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, calc(-50% + 6px));
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: rgba(10, 13, 20, 0.72);
+    backdrop-filter: blur(6px);
     font-family: 'Inter', 'Nunito', system-ui, sans-serif;
-    font-size: 13px;
-    color: rgba(238, 242, 248, 0.78);
-    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    color: #f2f5fa;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .pgp__open:hover .pgp__cue,
+  .pgp__open:focus-visible .pgp__cue {
+    opacity: 1;
+    transform: translate(-50%, -50%);
   }
 
   .pgp__cap {
