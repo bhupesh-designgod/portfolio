@@ -1,11 +1,13 @@
 ---
 client: TBS
-title: A coach's workspace that opens on who needs them today
+title: Replacing a fitness coach's scattered workflow with one clear workspace
 heroTitle: Who needs you *today*
 summary: >-
-  The coach's side of the same build. A workspace that turns a day of scattered
-  messages into a queue: who needs you, what they need, and a plan builder to
-  answer it. Around 50 screens, sharing one design system with the client app.
+  The coach's side of the same build. His day used to start in WhatsApp, on
+  whoever had messaged most recently, with thirty clients held in his head.
+  This turns that into a queue: who needs you today, what they need, and a plan
+  builder to answer it. Around 50 screens, sharing one design system with the
+  client app.
 tags: [Product strategy, Information architecture, Internal tools, Design systems]
 tint: '#f1eee6'
 accent: gold

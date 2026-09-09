@@ -1,11 +1,12 @@
 ---
 client: TBS
-title: A coaching app that tells you exactly what to do today
+title: Turning one-on-one fitness coaching into a product that can scale
 heroTitle: Today's plan, *one tap away*
 summary: >-
-  The client side of an online coaching business. A five-tab app that answers
-  one question every morning: what am I doing today. It keeps the coach one tap
-  away. Designed from research through to a 60-screen handoff.
+  An online fitness coach whose whole business ran inside WhatsApp, and who had
+  no way to take on a thirty-first client. This is the client side: a five-tab
+  app that answers one question every morning, what am I doing today, and keeps
+  the coach one tap away. Research through to a 60-screen handoff.
 tags: [Product strategy, 0 → 1, Information architecture, Design systems]
 tint: '#e7f0e9'
 accent: gold
