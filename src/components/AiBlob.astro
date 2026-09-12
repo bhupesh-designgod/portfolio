@@ -1822,7 +1822,14 @@ import { ASSISTANT } from '../lib/portfolio-context';
     display: flex;
     flex-direction: column;
     width: min(380px, calc(100vw - 40px));
+    /* `dvh`, with `vh` underneath it for anything too old to know the word.
+       The panel hangs off the bottom edge, which on a phone is the edge the
+       browser's own toolbar slides over: sized in `vh` it is measured against
+       the viewport as it would be with the toolbar gone, so with the toolbar
+       showing the top of the conversation is pushed off screen. `dvh` is the
+       viewport as it currently is. */
     height: min(520px, calc(100vh - 140px));
+    height: min(520px, calc(100dvh - 140px));
     border-radius: 20px;
     overflow: hidden;
     background: #fff;
@@ -2135,6 +2142,7 @@ import { ASSISTANT } from '../lib/portfolio-context';
     .ai__panel {
       width: calc(100vw - 32px);
       height: min(70vh, 480px);
+      height: min(70dvh, 480px);
       /* Anchored to the viewport edge rather than the blob, so it can't be
          pushed off-screen on a narrow phone. */
       right: -4px;

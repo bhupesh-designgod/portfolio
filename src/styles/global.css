@@ -4,6 +4,30 @@
    ============================================================ */
 
 :root {
+  /* ---- the phone bottom dock ----
+     On a phone-width case study, four fixed controls want the bottom edge: the
+     assistant (bottom-right, and it keeps that corner at every size), the
+     section pill, the résumé chip, and the walkthrough. They live in four
+     different files, so without a number they agree on they land on top of each
+     other — which is exactly what they did: résumé (z 51) sat on the section
+     pill (z 40), and the walkthrough (z 60) sat on both.
+
+     So the bottom edge is one row, stated here and read by all four. `--dock-b`
+     is the row's gap from the bottom, `--dock-h` its height, and `--dock-up`
+     where anything stacking above it begins. Change the row's height once and
+     the walkthrough moves with it. */
+  --dock-b: 16px;
+  --dock-h: 42px;
+  /* Measured off the assistant, not off the pills. The blob stands taller than
+     anything beside it, and the walkthrough's player spans the full width while
+     the tour runs, so whatever stacks above the row has to clear the tallest
+     thing on it rather than the average one. */
+  --dock-up: 100px;
+
+  /* What the blob reserves on the right, so nothing on the row runs under it:
+     its own width, its inset, and a gap. */
+  --dock-ai: 104px;
+
   --blue-900: #001845;
   --blue-700: #003dae;
   --blue-500: #0059ff;
@@ -3009,11 +3033,11 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
   display: none;
   position: fixed;
   left: 14px;
-  bottom: 16px;
+  bottom: var(--dock-b);
   z-index: 40;
   align-items: center;
   gap: 10px;
-  max-width: calc(100vw - 110px);
+  max-width: calc(100vw - 14px - var(--dock-ai));
   padding: 10px 14px 10px 12px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -3039,6 +3063,29 @@ body:has([data-accent='azure'].cs) .cs-progress span { background: #1a73e8; }
 }
 .cs-jump__t { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .cs-jump svg { width: 18px; height: 18px; flex: 0 0 auto; opacity: 0.7; }
+
+/* Below 620 the résumé chip gives up the top-right corner — the centred nav
+   cluster runs out of room — and drops to the bottom-left, which is where this
+   pill already lives. Rather than stack them, they share the row: the chip is
+   icon-only by then and about 49px wide, so the pill starts just past it and
+   still stops short of the assistant.
+
+   Sharing beats stacking here because the section pill is the one control a
+   reader uses repeatedly on a long case study, and a stack would push it up to
+   wherever the chip happened to end. */
+@media (max-width: 620px) {
+  /* The assistant drops from 68px to 56px here and tucks in closer to the
+     edge, so the room reserved for it comes in with it — otherwise the section
+     pill gives up 20px of a 390px screen to clear something that moved. */
+  :root {
+    --dock-up: 84px;
+    --dock-ai: 84px;
+  }
+  .cs-jump {
+    left: 73px;
+    max-width: calc(100vw - 73px - var(--dock-ai));
+  }
+}
 
 .cs-sheet {
   position: fixed;

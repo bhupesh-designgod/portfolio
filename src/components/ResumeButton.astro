@@ -150,7 +150,11 @@ const { pdf = '/Bhupesh-Parmar-Resume.pdf' } = Astro.props;
   @media (max-width: 620px) {
     .rbtn {
       top: auto;
-      bottom: 20px;
+      /* The shared bottom row — see --dock-b in global.css. On a case study the
+         section pill sits on this same row, immediately to the right of this
+         chip, so the two read as one dock rather than as two things that
+         happened to land in the same corner. */
+      bottom: var(--dock-b);
       right: auto;
       left: 16px;
       padding: 12px 16px;
