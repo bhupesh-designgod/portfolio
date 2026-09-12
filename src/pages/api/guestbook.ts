@@ -141,7 +141,14 @@ async function readWall(): Promise<{ entries: Entry[]; total: number }> {
 /* Behind Vercel the socket address is the proxy, so the forwarded header is the
    only thing that identifies a caller. It is spoofable — this bounds accidents
    and casual spam, not somebody determined. */
-function clientIp(req: Request): string {
+/* The address the platform reports, preferred over anything the request says
+   about itself: `x-forwarded-for` and `x-real-ip` are both headers a caller can
+   set freely, and a limiter keyed off those is one a script can walk straight
+   past by changing a string. Vercel overwrites them with the truth, so the
+   values agree in production — but only one of them cannot be forged, so only
+   one of them decides. */
+function clientIp(req: Request, address?: string): string {
+  if (address) return address;
   const fwd = req.headers.get('x-forwarded-for') ?? '';
   return fwd.split(',')[0].trim() || req.headers.get('x-real-ip') || 'anon';
 }
@@ -209,7 +216,7 @@ function cleanSign(raw: unknown): string | undefined {
 
 export const GET: APIRoute = async () => json(await readWall());
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, clientAddress }) => {
   if (!devStore && (!REST_URL || !REST_TOKEN)) {
     return json({ error: 'The guestbook isn’t open yet. Check back shortly.' }, 503);
   }
@@ -233,7 +240,7 @@ export const POST: APIRoute = async ({ request }) => {
   /* The limiter is Redis-backed, so there is nothing to count against in the
      dev store — and rate-limiting yourself while building the thing is only an
      obstacle. */
-  if (!devStore && (await rateLimited(clientIp(request)))) {
+  if (!devStore && (await rateLimited(clientIp(request, clientAddress)))) {
     return json({ error: 'You’ve signed already — thank you twice over.' }, 429);
   }
 

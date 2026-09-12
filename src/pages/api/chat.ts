@@ -128,8 +128,15 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   const rejection = guard(request, body?.messages);
   if (rejection) return rejection;
 
+  /* `clientAddress` first, and the header only as a fallback.
+     `x-forwarded-for` is a request header: a client can send whatever it likes
+     in it, and keying the limiter off it would let one script rotate through a
+     fresh bucket per request and never hit a limit at all. Vercel overwrites
+     the header with the real address, so in production the two agree — but the
+     one the platform hands us is the one that cannot be typed by the caller,
+     so that is the one that decides. */
   const ip =
-    request.headers.get('x-forwarded-for')?.split(',')[0].trim() || clientAddress || 'unknown';
+    clientAddress || request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
   if (await rateLimited(`chat:${ip}`, MAX_PER_WINDOW, WINDOW_SEC)) {
     return bad(429, "That's a lot of questions! Email designs.bhupesh@gmail.com and he'll answer directly.");
   }
