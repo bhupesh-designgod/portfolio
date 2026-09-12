@@ -34,11 +34,19 @@ interface Props {
    play, so the length of this list costs the page nothing on load. Adding a
    track is one line plus a file in /public/audio. */
 const DEFAULT_TRACKS: Track[] = [
-  { title: 'Ringside', artist: 'Dyalla', src: '/audio/ringside.m4a', mood: '#ff7a1a' },
-  { title: 'Himalayan Flute', artist: 'Pahadi Dhun', src: '/audio/himalayan-flute.m4a', mood: '#12b8a0' },
-  { title: 'Fast Times', artist: 'Quincas Moreira', src: '/audio/fast-times.m4a', mood: '#ff2d78' },
-  { title: 'Roslyn', artist: 'Bon Iver & St. Vincent', src: '/audio/roslyn.m4a', mood: '#6b7d99' },
-  { title: 'GTA IV Theme', artist: 'Michael Hunter', src: '/audio/gta-iv-theme.mp3', mood: '#b8862b' },
+  /* Four, and one register. The old list ran from Bon Iver to the GTA IV theme,
+     which meant every track change threw the hero somewhere unrelated — five
+     soundtracks to five different sites. These sit in one warm, cinematic
+     place, so the colour moves through a family rather than across the wheel:
+     twilight blue into amber into cool air into burnt orange, then round.
+
+     Kevin MacLeod, CC BY 3.0, credited in the panel below — which is the whole
+     licence, and the reason these are here rather than anything off a streaming
+     service: they can actually be hosted. */
+  { title: 'Atlantean Twilight', artist: 'Kevin MacLeod', src: '/audio/atlantean-twilight.mp3', mood: '#5b7fa6' },
+  { title: 'Bathed in the Light', artist: 'Kevin MacLeod', src: '/audio/bathed-in-the-light.mp3', mood: '#e0a144' },
+  { title: 'Air Prelude', artist: 'Kevin MacLeod', src: '/audio/air-prelude.mp3', mood: '#9aa8b8' },
+  { title: 'Autumn Day', artist: 'Kevin MacLeod', src: '/audio/autumn-day.mp3', mood: '#c4703f' },
 ];
 
 const { tracks = DEFAULT_TRACKS } = Astro.props;
@@ -214,6 +222,13 @@ const nudges = [
         </li>
       ))}
     </ul>
+    {/* The licence, in the only place it belongs: next to the thing it covers.
+        CC BY asks for the name and the terms, and a line this size is the
+        honest way to give both without turning the panel into paperwork. */}
+    <p class="music__credit">
+      Music by Kevin MacLeod ·
+      <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener noreferrer">CC BY 3.0</a>
+    </p>
   </div>
 
   {/* One finished palette per track, in the playlist's order. Eleven hex
@@ -947,6 +962,20 @@ const nudges = [
     text-transform: uppercase;
     color: rgba(255, 255, 255, 0.42);
   }
+  .music__credit {
+    margin: 8px 10px 2px;
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 9.5px;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.3);
+  }
+  .music__credit a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .music__credit a:hover { color: rgba(255, 255, 255, 0.6); }
+
   .music__list ul { margin: 0; padding: 0; list-style: none; }
   .music__list li + li { margin-top: 1px; }
   .music__list li button {
