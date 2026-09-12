@@ -8,6 +8,7 @@
 import Base from '../layouts/Base.astro';
 import ReflectiveCard from '../components/ReflectiveCard.astro';
 import ReflectiveButton from '../components/ReflectiveButton.astro';
+import DuoTiltCard from '../components/DuoTiltCard.astro';
 ---
 
 <Base title="Playground — Bhupesh Parmar" description="Experiments, explorations and side work.">
@@ -21,13 +22,13 @@ import ReflectiveButton from '../components/ReflectiveButton.astro';
         </p>
       </header>
 
-      <p class="pgp__note">Two pieces, waiting for something to hold</p>
+      <p class="pgp__note">Three pieces, waiting for something to hold</p>
 
       <div class="pgp__stages">
         <figure class="pgp__stage">
           {/* The card is a surface, not a control, so the button is the wrapper
               rather than the card itself. */}
-          <button class="pgp__open" type="button" data-open-card aria-haspopup="dialog">
+          <button class="pgp__tile pgp__open" type="button" data-open-card aria-haspopup="dialog">
             <ReflectiveCard
               index="01"
               title="Reflective card"
@@ -48,12 +49,34 @@ import ReflectiveButton from '../components/ReflectiveButton.astro';
         </figure>
 
         <figure class="pgp__stage">
-          <div class="pgp__btnwrap">
+          {/* Not a card, but it stands in the same footprint as one: three
+              pieces at three different sizes read as three loose sketches
+              rather than a set. */}
+          <div class="pgp__tile pgp__btnwrap">
             <ReflectiveButton id="rb-main" />
           </div>
           <figcaption class="pgp__cap">
             Still metal, and it is the switch. Clicking asks for the camera;
             every reflective surface on the page comes on together.
+          </figcaption>
+        </figure>
+
+        <figure class="pgp__stage">
+          {/* This one lives somewhere else, so the tile is a link out rather
+              than something that opens here. */}
+          <a
+            class="pgp__tile pgp__out"
+            href="https://apple-duo-animation.vercel.app/"
+            target="_blank"
+            rel="noopener"
+          >
+            <DuoTiltCard index="03" title="Duo tilt" meta="Motion · WebGL" />
+            <span class="pgp__cue">Open it</span>
+          </a>
+          <figcaption class="pgp__cap">
+            An iPhone home screen that bends when you tilt the phone: the near
+            edge stays put while the far side recedes, defocuses and darkens.
+            Best on a phone. On a desktop there is a slider instead.
           </figcaption>
         </figure>
       </div>
@@ -241,31 +264,45 @@ import ReflectiveButton from '../components/ReflectiveButton.astro';
     box-shadow: 0 2px 20px rgba(16, 20, 30, 0.05);
   }
 
-  .pgp__open {
+  /* One footprint for every piece on this page. The cards set their own
+     aspect ratio from the same number, so the ratio lives here rather than in
+     each of them and the button's empty tile matches without being a card. */
+  .pgp__tile {
     position: relative;
     display: block;
     width: 100%;
     max-width: 288px;
     margin: 0 auto;
+  }
+  .pgp__open,
+  .pgp__out {
     padding: 0;
     border: 0;
-    border-radius: 18px;
+    border-radius: 22px;
     background: none;
+    text-decoration: none;
     cursor: pointer;
     transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
   }
-  .pgp__open:hover {
+  .pgp__open:hover,
+  .pgp__out:hover {
     transform: translateY(-4px);
   }
-  .pgp__open:focus-visible {
+  .pgp__open:focus-visible,
+  .pgp__out:focus-visible {
     outline: 2px solid var(--blue-500);
     outline-offset: 6px;
   }
 
+  /* The button is small and the tile is not, so the tile is the ground it sits
+     on: a card-shaped hollow rather than a card. */
   .pgp__btnwrap {
     display: grid;
     place-items: center;
-    min-height: 176px;
+    aspect-ratio: 0.78 / 1;
+    border-radius: 22px;
+    background: radial-gradient(120% 90% at 50% 38%, #fbfbfd 0%, #f1f3f7 100%);
+    box-shadow: 0 0 0 1px #edeef2 inset;
   }
 
   .pgp__cue {
@@ -288,7 +325,9 @@ import ReflectiveButton from '../components/ReflectiveButton.astro';
     transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
   }
   .pgp__open:hover .pgp__cue,
-  .pgp__open:focus-visible .pgp__cue {
+  .pgp__open:focus-visible .pgp__cue,
+  .pgp__out:hover .pgp__cue,
+  .pgp__out:focus-visible .pgp__cue {
     opacity: 1;
     transform: translate(-50%, -50%);
   }
@@ -434,10 +473,12 @@ import ReflectiveButton from '../components/ReflectiveButton.astro';
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .pgp__open {
+    .pgp__open,
+    .pgp__out {
       transition: none;
     }
-    .pgp__open:hover {
+    .pgp__open:hover,
+    .pgp__out:hover {
       transform: none;
     }
   }

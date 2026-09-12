@@ -1,0 +1,395 @@
+---
+/* The tile for Duo Tilt (apple-duo-animation).
+ *
+ * That project is a phone home screen that bends: the near edge stays pinned
+ * while the far side recedes, defocuses and darkens, driven by the gravity
+ * vector off the accelerometer and drawn as one WebGL plane.
+ *
+ * A screenshot of that is a picture of a still phone, which is the one thing it
+ * is not, so the tile does the effect instead — at tile scale and in CSS, where
+ * `perspective` plus `rotateY` about the near edge is a fair reading of the
+ * shader's inverse projection. Everything the real one earns per frame (the
+ * defocus pyramid, the vignette weighted toward the receding side) is a single
+ * masked overlay here. It is a caricature of the mechanic, not a port of it.
+ *
+ * The home screen is drawn rather than captured for the same reason it is in the
+ * project itself: at this size a bitmap of an icon grid turns to mush, and the
+ * only bitmap that survives is the wallpaper, which is the low-frequency part.
+ * Seven apps, because that is what the real home screen has.
+ *
+ * Like the reflective card, this is a surface and not a control: whatever wraps
+ * it decides what clicking it does.
+ */
+interface Props {
+  index?: string;
+  title?: string;
+  meta?: string;
+  /** The wallpaper, recovered from the Figma capture by the project itself. */
+  wallpaper?: string;
+}
+
+const {
+  index = '03',
+  title = 'Duo tilt',
+  meta = 'Motion · WebGL',
+  wallpaper = '/assets/playground/duo-wallpaper.webp',
+} = Astro.props;
+
+/* The seven the app draws, in its order. Colour only — a glyph at 20px is a
+   smudge, and a wrong glyph is worse than none. */
+const APPS = [
+  { name: 'Calendar', class: 'is-cal' },
+  { name: 'Camera', class: 'is-cam' },
+  { name: 'Notes', class: 'is-notes' },
+  { name: 'Clock', class: 'is-clock' },
+  { name: 'Instagram', class: 'is-ig' },
+  { name: 'X', class: 'is-x' },
+  { name: 'LinkedIn', class: 'is-li' },
+];
+---
+
+<div class="dt">
+  <div class="dt__stage" aria-hidden="true">
+    <div class="dt__phone">
+      <div class="dt__sheet">
+        <img class="dt__wall" src={wallpaper} alt="" width="440" height="730" loading="lazy" decoding="async" />
+
+        <div class="dt__ui">
+          <div class="dt__status"><i class="dt__time"></i><i class="dt__batt"></i></div>
+
+          <div class="dt__widgets">
+            <span class="dt__widget dt__widget--clock"></span>
+            <span class="dt__widget dt__widget--weather"></span>
+          </div>
+
+          <div class="dt__apps">
+            {APPS.map((a) => <span class:list={['dt__app', a.class]} />)}
+          </div>
+
+          <span class="dt__search"></span>
+        </div>
+
+        {/* Defocus, shading and vignette, all ramping toward the far edge. */}
+        <span class="dt__depth"></span>
+      </div>
+    </div>
+  </div>
+
+  <span class="dt__body">
+    <span class="dt__top">
+      <span class="dt__idx">{index}</span>
+      {meta && <span class="dt__meta">{meta}</span>}
+    </span>
+    <span class="dt__foot">
+      <span class="dt__title">{title}</span>
+      <span class="dt__go" aria-hidden="true">↗</span>
+    </span>
+  </span>
+
+  <span class="dt__edge" aria-hidden="true"></span>
+</div>
+
+<style>
+  /* The card. Black, because the project's own page is: a phone tilting on
+     anything else reads as a phone on a slide. */
+  .dt {
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: var(--dt-aspect, 0.78 / 1);
+    border-radius: 22px;
+    overflow: hidden;
+    isolation: isolate;
+    background: radial-gradient(120% 90% at 50% 12%, #14161c 0%, #05060a 68%);
+    box-shadow:
+      0 24px 60px rgba(8, 12, 24, 0.45),
+      0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+  }
+
+  .dt__stage {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    /* Percentages, so the phone keeps its place in the card at any width; px
+       padding here would swallow the tile on a narrow screen. Uneven because
+       the title line at the bottom is heavier than the index line at the top. */
+    padding: 8% 0 15%;
+    /* Short enough that the far edge actually converges. At 1200px the fold is
+       a shear and the phone reads as a parallelogram. */
+    perspective: 420px;
+    perspective-origin: 30% 50%;
+  }
+  /* The rotation pins the left edge, so the visual mass drifts left as the far
+     side comes in. This puts it back under the middle of the card. */
+  .dt__phone {
+    width: 44%;
+    transform: translateX(9%);
+  }
+
+  .dt__sheet {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 9 / 19.5;
+    border-radius: 13% / 6%;
+    overflow: hidden;
+    transform-origin: 0% 50%;
+    box-shadow:
+      0 18px 40px rgba(0, 0, 0, 0.55),
+      0 0 0 0.5px rgba(255, 255, 255, 0.16);
+    animation: dt-tilt 9s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+  }
+  .dt__wall {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  @keyframes dt-tilt {
+    from {
+      transform: rotateY(2deg);
+    }
+    to {
+      transform: rotateY(30deg);
+    }
+  }
+
+  /* ------------------------------ the home screen ------------------------- */
+  .dt__ui {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 7% 8% 9%;
+  }
+
+  .dt__status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .dt__time,
+  .dt__batt {
+    display: block;
+    height: 4.5%;
+    min-height: 3px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.85);
+  }
+  .dt__time {
+    width: 22%;
+  }
+  .dt__batt {
+    width: 13%;
+    opacity: 0.7;
+  }
+
+  .dt__widgets {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8%;
+    margin-top: 7%;
+  }
+  .dt__widget {
+    aspect-ratio: 1;
+    border-radius: 22%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  }
+  .dt__widget--clock {
+    background: linear-gradient(180deg, #fff, #e8e8ea);
+  }
+  .dt__widget--weather {
+    background: linear-gradient(180deg, #2f6fb5, #13456f);
+  }
+
+  .dt__apps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 9% 8%;
+    margin-top: 11%;
+  }
+  .dt__app {
+    aspect-ratio: 1;
+    border-radius: 24%;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  }
+  .is-cal {
+    background: linear-gradient(180deg, #fff 0 34%, #f7f7f9 34%);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), 0 2px 0 -1px #ff3b30 inset;
+  }
+  .is-cam {
+    background: linear-gradient(180deg, #3a3a3e, #1c1c1f);
+  }
+  .is-notes {
+    background: linear-gradient(180deg, #fdd95c, #f2b705);
+  }
+  .is-clock {
+    background: linear-gradient(180deg, #17171a, #0a0a0c);
+  }
+  .is-ig {
+    background: radial-gradient(circle at 28% 92%, #fdd35c 0%, #e8503a 42%, #c6289a 68%, #6b4ce0 100%);
+  }
+  .is-x {
+    background: #0a0a0c;
+  }
+  .is-li {
+    background: linear-gradient(180deg, #1b86d0, #0a66c2);
+  }
+
+  .dt__search {
+    width: 34%;
+    height: 3.2%;
+    min-height: 4px;
+    margin: auto auto 0;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.22);
+    box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.18);
+  }
+
+  /* --------------------------------- depth -------------------------------- */
+  /* One element doing what the shader does in three passes: blur that ramps
+     across the width, a shade that follows it, and a corner vignette. The mask
+     is the ramp — near the pinned edge this element is fully transparent, so
+     that side is untouched, which is the whole rule the original keeps. */
+  .dt__depth {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    backdrop-filter: blur(3.4px);
+    -webkit-backdrop-filter: blur(3.4px);
+    background:
+      linear-gradient(90deg, rgba(3, 5, 9, 0) 38%, rgba(3, 5, 9, 0.52) 100%),
+      radial-gradient(120% 80% at 30% 50%, transparent 52%, rgba(3, 5, 9, 0.5) 100%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 26%, rgba(0, 0, 0, 0.5) 64%, #000 100%);
+    mask-image: linear-gradient(90deg, transparent 26%, rgba(0, 0, 0, 0.5) 64%, #000 100%);
+    /* Comes on with the tilt: a flat sheet is in focus everywhere. */
+    opacity: 0.12;
+    animation: dt-depth 9s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+  }
+  @keyframes dt-depth {
+    from {
+      opacity: 0.12;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* --------------------------------- labels ------------------------------- */
+  /* Same type and the same top-and-bottom scrim as the reflective card, so the
+     three tiles read as one set rather than three visitors. */
+  .dt__body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      linear-gradient(180deg, rgba(7, 10, 16, 0.7) 0%, rgba(7, 10, 16, 0) 24%),
+      linear-gradient(0deg, rgba(7, 10, 16, 0.86) 0%, rgba(7, 10, 16, 0) 32%);
+  }
+  .dt__body {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    padding: 22px;
+    color: #eef2f8;
+  }
+
+  .dt__top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .dt__idx,
+  .dt__meta {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10.5px;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  }
+  .dt__idx {
+    color: rgba(238, 242, 248, 0.95);
+  }
+  .dt__meta {
+    color: rgba(238, 242, 248, 0.72);
+  }
+
+  .dt__foot {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.16);
+  }
+  .dt__title {
+    font-family: 'Bebas Neue', 'Nunito', sans-serif;
+    font-weight: 400;
+    font-size: 26px;
+    line-height: 1;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  }
+  /* The one thing that says this tile leaves the site. */
+  .dt__go {
+    font-size: 15px;
+    line-height: 1;
+    color: rgba(238, 242, 248, 0.7);
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), color 0.3s ease;
+  }
+  /* The wrapper is in another component, so it can only be reached globally —
+     a scoped selector would be given this component's id and match nothing. */
+  :global(a:hover) .dt__go,
+  :global(button:hover) .dt__go {
+    color: #fff;
+    transform: translate(2px, -2px);
+  }
+
+  .dt__edge {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    border-radius: inherit;
+    padding: 1px;
+    pointer-events: none;
+    background: linear-gradient(
+      140deg,
+      rgba(255, 255, 255, 0.4),
+      rgba(255, 255, 255, 0.08) 46%,
+      rgba(255, 255, 255, 0.26)
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    /* Held at the pose the animation spends most of its time near, so the tile
+       still says what it is without moving. */
+    .dt__sheet {
+      animation: none;
+      transform: rotateY(20deg);
+    }
+    .dt__depth {
+      animation: none;
+      opacity: 0.7;
+    }
+    .dt__go {
+      transition: none;
+    }
+  }
+</style>
