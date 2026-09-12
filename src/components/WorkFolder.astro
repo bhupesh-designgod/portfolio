@@ -22,6 +22,12 @@ interface Props {
   artAlt?: string;
   clip?: string;
   stamps: string;
+  /* 'folder' is the paper folder that opens on hover. 'thumb' hides it and
+     puts a single full-bleed still in its place, glazed. Both are built here
+     rather than in two components, because everything else about the row —
+     the copy, the stretched link, the cue — is the same either way, and this
+     is a look being tried rather than a replacement being committed to. */
+  layout?: 'folder' | 'thumb';
 }
 
 const {
@@ -37,13 +43,20 @@ const {
   artAlt = '',
   clip,
   stamps,
+  layout = 'folder',
 } = Astro.props;
 
 /* Unique per card: two seals sharing a path id would both follow the first. */
 const sealId = `seal-${href.replace(/\W+/g, '-')}`;
 ---
 
-<article class="wf" data-accent={accent} data-tone={tone} data-cue="View case study">
+<article
+  class="wf"
+  data-accent={accent}
+  data-tone={tone}
+  data-layout={layout}
+  data-cue="View case study"
+>
   <div class="wf__txt">
     <p class="wf__client">{client}</p>
     {/* The stretched link lives on the heading, so the accessible name is the
@@ -61,29 +74,57 @@ const sealId = `seal-${href.replace(/\W+/g, '-')}`;
     }
   </div>
 
+  {/* The thumbnail. Same two sources as the stamp — a still, and a clip that
+      takes over on hover — but with nothing drawn around them: it bleeds to
+      the card's top, bottom and right edges and is clipped by the card's own
+      radius, so the picture is the side of the row rather than an object
+      sitting on it.
+
+      The two panes over it are what make it read as glazed. `wf__glass` is
+      the fixed part: a sheen down the top edge and a lit hairline, which is
+      what a pane's own thickness does no matter where the page is. `wf__shine`
+      is the moving part, a soft band that crosses as the row travels the
+      viewport — the reflection of a window you are walking past. */}
+  <div class="wf__thumb" aria-hidden="true">
+    {art && <img src={art} alt={artAlt} loading="lazy" decoding="async" />}
+    {clip && <video class="wf__vid" src={clip} muted loop playsinline preload="none" />}
+    <span class="wf__glass"></span>
+    <span class="wf__shine"></span>
+  </div>
+
   <div class="wf__folder" aria-hidden="true">
     <div class="wf__stack">
       <span class="wf__back"></span>
 
-      <div class="wf__stamp">
-        <p class="wf__frank">{frank}</p>
+      {/* Two elements, because two things move it and a transform cannot be
+          shared. The stamp lifts out of the folder on row hover and carries the
+          perspective; the plate is the white frame, and it is what leans toward
+          the pointer. One element doing both means whichever writes `transform`
+          last wins and the other silently stops. */}
+      <div class="wf__stamp" data-wf-tilt>
+        <div class="wf__plate">
+          {/* The frank line is the project title again, two inches from where
+              the copy column already says it. A thin white frame around a
+              screenshot has no room for a second headline. */}
+          <p class="wf__frank" hidden>{frank}</p>
 
-        {/* One frame, 16:9, identical for the still and the clip — hovering
-            changes what is playing, never the size of what plays it. */}
-        <div class="wf__media">
-          {art && <img src={art} alt={artAlt} loading="lazy" decoding="async" />}
-          {clip && <video class="wf__vid" src={clip} muted loop playsinline preload="none" />}
-          {
-            clip && (
-              <span class="wf__play">
-                <svg viewBox="0 0 56 56">
-                  <circle cx="28" cy="28" r="26" fill="none" stroke="currentColor" stroke-width="2" />
-                  <path d="M23 19l16 9-16 9z" fill="currentColor" />
-                </svg>
-              </span>
-            )
-          }
-          {clip && <span class="wf__dur">0:00</span>}
+          {/* One frame, 16:9, identical for the still and the clip — hovering
+              changes what is playing, never the size of what plays it. */}
+          <div class="wf__media">
+            {art && <img src={art} alt={artAlt} loading="lazy" decoding="async" />}
+            {clip && <video class="wf__vid" src={clip} muted loop playsinline preload="none" />}
+            {
+              clip && (
+                <span class="wf__play">
+                  <svg viewBox="0 0 56 56">
+                    <circle cx="28" cy="28" r="26" fill="none" stroke="currentColor" stroke-width="2" />
+                    <path d="M23 19l16 9-16 9z" fill="currentColor" />
+                  </svg>
+                </span>
+              )
+            }
+            {clip && <span class="wf__dur">0:00</span>}
+          </div>
         </div>
       </div>
     </div>
@@ -113,23 +154,38 @@ const sealId = `seal-${href.replace(/\W+/g, '-')}`;
 
 <style>
   .wf {
+    /* Named rather than inlined: the thumbnail bleeds by cancelling exactly
+       this much, and two clamps drifting apart would show as a hairline of
+       white down the edge of the picture. */
+    --wf-py: clamp(30px, 3.4vw, 46px);
+    /* Zero now that there is no edge to sit inside. An inset that existed to
+       keep the copy off a border, kept after the border goes, stops reading as
+       padding and starts reading as the column being misaligned with the
+       heading above it. */
+    --wf-px: 0px;
+    /* Named for the same reason as the padding: the stretched link draws its
+       own rounded box over the card, and the two going out of step shows as a
+       corner that lights up the wrong shape on focus. */
+    --wf-r: 20px;
+
     position: relative;
     display: grid;
     grid-template-columns: minmax(260px, 1fr) minmax(0, 420px);
     align-items: center;
     gap: clamp(24px, 3.4vw, 64px);
-    padding: clamp(30px, 3.4vw, 46px) clamp(24px, 3vw, 44px);
-    border: 1px solid #ebedf2;
-    border-radius: 20px;
+    padding: var(--wf-py) var(--wf-px);
+    /* No stroke. The section behind these is white and so were the cards, so
+       the hairline was the entire card — and a row of white rounded rectangles
+       outlined in grey is the house style of every template on the internet.
+       What separates one project from the next is the space around it and the
+       fact that each has its own object sitting in it. */
+    border-radius: var(--wf-r);
     background: #fff;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
   }
   .wf:hover {
     /* The stamp floats past the top of its own card. Without this the row
        below paints over it, because later siblings win by document order. */
     z-index: 3;
-    border-color: rgba(var(--a-rgb), 0.34);
-    box-shadow: 0 22px 48px -32px rgba(12, 20, 45, 0.34);
   }
 
   /* ---- the text half ---- */
@@ -162,11 +218,16 @@ const sealId = `seal-${href.replace(/\W+/g, '-')}`;
     position: absolute;
     inset: 0;
     z-index: 4;
-    border-radius: 20px;
+    border-radius: var(--wf-r);
   }
   .wf__title a:focus-visible::after {
     outline: 2px solid var(--a-500);
     outline-offset: 3px;
+  }
+  /* `overflow: hidden` is what lets the picture reach the border, and it would
+     also clip a ring drawn outside the card. Turned inward instead. */
+  .wf[data-layout='thumb'] .wf__title a:focus-visible::after {
+    outline-offset: -3px;
   }
   .wf__summary {
     margin: 0 0 20px;
@@ -191,6 +252,141 @@ const sealId = `seal-${href.replace(/\W+/g, '-')}`;
     font-size: 12.5px;
     line-height: 1.25;
     color: var(--a-text);
+  }
+
+  /* ---- the thumbnail ----
+     One of the two lives at a time, so each layout contributes exactly one
+     grid item and the columns do not have to know which is showing. The
+     folder is hidden, not removed: this is a look being tried. */
+  .wf__thumb {
+    display: none;
+  }
+  .wf[data-layout='thumb'] .wf__folder {
+    display: none;
+  }
+  .wf[data-layout='thumb'] {
+    /* The picture runs past the padding box to the border. The card has to do
+       the clipping, because only the card knows the corner radius. */
+    overflow: hidden;
+    /* A floor on the row rather than on the picture. On the picture it would
+       overflow the card and be clipped back to the same height; here the card
+       grows and a project with two lines of summary still gets a thumbnail
+       worth looking at. */
+    min-height: 330px;
+  }
+  .wf[data-layout='thumb'] .wf__thumb {
+    display: block;
+    position: relative;
+    /* Stretch first, then grow by the padding it just cancelled: the result is
+       exactly the card's inner height, top edge to bottom edge. Left is the
+       one side left alone — that gap is the column gutter doing its job. */
+    align-self: stretch;
+    margin: calc(var(--wf-py) * -1) calc(var(--wf-px) * -1) calc(var(--wf-py) * -1) 0;
+    overflow: hidden;
+    isolation: isolate;
+    background: #0f1219;
+  }
+  .wf__thumb img,
+  .wf__thumb .wf__vid {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* Screens are identified by their top: a nav bar and a page title say
+       which product this is, and the empty half of a list does not. */
+    object-position: top center;
+    /* Barely a move. Enough that the picture answers the pointer before the
+       clip has decoded, which is the half second where nothing else does. */
+    transform: scale(1.005);
+    /* Opacity is restated because the shorthand above would otherwise drop the
+       crossfade `.wf__vid` sets for itself. */
+    transition:
+      transform 0.7s cubic-bezier(0.2, 0.9, 0.25, 1),
+      opacity 0.45s ease;
+  }
+  .wf[data-layout='thumb']:hover .wf__thumb img,
+  .wf[data-layout='thumb']:hover .wf__thumb .wf__vid {
+    transform: scale(1.035);
+  }
+
+  /* The pane's own thickness: a sheen down the top edge, a lit hairline along
+     it, and a slight darkening at the bottom where a sheet of glass sitting in
+     a frame catches shadow. Fixed, because none of that depends on where the
+     page is — it is the glass, not a reflection in it. */
+  .wf__glass {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.22) 0%,
+        rgba(255, 255, 255, 0.07) 7%,
+        rgba(255, 255, 255, 0) 24%
+      ),
+      linear-gradient(196deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0) 38%),
+      linear-gradient(0deg, rgba(9, 13, 24, 0.16) 0%, rgba(9, 13, 24, 0) 20%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.34),
+      inset 0 -1px 0 rgba(9, 13, 24, 0.1);
+  }
+
+  /* The reflection: one soft band crossing the pane when the pointer arrives,
+     and that is all it does.
+
+     Two earlier drivers are worth naming, because both are the obvious idea.
+     Scroll position lit every card at once whether or not the reader was near
+     one, and a flick of the trackpad became four bands strobing down the page.
+     Pointer position was physically the honest one — you move, the reflection
+     moves — but a highlight pinned to the cursor reads as attached to *you*
+     rather than to the glass, which is worse than the thing it fixes.
+
+     A sweep on arrival has neither problem. It says the surface caught the
+     light once as you came to it, then went back to being a picture.
+
+     White at this alpha over a screenshot is a suggestion. Anything stronger
+     and it stops being a window and starts being a swipe of highlighter. */
+  .wf__shine {
+    position: absolute;
+    inset: -30% -45%;
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0;
+    background: linear-gradient(
+      104deg,
+      rgba(255, 255, 255, 0) 41%,
+      rgba(255, 255, 255, 0.05) 46%,
+      rgba(255, 255, 255, 0.14) 50%,
+      rgba(255, 255, 255, 0.05) 54%,
+      rgba(255, 255, 255, 0) 59%
+    );
+    transform: translate3d(-75%, 0, 0);
+  }
+  /* Driven by an attribute the script sets on arrival rather than by :hover,
+     so leaving halfway does not tear the band off the pane mid-crossing. It
+     finishes, then clears itself. */
+  .wf__thumb[data-sweep] .wf__shine {
+    animation: wf-sweep 1.05s cubic-bezier(0.35, 0, 0.2, 1);
+  }
+  /* Lit for the middle of the trip only: a band that is already at full
+     strength as it appears at the edge reads as a panel switching on. */
+  @keyframes wf-sweep {
+    0% {
+      opacity: 0;
+      transform: translate3d(-75%, 0, 0);
+    }
+    22% {
+      opacity: 1;
+    }
+    78% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: translate3d(75%, 0, 0);
+    }
   }
 
   /* ---- folder tones ----
@@ -257,37 +453,46 @@ const sealId = `seal-${href.replace(/\W+/g, '-')}`;
     transform-origin: 50% 100%;
   }
 
-  /* The stamp. Perforations are four masks intersected: each layer is opaque
-     everywhere but the holes along its own edge, so the intersection is the
-     sheet minus every hole. */
-  .wf__stamp {
-    --r: 6px;
-    --step: 19px;
+  /* The thumbnail. Was a postage stamp — a white sheet with perforated edges,
+     cut by four radial-gradient masks intersected so every hole along every
+     edge was subtracted at once. Clever, and it read as a novelty: a die-cut
+     border is a shape you notice instead of the screenshot inside it.
 
+     What is left is a photographic mount. A thin white frame, square corners
+     softened just enough to not look cut with scissors, and nothing else.
+
+     Split in two because two separate things move it. This half is the lift
+     out of the folder, and it owns the perspective the other half leans in. */
+  .wf__stamp {
     position: absolute;
     left: 8%;
     right: 1%;
     top: 0;
-    padding: 14px 14px 12px;
-    background: #fff;
-    filter: drop-shadow(0 16px 26px rgba(12, 20, 45, 0.26));
-    transition:
-      transform 0.55s cubic-bezier(0.2, 0.9, 0.25, 1),
-      filter 0.55s cubic-bezier(0.2, 0.9, 0.25, 1);
-
-    -webkit-mask:
-      radial-gradient(circle var(--r) at 50% 0, #0000 98%, #000) 0 0 / var(--step) 100% repeat-x,
-      radial-gradient(circle var(--r) at 50% 100%, #0000 98%, #000) 0 0 / var(--step) 100% repeat-x,
-      radial-gradient(circle var(--r) at 0 50%, #0000 98%, #000) 0 0 / 100% var(--step) repeat-y,
-      radial-gradient(circle var(--r) at 100% 50%, #0000 98%, #000) 0 0 / 100% var(--step) repeat-y;
-    -webkit-mask-composite: source-in;
-    mask:
-      radial-gradient(circle var(--r) at 50% 0, #0000 98%, #000) 0 0 / var(--step) 100% repeat-x,
-      radial-gradient(circle var(--r) at 50% 100%, #0000 98%, #000) 0 0 / var(--step) 100% repeat-x,
-      radial-gradient(circle var(--r) at 0 50%, #0000 98%, #000) 0 0 / 100% var(--step) repeat-y,
-      radial-gradient(circle var(--r) at 100% 50%, #0000 98%, #000) 0 0 / 100% var(--step) repeat-y;
-    mask-composite: intersect;
+    perspective: 900px;
+    /* Going back in. Plain ease-out, and it moves first — see the hover rules
+       below, where the order reverses. An overshoot curve here would push the
+       thumbnail *below* its resting place on the way home, which reads as the
+       folder swallowing it. */
+    transition: transform 0.4s cubic-bezier(0.3, 0, 0.2, 1);
   }
+
+  /* The frame, and the half that takes the pointer lean. Its transform is
+     written by script every frame, so nothing here may set one.
+
+     `box-shadow` rather than the `drop-shadow()` filter the perforated sheet
+     needed: the shape is a plain rounded rectangle again, so the cheap version
+     is correct — and a filter on this element would flatten the 3D lean into
+     nothing, which is a silent failure that looks like broken JavaScript. */
+  .wf__plate {
+    padding: 6px;
+    border-radius: 5px;
+    background: #fff;
+    box-shadow:
+      0 1px 2px rgba(12, 20, 45, 0.14),
+      0 14px 26px -14px rgba(12, 20, 45, 0.4);
+    transition: box-shadow 0.55s cubic-bezier(0.2, 0.9, 0.25, 1);
+  }
+
   .wf__frank {
     margin: 0 0 10px;
     max-width: 17ch;
@@ -372,8 +577,8 @@ const sealId = `seal-${href.replace(/\W+/g, '-')}`;
       0 26px 46px -26px rgba(12, 20, 45, 0.5);
     transform-origin: 50% 100%;
     transition:
-      transform 0.55s cubic-bezier(0.2, 0.9, 0.25, 1),
-      box-shadow 0.55s cubic-bezier(0.2, 0.9, 0.25, 1);
+      transform 0.46s cubic-bezier(0.2, 0.9, 0.25, 1) 0.07s,
+      box-shadow 0.46s cubic-bezier(0.2, 0.9, 0.25, 1) 0.07s;
   }
   .wf__label {
     margin: 0 0 clamp(14px, 2.2vw, 28px);
@@ -420,14 +625,31 @@ const sealId = `seal-${href.replace(/\W+/g, '-')}`;
      lifts out, and the front panel tips forward and drops a little — the two
      together read as a folder being opened toward you rather than as a pile
      of things all sliding at once. */
+  /* Coming out.
+     
+     Two things make this read as a folder opening rather than as a pile of
+     things sliding. The order: the front tips out of the way first and the
+     thumbnail follows it a frame or two later, which is the sequence your hand
+     would actually produce. Reversed on the way back — the thumbnail drops in,
+     then the front closes over it — by the delays on the resting rules above.
+
+     And the curve, which carries slightly past the mark and settles back. A
+     thumbnail that arrives and simply stops has been positioned; one that
+     overshoots by a hair has been let go of. */
   .wf:hover .wf__stamp {
-    transform: translateY(-27%) rotate(-1.1deg) scale(1.02);
-    filter: drop-shadow(0 32px 44px rgba(12, 20, 45, 0.4));
+    transform: translateY(-22%) rotate(-0.3deg) scale(1.035);
+    transition: transform 0.56s cubic-bezier(0.34, 1.42, 0.56, 1) 0.07s;
+  }
+  .wf:hover .wf__plate {
+    box-shadow:
+      0 1px 2px rgba(12, 20, 45, 0.16),
+      0 30px 46px -20px rgba(12, 20, 45, 0.46);
   }
   /* Hinged at its base, so the lip falls toward the reader instead of the
      whole panel sliding down the card. */
   .wf:hover .wf__front {
     transform: perspective(900px) rotateX(-5deg) translateY(4%);
+    transition-delay: 0s;
     box-shadow:
       0 1px 0 var(--fld-edge) inset,
       0 34px 54px -26px rgba(12, 20, 45, 0.55);
@@ -446,11 +668,25 @@ const sealId = `seal-${href.replace(/\W+/g, '-')}`;
   @media (max-width: 760px) {
     .wf { grid-template-columns: minmax(0, 1fr); gap: 28px; }
     .wf__folder { max-width: 420px; }
+    .wf[data-layout='thumb'] { min-height: 0; }
+    /* One column, so the picture is below the copy: it keeps the gap above it
+       and bleeds to the other three edges instead. */
+    .wf[data-layout='thumb'] .wf__thumb {
+      margin: 0 calc(var(--wf-px) * -1) calc(var(--wf-py) * -1);
+      aspect-ratio: 16 / 10;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .wf__stamp,
+    .wf__plate,
     .wf__front { transition: none; }
+    /* No sweep. The fixed sheen stays: it is a surface, not a movement. */
+    .wf__shine { animation: none; opacity: 0; }
+    .wf__thumb img,
+    .wf__thumb .wf__vid { transform: none; transition: none; }
+    .wf[data-layout='thumb']:hover .wf__thumb img,
+    .wf[data-layout='thumb']:hover .wf__thumb .wf__vid { transform: none; }
   }
 </style>
 
@@ -462,7 +698,11 @@ const sealId = `seal-${href.replace(/\W+/g, '-')}`;
     `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
   document.querySelectorAll<HTMLElement>('.wf').forEach((row) => {
-    const vid = row.querySelector<HTMLVideoElement>('.wf__vid');
+    /* Both layouts are in the DOM and both carry a clip, so the selector has
+       to say which one is on screen. Reaching into the hidden one would fetch
+       a video nobody can see. */
+    const pane = row.dataset.layout === 'thumb' ? '.wf__thumb' : '.wf__folder';
+    const vid = row.querySelector<HTMLVideoElement>(`${pane} .wf__vid`);
     if (!vid) return;
     const dur = row.querySelector<HTMLElement>('.wf__dur');
 
@@ -481,4 +721,82 @@ const sealId = `seal-${href.replace(/\W+/g, '-')}`;
       vid.currentTime = 0;
     });
   });
+
+  /* The lean.
+   *
+   * Same effect as the guestbook pass, and deliberately the same numbers: a
+   * card that leans toward the pointer when you look closely at it is already
+   * a thing this site does, and two different lean speeds on one page reads as
+   * two different sites.
+   *
+   * It answers the thumbnail, not the row. The row hover already has an
+   * answer — the folder opens — and stacking a second reaction onto the same
+   * trigger means neither is legible. Reaching the picture is a separate,
+   * smaller gesture, so it gets a separate, smaller response.
+   *
+   * Rotation only. The lift's scale lives in CSS on the parent, and the two
+   * would fight over one `transform` if this set a scale of its own.
+   */
+  const fine = matchMedia('(pointer: fine)').matches;
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* The thumbnail layout's sweep. Dormant while the folders are showing —
+     `.wf__thumb` is display:none and nothing matches — but the branch is kept
+     working rather than left as markup that would fail if it were switched
+     back on. Set on arrival and cleared on `animationend`, so leaving the row
+     mid-crossing does not tear the band off the pane. */
+  if (!still) {
+    for (const row of document.querySelectorAll<HTMLElement>('.wf')) {
+      const thumb = row.querySelector<HTMLElement>('.wf__thumb');
+      if (!thumb) continue;
+      row.addEventListener('mouseenter', () => {
+        thumb.dataset.sweep = '';
+      });
+      thumb.addEventListener('animationend', () => delete thumb.dataset.sweep);
+    }
+  }
+
+  if (fine && !still) {
+    const MAX = 9;      // degrees. Past ~12 the screenshot starts to skew.
+    const EASE = 0.13;  // per frame; low enough that the plate lags the hand.
+
+    for (const wrap of document.querySelectorAll<HTMLElement>('[data-wf-tilt]')) {
+      const plate = wrap.querySelector<HTMLElement>('.wf__plate');
+      if (!plate) continue;
+
+      let tx = 0, ty = 0, cx = 0, cy = 0, raf = 0;
+
+      const frame = () => {
+        cx += (tx - cx) * EASE;
+        cy += (ty - cy) * EASE;
+
+        /* Park once it has effectively arrived, rather than burning a frame a
+           tick forever on a thumbnail nobody is pointing at. */
+        if (Math.abs(tx - cx) + Math.abs(ty - cy) < 0.01) {
+          cx = tx;
+          cy = ty;
+          raf = 0;
+        } else {
+          raf = requestAnimationFrame(frame);
+        }
+        plate.style.transform = `rotateX(${cy.toFixed(3)}deg) rotateY(${cx.toFixed(3)}deg)`;
+      };
+      const run = () => {
+        if (!raf) raf = requestAnimationFrame(frame);
+      };
+
+      wrap.addEventListener('pointermove', (e) => {
+        if (e.pointerType !== 'mouse') return;
+        const r = wrap.getBoundingClientRect();
+        tx = ((e.clientX - r.left) / r.width - 0.5) * 2 * MAX;
+        ty = -((e.clientY - r.top) / r.height - 0.5) * 2 * MAX;
+        run();
+      });
+      wrap.addEventListener('pointerleave', () => {
+        tx = 0;
+        ty = 0;
+        run();
+      });
+    }
+  }
 </script>
