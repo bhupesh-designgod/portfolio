@@ -61,6 +61,13 @@ const { label = 'View case study' } = Astro.props;
     let y = 0;
     let on = false;
     let raf = 0;
+    /* Which target the cue currently belongs to. Held rather than derived,
+       because entering is the only moment the cue may snap to the pointer, and
+       the scroll check re-answers for targets it is already sitting on. */
+    let current: HTMLElement | null = null;
+    /* Whether the pointer's position is known yet. Nothing reports it until it
+       first moves, and until then 0,0 is a guess, not a reading. */
+    let seen = false;
 
     const loop = () => {
       /* Easing toward the pointer rather than pinning to it is the whole
@@ -84,6 +91,7 @@ const { label = 'View case study' } = Astro.props;
     document.addEventListener(
       'pointermove',
       (e) => {
+        seen = true;
         tx = e.clientX;
         ty = e.clientY;
         if (on) start();
@@ -91,23 +99,73 @@ const { label = 'View case study' } = Astro.props;
       { passive: true }
     );
 
+    const enter = (t: HTMLElement, cx: number, cy: number) => {
+      if (t === current) return;
+      current = t;
+      txt.textContent = t.dataset.cue || fallback;
+      /* Snap to the pointer on entry. Without this it flies across the page
+         from wherever the last card left it, which reads as a stray object
+         rather than as this card's label. */
+      tx = x = cx;
+      ty = y = cy;
+      on = true;
+      cue.classList.add('is-on');
+      start();
+    };
+
+    const leave = () => {
+      if (!current) return;
+      current = null;
+      on = false;
+      cue.classList.remove('is-on');
+    };
+
     targets.forEach((t) => {
       t.addEventListener('pointerenter', (e) => {
-        txt.textContent = t.dataset.cue || fallback;
-        /* Snap to the pointer on entry. Without this it flies across the page
-           from wherever the last card left it, which reads as a stray object
-           rather than as this card's label. */
-        tx = x = e.clientX;
-        ty = y = e.clientY;
-        on = true;
-        cue.classList.add('is-on');
-        start();
+        seen = true;
+        enter(t, e.clientX, e.clientY);
       });
-      t.addEventListener('pointerleave', () => {
-        on = false;
-        cue.classList.remove('is-on');
-      });
+      t.addEventListener('pointerleave', leave);
     });
+
+    /* Scrolling under a stationary cursor.
+     *
+     * `pointerenter` and `pointerleave` describe the pointer moving across the
+     * page. They say nothing about the page moving under the pointer: scroll a
+     * card out from beneath a hand that is not touching the mouse and no event
+     * fires at all, so the cue stays on, advertising a card that is now some
+     * distance up the screen.
+     *
+     * So on scroll the question is asked the other way round — not "did the
+     * pointer cross a boundary" but "what is under it now". Which also fixes
+     * the mirror of the bug for free: a card scrolling *into* a stationary
+     * cursor now lights the cue, where before it stayed dark until the mouse
+     * was nudged.
+     *
+     * Once per frame. `elementFromPoint` is a hit test, and a scroll fires far
+     * more often than the screen is redrawn.
+     */
+    let checking = 0;
+    const sync = () => {
+      checking = 0;
+      /* Nothing has told us where the pointer is yet, and 0,0 is a real point
+         on the page — testing it would light the cue for a card the reader has
+         never pointed at. */
+      if (!seen) return;
+      const under = document.elementFromPoint(tx, ty);
+      /* The cue is pointer-events:none, so it is never what comes back. The
+         stretched link is, which is inside the card and answers to it. */
+      const t = under?.closest<HTMLElement>('[data-cue]') ?? null;
+      if (t) enter(t, tx, ty);
+      else leave();
+    };
+    const queueSync = () => {
+      if (!checking) checking = requestAnimationFrame(sync);
+    };
+
+    addEventListener('scroll', queueSync, { passive: true });
+    /* Same bug, same fix: the layout moves and the pointer does not. */
+    addEventListener('resize', queueSync, { passive: true });
   }
 </script>
 
