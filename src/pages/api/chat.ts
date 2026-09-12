@@ -8,6 +8,7 @@
  * guards all run before the network is ever touched — see `guard()` below.
  */
 import type { APIRoute } from 'astro';
+import { rateLimited } from '../../lib/rate-limit';
 import { portfolioContext } from '../../lib/portfolio-context';
 
 export const prerender = false;
@@ -22,32 +23,13 @@ const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/interactions?
 
 const MAX_CHARS = 500; // one question, not a pasted document
 const MAX_TURNS = 8; // ~4 exchanges of history
-const WINDOW_MS = 60 * 60 * 1000;
+const WINDOW_SEC = 60 * 60;
 const MAX_PER_WINDOW = 10;
 
 type Turn = { role: 'user' | 'assistant'; content: string };
 
-/* Best-effort per-IP limiter. On serverless each cold instance starts empty, so
-   this bounds accidents and casual abuse, not a determined attacker. The real
-   ceiling is the provider's own quota. */
-const hits = new Map<string, number[]>();
-
-function rateLimited(ip: string): boolean {
-  const now = Date.now();
-  const recent = (hits.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
-  if (recent.length >= MAX_PER_WINDOW) {
-    hits.set(ip, recent);
-    return true;
-  }
-  recent.push(now);
-  hits.set(ip, recent);
-
-  // Keep the map from growing without bound on a long-lived instance.
-  if (hits.size > 500) {
-    for (const [k, v] of hits) if (!v.some((t) => now - t < WINDOW_MS)) hits.delete(k);
-  }
-  return false;
-}
+/* Per-IP limiter, shared across instances via Redis — see lib/rate-limit.ts for
+   why the Map that used to live here was not really a limit. */
 
 const bad = (status: number, error: string) =>
   new Response(JSON.stringify({ error }), {
@@ -148,7 +130,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0].trim() || clientAddress || 'unknown';
-  if (rateLimited(ip)) {
+  if (await rateLimited(`chat:${ip}`, MAX_PER_WINDOW, WINDOW_SEC)) {
     return bad(429, "That's a lot of questions! Email designs.bhupesh@gmail.com and he'll answer directly.");
   }
 

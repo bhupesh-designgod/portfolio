@@ -17,6 +17,7 @@
  * goes away; it just gets worse again.
  */
 import type { APIRoute } from 'astro';
+import { rateLimited } from '../../lib/rate-limit';
 import { Communicate } from 'edge-tts-ts';
 
 export const prerender = false;
@@ -38,7 +39,7 @@ const VOICE = 'en-US-AndrewMultilingualNeural';
 /* One sentence, not an essay. The client already splits answers into
    sentences; this is the backstop for anything calling the route directly. */
 const MAX_CHARS = 320;
-const WINDOW_MS = 60 * 60 * 1000;
+const WINDOW_SEC = 60 * 60;
 /* Chat allows 10 questions an hour. An answer is a handful of sentences and
    each one is a request, so this is the same conversation length expressed in
    the unit this endpoint actually spends. Nothing here costs money any more,
@@ -60,24 +61,7 @@ type Mark = { t: number; d: number; w: string };
    have than silence. */
 const TIMEOUT_MS = 8000;
 
-const hits = new Map<string, number[]>();
-
-function rateLimited(ip: string): boolean {
-  const now = Date.now();
-  const recent = (hits.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
-  if (recent.length >= MAX_PER_WINDOW) {
-    hits.set(ip, recent);
-    return true;
-  }
-  recent.push(now);
-  hits.set(ip, recent);
-
-  // Keep the map from growing without bound on a long-lived instance.
-  if (hits.size > 500) {
-    for (const [k, v] of hits) if (!v.some((t) => now - t < WINDOW_MS)) hits.delete(k);
-  }
-  return false;
-}
+/* Per-IP limiter, shared across instances via Redis. See lib/rate-limit.ts. */
 
 const bad = (status: number, error: string) =>
   new Response(JSON.stringify({ error }), {
@@ -109,7 +93,8 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0].trim() || clientAddress || 'unknown';
-  if (rateLimited(ip)) return bad(429, 'Voice limit reached for now.');
+  if (await rateLimited(`speak:${ip}`, MAX_PER_WINDOW, WINDOW_SEC))
+    return bad(429, 'Voice limit reached for now.');
 
   /* The stream yields audio chunks interleaved with boundary events, and both
      are wanted. The boundaries are the whole reason the subtitles line up: the
