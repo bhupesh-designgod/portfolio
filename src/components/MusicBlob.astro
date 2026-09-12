@@ -442,7 +442,21 @@ const nudges = [
     let resetTimer = 0;
     const cancelReset = () => clearTimeout(resetTimer);
 
+    /* True from asking for a new track until that track is actually playing.
+     *
+     * Assigning `audio.src` tears down whatever is playing, and the element
+     * reports that by firing `pause` — the same event, with the same shape, as
+     * a person pressing the button. The handler below can't tell them apart, so
+     * it schedules the hero back to blue and flips the button to paused.
+     *
+     * On a fast load the `play` that follows cancels both in time and nothing
+     * shows. On a slow one the 80ms timer wins and the page flashes blue
+     * mid-change. A deliberate switch is not a pause, so it says so here and
+     * the handler steps aside. */
+    let switching = false;
+
     audio.addEventListener('play', () => {
+      switching = false;
       cancelReset();
       /* Resuming has to re-tint: pausing sent the hero back to blue, and a
          resume goes through here rather than through load(), which is the
@@ -452,6 +466,10 @@ const nudges = [
       setState('playing');
     });
     audio.addEventListener('pause', () => {
+      /* Not a pause — the old track being cleared so the next one can load.
+         Leaving the colour and the button alone is what makes a track change
+         read as one continuous thing rather than as a stop and a start. */
+      if (switching) return;
       setState('paused');
       // Stopped is stopped: the page goes back to being blue.
       cancelReset();
@@ -459,6 +477,7 @@ const nudges = [
     });
 
     const fail = () => {
+      switching = false;
       setState('idle');
       // Nothing is playing, so nothing is colouring the page.
       cancelReset();
@@ -479,6 +498,11 @@ const nudges = [
       cancelReset();
       fadeTint(palettes[index] ?? null);
       wanted = srcs[index];
+      /* Raised before the assignment, because that is what fires the `pause`
+         this is here to disown. Lowered by `play`, or by `fail` if the new
+         track never arrives — so a switch that dies still lets the page go
+         back to blue rather than freezing on a colour with nothing playing. */
+      switching = play;
       audio.src = wanted;
       if (play) audio.play().catch(() => { if (audio.src === wanted) fail(); });
     };
